@@ -15,12 +15,12 @@ const { getReactNativePersistence } = require("firebase/auth");
 
 // 🔥 Config
 const firebaseConfig = {
-  apiKey: "AIzaSyDfuJSAklYbWGJYA1EDpBtXOJTv4x0ze18",
+  apiKey: "AIzaSyCpS6KjmnGAD5vCuB_swM2SWRd6-nhoiys",
   authDomain: "gloows-03b6sz.firebaseapp.com",
   projectId: "gloows-03b6sz",
   storageBucket: "gloows-03b6sz.firebasestorage.app",
   messagingSenderId: "1039247674814",
-  appId: "1:1039247674814:web:071d5c2982065f6712bdef",
+  appId: "1:1039247674814:web:071d5c2982065f6712bdef"
 };
 
 // ✅ Initialize app

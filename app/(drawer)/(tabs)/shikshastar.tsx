@@ -1,231 +1,200 @@
-import Header from "@/components/header";
-import {
-  ContestCard,
-  type ContestItem,
-  getContestStatus,
-} from "@/components/shikshastar/ContestCard";
-import { useTheme } from "@/context/ThemeContext";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-import { useEffect, useState } from "react";
+// app/(drawer)/(tabs)/shikshastar.tsx
+
+import { useContests } from "@/hooks/useContests";
+import { useUserContests } from "@/hooks/useUserContests";
+import { joinContest } from "@/services/joinContest";
+import { useRouter } from "expo-router";
+import { getAuth } from "firebase/auth";
 import {
   ActivityIndicator,
-  FlatList,
-  StyleSheet,
+  Alert,
+  ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const TABS = ["Home", "Live", "Upcoming", "Completed"];
+// 🔥 Contest state (time-based)
+const getContestState = (contest: any) => {
+  const now = new Date();
+  const start = new Date(contest.startTime);
+  const end = new Date(contest.endTime);
 
-const normalizeStartTime = (startTime: unknown) => {
-  if (
-    startTime &&
-    typeof startTime === "object" &&
-    "toDate" in startTime &&
-    typeof (startTime as { toDate: () => Date }).toDate === "function"
-  ) {
-    return (startTime as { toDate: () => Date }).toDate();
-  }
-
-  if (startTime instanceof Date) {
-    return startTime;
-  }
-
-  if (typeof startTime === "string" || typeof startTime === "number") {
-    return new Date(startTime);
-  }
-
-  return new Date();
+  if (now < start) return "upcoming";
+  if (now >= start && now <= end) return "live";
+  return "completed";
 };
 
-const normalizeOptionalDate = (value: unknown) => {
-  if (!value) {
-    return undefined;
-  }
+// 🔥 Contest Card
+const ContestCard = ({ item, joined, completed }: any) => {
+  const router = useRouter();
+  const state = getContestState(item);
 
-  return normalizeStartTime(value);
-};
+  const userId = getAuth().currentUser?.uid;
 
-export default function ShikshastarScreen() {
-  const { colors, isDarkMode } = useTheme();
-  const [activeTab, setActiveTab] = useState("Home");
-  const [contests, setContests] = useState<ContestItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const isJoined = joined[item.id];
+  const isCompleted = completed[item.id];
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "contests"),
-      (snapshot) => {
-        const nextContests = snapshot.docs.map((contestDoc) => {
-          const data = contestDoc.data();
-
-          return {
-            id: contestDoc.id,
-            title: data.title || "Shikshastar 2026",
-            sponsored: Boolean(data.sponsored),
-            subject: data.subject || "All",
-            startTime: normalizeStartTime(data.startTime),
-            endTime: normalizeOptionalDate(data.endTime),
-            prizePool: Number(data.prizePool || 0),
-            totalSpots: Number(data.totalSpots || 1000),
-            joinedCount: Number(data.joinedCount || 0),
-            entryFee: Number(data.entryFee || 49),
-            status: data.status,
-            createdAt: normalizeOptionalDate(data.createdAt),
-          } satisfies ContestItem;
-        });
-
-        setContests(nextContests);
-        setLoadError(null);
-        setIsLoading(false);
-      },
-      () => {
-        setLoadError("Unable to load contests from Firebase.");
-        setIsLoading(false);
+  const handleJoin = async () => {
+    try {
+      if (!userId) {
+        Alert.alert("Login Required", "Please login first");
+        return;
       }
-    );
 
-    return unsubscribe;
-  }, []);
+      await joinContest(userId, item);
 
-  const filteredContests = contests.filter((contest) => {
-    if (activeTab === "Home") return true;
-    return getContestStatus(contest) === activeTab.toLowerCase();
-  });
+      Alert.alert("Success", "Joined successfully!");
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    }
+  };
+
+  const handleParticipate = () => {
+    router.push({
+      pathname: "../contest/video",
+      params: { contestId: item.id },
+    });
+  };
+
+  const handleResult = () => {
+    router.push({
+      pathname: "../contest/result",
+      params: { contestId: item.id },
+    });
+  };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: colors.background }]}
-      edges={["top", "left", "right"]}
+    <View
+      style={{
+        backgroundColor: "#fff",
+        padding: 15,
+        marginBottom: 10,
+        borderRadius: 12,
+        elevation: 3,
+      }}
     >
-      <View style={styles.container}>
-        {/* 🔥 YOUR HEADER (ONLY ONCE) */}
-        <Header />
+      <Text style={{ fontSize: 16, fontWeight: "bold" }}>
+        {item.title}
+      </Text>
 
-        {/* 🔥 CHIPS */}
-        <View style={styles.chipContainer}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-                activeTab === tab && styles.activeChip,
-                activeTab === tab && {
-                  backgroundColor: colors.accent,
-                  borderColor: colors.accent,
-                },
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text
-                style={[
-                  activeTab === tab
-                    ? styles.activeChipText
-                    : styles.chipText,
-                  {
-                    color: activeTab === tab
-                      ? isDarkMode
-                        ? colors.background
-                        : "#ffffff"
-                      : colors.textSecondary,
-                  },
-                ]}
-              >
-                {tab}
+      <Text>Subject: {item.subject}</Text>
+      <Text>Prize: {item.prizePool}</Text>
+      <Text>Joined: {item.joinedCount}</Text>
+
+      {/* 🔵 COMPLETED */}
+      {isCompleted && (
+        <TouchableOpacity onPress={handleResult}>
+          <Text style={{ color: "blue", marginTop: 8 }}>
+            📊 View Result
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* 🟢 LIVE */}
+      {!isCompleted && state === "live" && (
+        <>
+          {!isJoined ? (
+            <TouchableOpacity onPress={handleJoin}>
+              <Text style={{ color: "green", marginTop: 8 }}>
+                ▶ Join Now
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          ) : (
+            <TouchableOpacity onPress={handleParticipate}>
+              <Text style={{ color: "green", marginTop: 8 }}>
+                ▶ Participate Now
+              </Text>
+            </TouchableOpacity>
+          )}
+        </>
+      )}
 
-        {/* 🔥 LIST */}
-        {isLoading ? (
-          <View style={styles.stateContainer}>
-            <ActivityIndicator size="large" color={colors.accent} />
-            <Text style={[styles.stateText, { color: colors.textSecondary }]}>Loading contests...</Text>
-          </View>
-        ) : loadError ? (
-          <View style={styles.stateContainer}>
-            <Text style={[styles.stateText, { color: colors.textSecondary }]}>{loadError}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredContests}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <ContestCard item={item} />}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              <View style={styles.stateContainer}>
-                <Text style={[styles.stateText, { color: colors.textSecondary }]}>No contests available right now.</Text>
-              </View>
-            }
-          />
-        )}
-      </View>
+      {/* 🟡 UPCOMING (ONLY IF JOINED) */}
+      {!isCompleted && state === "upcoming" && isJoined && (
+        <Text style={{ color: "orange", marginTop: 8 }}>
+          ⏳ Starts Soon
+        </Text>
+      )}
+    </View>
+  );
+};
+
+// 🔥 Section
+const Section = ({ title, data, joined, completed }: any) => {
+  if (!data.length) return null;
+
+  return (
+    <View style={{ marginBottom: 20 }}>
+      <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
+        {title}
+      </Text>
+
+      {data.map((item: any) => (
+        <ContestCard
+          key={item.id}
+          item={item}
+          joined={joined}
+          completed={completed}
+        />
+      ))}
+    </View>
+  );
+};
+
+// 🔥 MAIN SCREEN
+export default function ShikshastarScreen() {
+  const { live, upcoming, completed: allCompleted, loading } = useContests();
+
+  const userId = getAuth().currentUser?.uid;
+  const { joined, completed } = useUserContests(userId || "");
+
+  if (loading) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center" }}>
+        <ActivityIndicator size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  // 🔥 FINAL FILTERING
+
+  const liveContests = live;
+
+  const upcomingContests = upcoming.filter((c: any) => joined[c.id]);
+
+  const completedContests = allCompleted.filter(
+    (c: any) => completed[c.id]
+  );
+
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 12, paddingBottom: 30 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Section
+          title="🔥 Live Contests"
+          data={liveContests}
+          joined={joined}
+          completed={completed}
+        />
+
+        <Section
+          title="🟡 Upcoming Contests"
+          data={upcomingContests}
+          joined={joined}
+          completed={completed}
+        />
+
+        <Section
+          title="🔵 Completed Contests"
+          data={completedContests}
+          joined={joined}
+          completed={completed}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-/* 🎨 STYLES */
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#0B1020",
-  },
-
-  container: {
-    flex: 1,
-  },
-
-  chipContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    marginVertical: 10,
-  },
-
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 10,
-    borderWidth: 1,
-  },
-
-  activeChip: {
-    transform: [{ translateY: -1 }],
-  },
-
-  chipText: {
-    fontSize: 13,
-  },
-
-  activeChipText: {
-    fontWeight: "bold",
-  },
-
-  listContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-  },
-
-  stateContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-
-  stateText: {
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: "center",
-  },
-});

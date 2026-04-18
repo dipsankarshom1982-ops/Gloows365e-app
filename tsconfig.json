@@ -3,16 +3,16 @@
   "compilerOptions": {
     "strict": true,
 
-    // 🔥 Required for modern TS + Expo
+    // 🔥 Required for Expo + TS
     "moduleResolution": "bundler",
 
-    // ✅ Enable @/ path
+    // ✅ Path alias (@/)
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     },
 
-    // 🔕 Silence TS deprecation warnings (important)
+    // 🔕 Silence TS warnings
     "ignoreDeprecations": "6.0",
 
     // ✅ Recommended settings
@@ -28,5 +28,9 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+
+  "exclude": [
+    "node_modules"
   ]
 }
