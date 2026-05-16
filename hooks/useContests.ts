@@ -1,15 +1,9 @@
-// hooks/useContests.ts
-
 import { db } from "@/lib/firebase";
-import { filterContests } from "@/utils/contestUtils";
 import { collection, onSnapshot } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 export const useContests = () => {
-  const [live, setLive] = useState<any[]>([]);
-  const [upcoming, setUpcoming] = useState<any[]>([]);
-  const [completed, setCompleted] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [contests, setContests] = useState<any[]>([]); // ✅ default []
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "contests"), (snapshot) => {
@@ -18,16 +12,13 @@ export const useContests = () => {
         ...doc.data(),
       }));
 
-      const { live, upcoming, completed } = filterContests(data);
+      console.log("🔥 contests:", data);
 
-      setLive(live);
-      setUpcoming(upcoming);
-      setCompleted(completed);
-      setLoading(false);
+      setContests(data);
     });
 
     return () => unsub();
   }, []);
 
-  return { live, upcoming, completed, loading };
+  return { contests }; // ✅ ALWAYS defined
 };

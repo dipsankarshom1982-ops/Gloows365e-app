@@ -1,6 +1,3 @@
-import Header from "@/components/header";
-import { useTheme } from "@/context/ThemeContext";
-import { auth, db } from "@/lib/firebase";
 import { LinearGradient } from "expo-linear-gradient";
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -11,164 +8,201 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function DashboardScreen() {
+// Hooks & Libs
+import { useTheme } from "@/context/ThemeContext";
+import useDashboard from "@/hooks/useDashboard";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+
+// Components
+import ContestPro from "@/components/ContestPro";
+import EarningsPro from "@/components/EarningsPro";
+import LearningPro from "@/components/LearningPro";
+import StatsPro from "@/components/StatsPro";
+import Header from "@/components/header"; // ✅ ADD HEADER
+
+export default function Dashboard() {
   const { colors } = useTheme();
   const [student, setStudent] = useState<any>(null);
 
+  const { data, loading, error } = useDashboard();
+
+  // 🔥 Student fetch (safe)
   useEffect(() => {
-    const fetchStudent = async () => {
-      if (!auth.currentUser) return;
-      const snap = await getDoc(doc(db, "students", auth.currentUser.uid));
-      if (snap.exists()) setStudent(snap.data());
-    };
-    fetchStudent();
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+
+      try {
+        const ref = doc(db, "students", user.uid);
+        const snap = await getDoc(ref);
+
+        if (snap && snap.exists()) {
+          setStudent(snap.data());
+        } else {
+          setStudent(null);
+        }
+      } catch (err) {
+        console.log("Student fetch error:", err);
+      }
+    });
+
+    return () => unsub();
   }, []);
 
-  const stats: Array<{
-    label: string;
-    value: string;
-    color: [string, string];
-  }> = [
-    { label: "🎯 Posts", value: "12", color: ["#7b61ff", "#a855f7"] },
-    { label: "❤️ Likes", value: "284", color: ["#ec4899", "#f43f5e"] },
-    { label: "👁️ Views", value: "1.2K", color: ["#38bdf8", "#0ea5e9"] },
-    { label: "🏆 Battles", value: "8", color: ["#fbbf24", "#f59e0b"] },
-  ];
+  // 🔄 LOADING STATE
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.textSecondary }}>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ❌ ERROR STATE
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={{ color: "red" }}>Error: {error}</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // ⚠️ NO DATA
+  if (!data) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.textSecondary }}>No dashboard data</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* PROFILE SUMMARY */}
-        <LinearGradient
-          colors={["#1e293b", "#0f172a"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.profileCard}
-        >
-          <Text style={[styles.greeting, { color: colors.accent }]}>Hey, {student?.name || "Creator"}! 👋</Text>
-          <Text style={[styles.subgreeting, { color: colors.textSecondary }]}>Here's your performance</Text>
-        </LinearGradient>
+      
+      {/* ✅ HEADER */}
+      <Header title="Vidya" />
 
-        {/* STATS GRID */}
-        <View style={styles.statsGrid}>
-          {stats.map((stat, idx) => (
-            <LinearGradient
-              key={idx}
-              colors={stat.color}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCard}
-            >
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-            </LinearGradient>
-          ))}
-        </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 30 }}
+      >
+        {/* 1. WELCOME */}
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.profileCard}>
+          <LinearGradient
+            colors={["#1e293b", "#0f172a"]}
+            style={styles.gradientBorder}
+          >
+            <Text style={[styles.greeting, { color: colors.accent }]}>
+              Hey, {student?.name || "Creator"} 👋
+            </Text>
 
-        {/* QUICK ACTIONS */}
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={styles.actionEmoji}>📤</Text>
-            <Text style={[styles.actionText, { color: colors.text }]}>Create Post</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={styles.actionEmoji}>⚡</Text>
-            <Text style={[styles.actionText, { color: colors.text }]}>Skill Battle</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={styles.actionEmoji}>🎓</Text>
-            <Text style={[styles.actionText, { color: colors.text }]}>Learn</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={styles.actionEmoji}>🏅</Text>
-            <Text style={[styles.actionText, { color: colors.text }]}>Leaderboard</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.subgreeting, { color: colors.textSecondary }]}>
+              Here's your performance for today
+            </Text>
+          </LinearGradient>
+        </Animated.View>
+
+        {/* 2. STATS */}
+        <Animated.View entering={FadeInDown.delay(200)}>
+          <StatsPro data={data || {}} />
+        </Animated.View>
+
+        {/* 3. LEARNING */}
+        <Animated.View entering={FadeInDown.delay(300)}>
+          <LearningPro data={data || {}} />
+        </Animated.View>
+
+        {/* 4. QUICK ACTIONS */}
+        <Animated.View entering={FadeInDown.delay(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Quick Actions
+          </Text>
+
+          <View style={styles.actionGrid}>
+            <ActionBtn emoji="📤" label="Create Post" colors={colors} />
+            <ActionBtn emoji="⚡" label="Skill Battle" colors={colors} />
+            <ActionBtn emoji="🎓" label="Learn" colors={colors} />
+            <ActionBtn emoji="🏅" label="Leaderboard" colors={colors} />
+          </View>
+        </Animated.View>
+
+        {/* 5. CONTEST + EARNINGS */}
+        <Animated.View entering={FadeInDown.delay(500)}>
+          <ContestPro />
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(600)}>
+          <EarningsPro data={data || {}} />
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// 🔹 Action Button
+const ActionBtn = ({ emoji, label, colors }: any) => (
+  <TouchableOpacity
+    style={[
+      styles.actionBtn,
+      { backgroundColor: colors.card, borderColor: colors.border },
+    ]}
+  >
+    <Text style={styles.actionEmoji}>{emoji}</Text>
+    <Text style={[styles.actionText, { color: colors.text }]}>{label}</Text>
+  </TouchableOpacity>
+);
+
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1 },
+  center: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileCard: {
-    margin: 15,
-    padding: 20,
+    margin: 16,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(56, 189, 248, 0.2)",
+    overflow: "hidden",
+  },
+  gradientBorder: {
+    padding: 16,
+    borderRadius: 16,
   },
   greeting: {
-    color: "#38bdf8",
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: "600",
   },
   subgreeting: {
-    color: "#94a3b8",
-    fontSize: 14,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 12,
-    gap: 10,
-  },
-  statCard: {
-    width: "48%",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  statLabel: {
-    color: "#fff",
-    fontSize: 12,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  statValue: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "800",
+    fontSize: 13,
+    marginTop: 4,
   },
   sectionTitle: {
-    color: "#e2e8f0",
     fontSize: 16,
-    fontWeight: "700",
-    marginTop: 20,
-    marginLeft: 15,
+    fontWeight: "600",
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
-  actionRow: {
+  actionGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingHorizontal: 15,
-    marginTop: 12,
-    gap: 10,
+    paddingHorizontal: 16,
   },
   actionBtn: {
-    flex: 1,
-    backgroundColor: "#1e293b",
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: "center",
+    width: "48%",
+    padding: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(56, 189, 248, 0.15)",
+    marginBottom: 12,
+    alignItems: "center",
   },
-  actionEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
+  actionEmoji: { fontSize: 22 },
   actionText: {
-    color: "#e2e8f0",
-    fontSize: 12,
-    fontWeight: "600",
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

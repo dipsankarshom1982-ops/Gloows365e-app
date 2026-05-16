@@ -1,4 +1,4 @@
-// app/contest/ContestQuizScreen.tsx
+// app/contest/quiz.tsx
 
 import { submitContest } from "@/services/submitContest";
 import { useState } from "react";

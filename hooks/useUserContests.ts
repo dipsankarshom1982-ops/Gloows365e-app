@@ -5,35 +5,33 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 export const useUserContests = (userId: string) => {
-  const [joined, setJoined] = useState<{ [key: string]: boolean }>({});
+  const [joined, setJoined] = useState<any>({});
   const [completed, setCompleted] = useState<any>({});
 
   useEffect(() => {
     if (!userId) return;
 
     const q = query(
-      collection(db, "contest_participants"),
+      collection(db, "participant"), // ✅ FIXED
       where("userId", "==", userId)
     );
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const joinedMap: any = {};
-      const completedMap: any = {};
+    const unsub = onSnapshot(q, (snap) => {
+      const j: any = {};
+      const c: any = {};
 
-      snapshot.docs.forEach((doc) => {
+      snap.docs.forEach((doc) => {
         const data = doc.data();
 
-        // ✅ Mark joined
-        joinedMap[data.contestId] = true;
+        j[data.contestId] = true;
 
-        // ✅ Mark completed
         if (data.completed) {
-          completedMap[data.contestId] = data;
+          c[data.contestId] = data;
         }
       });
 
-      setJoined(joinedMap);
-      setCompleted(completedMap);
+      setJoined(j);
+      setCompleted(c);
     });
 
     return () => unsub();

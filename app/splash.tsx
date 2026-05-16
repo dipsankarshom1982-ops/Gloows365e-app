@@ -1,9 +1,10 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   StyleSheet,
   View
 } from "react-native";
@@ -11,56 +12,78 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { auth } from "@/lib/firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 export default function SplashScreen() {
   const router = useRouter();
 
   // 🎬 Animations
-  const scaleAnim = useRef(new Animated.Value(0.6)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(30)).current;
+
+  // 🔐 State control
+  const [appReady, setAppReady] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // 🎬 Animation
+    // 🎬 Smooth Animation
     Animated.parallel([
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 1200,
+        duration: 1000,
         easing: Easing.out(Easing.exp),
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
         duration: 1000,
+        easing: Easing.out(Easing.exp),
         useNativeDriver: true,
       }),
     ]).start();
 
-    // 🔐 Main Logic
-    const checkUser = async () => {
+    // 🔐 Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, (usr) => {
+      setUser(usr);
+    });
+
+    // ⏱ Minimum splash duration (important!)
+    const timer = setTimeout(() => {
+      setAppReady(true);
+    }, 2000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!appReady) return;
+
+    const navigate = async () => {
       const hasOpened = await AsyncStorage.getItem("hasOpened");
 
-      onAuthStateChanged(auth, async (user) => {
-        setTimeout(async () => {
-          if (user) {
-            // ✅ Logged in
-            router.replace("/(drawer)/(tabs)/home");
-          } else {
-            if (!hasOpened) {
-              // 🆕 First time user
-              await AsyncStorage.setItem("hasOpened", "true");
-              router.replace("/welcome");
-            } else {
-              // 🔁 Returning user (not logged)
-              router.replace("/welcome"); // or "/login"
-            }
-          }
-        }, 2000);
-      });
+      if (user) {
+        router.replace("/(drawer)/(tabs)/home");
+      } else {
+        if (!hasOpened) {
+          await AsyncStorage.setItem("hasOpened", "true");
+          router.replace("/welcome");
+        } else {
+          router.replace("/welcome"); // or "/login"
+        }
+      }
     };
 
-    checkUser();
-  }, []);
+    navigate();
+  }, [appReady, user]);
 
   return (
     <LinearGradient
@@ -69,22 +92,32 @@ export default function SplashScreen() {
     >
       <SafeAreaView style={styles.safe}>
         <View style={styles.center}>
-          <Animated.Text
-            style={[
-              styles.logo,
-              {
-                transform: [{ scale: scaleAnim }],
-                opacity: opacityAnim,
-              },
-            ]}
+          
+          {/* 🔥 LOGO */}
+          <Animated.View
+            style={{
+              transform: [
+                { scale: scaleAnim },
+                { translateY: translateY },
+              ],
+              opacity: opacityAnim,
+            }}
           >
-            VIDYA
+            <Image
+             source={require("@/assets/images/logo.png")} // 👈 your logo
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          {/* 🚀 Tagline */}
+          <Animated.Text style={[styles.tagline, { opacity: opacityAnim }]}>
+            Learn • Compete • Earn 🚀
           </Animated.Text>
 
-          <Animated.Text
-            style={[styles.tagline, { opacity: opacityAnim }]}
-          >
-            Learn • Compete • Earn 🚀
+          {/* 💼 Branding */}
+          <Animated.Text style={[styles.powered, { opacity: opacityAnim }]}>
+            Powered by Shikshakool Academy Pvt. Ltd.
           </Animated.Text>
         </View>
       </SafeAreaView>
@@ -108,15 +141,20 @@ const styles = StyleSheet.create({
   },
 
   logo: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: "#38bdf8",
-    letterSpacing: 6,
+    width: 190,
+    height: 190,
   },
 
   tagline: {
     color: "#94a3b8",
-    marginTop: 14,
-    fontSize: 14,
+    marginTop: 18,
+    fontSize: 15,
+    letterSpacing: 1,
+  },
+
+  powered: {
+    color: "#64748b",
+    marginTop: 8,
+    fontSize: 12,
   },
 });

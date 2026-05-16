@@ -1,11 +1,11 @@
 import { Drawer } from "expo-router/drawer";
 import {
-    ActivityIndicator,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import { useTheme } from "@/context/ThemeContext";
@@ -143,7 +143,7 @@ export default function DrawerLayout() {
               <DrawerItem
                 icon="trophy-outline"
                 label="Leaderboard"
-                onPress={() => console.log("Leaderboard")}
+                onPress={() => router.push("/leaderboard")}
                 colors={colors}
               />
              

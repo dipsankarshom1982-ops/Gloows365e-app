@@ -3,11 +3,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,9 +15,9 @@ import AdsCard from "@/components/AdsCard";
 import Chips from "@/components/Chips";
 import PostCard from "@/components/FeedPostCard";
 import Header from "@/components/header";
-import Stories from "@/components/Stories";
+import Stories from "@/components/Story";
 
-import ExplorePreview from "@/components/explorePreview";
+//import ExplorePreview from "@/components/explorePreview";
 import ShortLearnPreview from "@/components/ShortLearnPreview";
 import SkillShortPreview from "@/components/SkillShortPreview";
 
@@ -92,7 +92,7 @@ export default function Home() {
       }
 
       // Explore
-      feed.push({ type: "explore" });
+     // feed.push({ type: "explore" });
     }
 
     return feed;
@@ -131,8 +131,8 @@ export default function Home() {
               <Chips />
             ) : item.type === "learning" ? (
               <ShortLearnPreview />
-            ) : item.type === "explore" ? (
-              <ExplorePreview />
+           // ) : item.type === "explore" ? (
+           //   <ExplorePreview />
             ) : null}
           </View>
         )}
