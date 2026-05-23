@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
+import { getStreamUploadUrl, uploadToStream } from "@/lib/cloudflareStream";
 import { auth, db, storage } from "@/lib/firebase";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -21,7 +22,6 @@ import {
   getDownloadURL,
   ref,
   uploadBytesResumable,
-  UploadTaskSnapshot,
 } from "firebase/storage";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -63,73 +63,41 @@ interface MyPost {
 }
 
 // ─── Status watermark config ──────────────────────────────────
-// Only pending/in_review/rejected show a watermark; approved = clean
 const WATERMARK_CONFIG: Partial<
-  Record<PostStatus, { label: string; emoji: string; color: string; bg: string }>
+  Record<PostStatus, { label: string; emoji: string; bg: string }>
 > = {
-  pending: {
-    label: "PENDING REVIEW",
-    emoji: "⏳",
-    color: "#fff",
-    bg:    "rgba(243,156,18,0.82)",
-  },
-  in_review: {
-    label: "IN REVIEW",
-    emoji: "🔍",
-    color: "#fff",
-    bg:    "rgba(52,152,219,0.82)",
-  },
-  rejected: {
-    label: "REJECTED",
-    emoji: "❌",
-    color: "#fff",
-    bg:    "rgba(231,76,60,0.82)",
-  },
+  pending:   { label: "PENDING REVIEW", emoji: "⏳", bg: "rgba(243,156,18,0.82)"  },
+  in_review: { label: "IN REVIEW",      emoji: "🔍", bg: "rgba(52,152,219,0.82)"  },
+  rejected:  { label: "REJECTED",       emoji: "❌", bg: "rgba(231,76,60,0.82)"   },
 };
 
-// ─── Status badge config (for the tracker list) ───────────────
+// ─── Status badge config ──────────────────────────────────────
 const STATUS_CONFIG: Record<
   PostStatus,
   { label: string; emoji: string; color: string; bg: string; description: string }
 > = {
   pending: {
-    label:       "Pending Review",
-    emoji:       "⏳",
-    color:       "#f39c12",
-    bg:          "#f39c1218",
+    label: "Pending Review", emoji: "⏳", color: "#f39c12", bg: "#f39c1218",
     description: "Waiting to be reviewed by our team.",
   },
   in_review: {
-    label:       "In Review",
-    emoji:       "🔍",
-    color:       "#3498db",
-    bg:          "#3498db18",
+    label: "In Review", emoji: "🔍", color: "#3498db", bg: "#3498db18",
     description: "Our team is currently reviewing your reel.",
   },
   approved: {
-    label:       "Approved ✓ Live",
-    emoji:       "✅",
-    color:       "#2ecc71",
-    bg:          "#2ecc7118",
+    label: "Approved ✓ Live", emoji: "✅", color: "#2ecc71", bg: "#2ecc7118",
     description: "Your reel is live in the battle feed!",
   },
   rejected: {
-    label:       "Rejected",
-    emoji:       "❌",
-    color:       "#e74c3c",
-    bg:          "#e74c3c18",
+    label: "Rejected", emoji: "❌", color: "#e74c3c", bg: "#e74c3c18",
     description: "Your reel did not meet the guidelines.",
   },
 };
 
-// ─── Eligible classes ─────────────────────────────────────────
 const ELIGIBLE_CLASSES = ["5", "6", "7", "8", "9", "10", "11", "12"];
 
-// ─── Post limit (rejected don't count) ───────────────────────
-const checkPostLimit = async (
-  battleId: string,
-  uid: string
-): Promise<boolean> => {
+// ─── Post limit check ─────────────────────────────────────────
+const checkPostLimit = async (battleId: string, uid: string): Promise<boolean> => {
   const q = query(
     collection(db, "posts"),
     where("battleId", "==", battleId),
@@ -145,51 +113,37 @@ const checkPostLimit = async (
 };
 
 // ─── Status Watermark Overlay ─────────────────────────────────
-// Drop this component onto any thumbnail/video card in your feed
 export function PostStatusWatermark({ status }: { status: PostStatus }) {
   const cfg = WATERMARK_CONFIG[status];
-  if (!cfg) return null; // approved — render nothing
-
+  if (!cfg) return null;
   return (
     <View style={wmStyles.wrapper} pointerEvents="none">
-      {/* Dark overlay so video is visually dimmed */}
       <View style={wmStyles.dim} />
-      {/* Diagonal banner */}
       <View style={[wmStyles.banner, { backgroundColor: cfg.bg }]}>
-        <Text style={wmStyles.bannerText}>
-          {cfg.emoji}  {cfg.label}
-        </Text>
+        <Text style={wmStyles.bannerText}>{cfg.emoji}  {cfg.label}</Text>
       </View>
     </View>
   );
 }
 
 const wmStyles = StyleSheet.create({
-  wrapper: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: "hidden",
-    borderRadius: 14,
-  },
-  dim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.38)",
-  },
+  wrapper: { ...StyleSheet.absoluteFillObject, overflow: "hidden", borderRadius: 14 },
+  dim:     { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.38)" },
   banner: {
-    position:        "absolute",
-    top:             18,
-    left:            -38,
-    width:           180,
-    paddingVertical: 5,
-    alignItems:      "center",
-    transform:       [{ rotate: "-35deg" }],
+    position: "absolute", top: 18, left: -38,
+    width: 180, paddingVertical: 5, alignItems: "center",
+    transform: [{ rotate: "-35deg" }],
   },
-  bannerText: {
-    color:      "#fff",
-    fontSize:   10,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-  },
+  bannerText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
 });
+
+// ─── Upload phases ────────────────────────────────────────────
+type UploadPhase =
+  | "idle"
+  | "getting_url"    // Step 1: asking Worker for upload URL
+  | "uploading"      // Step 2: streaming video to Cloudflare
+  | "thumb"          // Step 3: uploading thumbnail to Firebase
+  | "saving";        // Step 4: writing Firestore doc
 
 // ─── Component ────────────────────────────────────────────────
 export default function CreateReelScreen() {
@@ -202,18 +156,18 @@ export default function CreateReelScreen() {
     month:       string;
   }>();
 
-  const isSp   = params.battleType === "sponsored";
-  const accent = isSp ? "#ff9f43" : colors.accent;
+  const accent = "#ff9f43"; // sponsored only
 
   // ── State ──────────────────────────────────────────────────
   const [student,        setStudent]        = useState<StudentData | null>(null);
   const [videoAsset,     setVideoAsset]     = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [thumbnail,      setThumbnail]      = useState<string | null>(null);
-  const [loading,        setLoading]        = useState<boolean>(false);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const [notEligible,    setNotEligible]    = useState<boolean>(false);
+  const [loading,        setLoading]        = useState(false);
+  const [phase,          setPhase]          = useState<UploadPhase>("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [notEligible,    setNotEligible]    = useState(false);
   const [myPosts,        setMyPosts]        = useState<MyPost[]>([]);
-  const [showMyPosts,    setShowMyPosts]    = useState<boolean>(true);
+  const [showMyPosts,    setShowMyPosts]    = useState(true);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -222,33 +176,35 @@ export default function CreateReelScreen() {
     p.play();
   });
 
-  // ── Fetch student profile ──────────────────────────────────
+  // ── Fetch student ──────────────────────────────────────────
   useEffect(() => {
-    const loadStudent = async () => {
+    const load = async () => {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
-      const snap = await getDoc(doc(db, "students", uid));
-      if (!snap.exists()) return;
-      const d   = snap.data();
-      const cls = d.class !== undefined ? String(d.class) : "";
-      setStudent({
-        name:       d.name       ?? "",
-        class:      cls,
-        school:     d.school     ?? "",
-        profilePic: d.profilePic ?? "",
-        location: {
-          city:     d.location?.city     ?? "",
-          district: d.location?.district ?? "",
-          state:    d.location?.state    ?? "",
-          pincode:  d.location?.pincode  ?? "",
-        },
-      });
-      if (!ELIGIBLE_CLASSES.includes(cls)) setNotEligible(true);
+      try {
+        const snap = await getDoc(doc(db, "students", uid));
+        if (!snap.exists()) return;
+        const d   = snap.data();
+        const cls = d.class !== undefined ? String(d.class) : "";
+        setStudent({
+          name:       d.name       ?? "",
+          class:      cls,
+          school:     d.school     ?? "",
+          profilePic: d.profilePic ?? "",
+          location: {
+            city:     d.location?.city     ?? "",
+            district: d.location?.district ?? "",
+            state:    d.location?.state    ?? "",
+            pincode:  d.location?.pincode  ?? "",
+          },
+        });
+        if (!ELIGIBLE_CLASSES.includes(cls)) setNotEligible(true);
+      } catch (e) { console.log("loadStudent:", e); }
     };
-    loadStudent();
+    load();
   }, []);
 
-  // ── Real-time listener: my posts in this battle ────────────
+  // ── Real-time: my posts in this battle ────────────────────
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid || !params.battleId) return;
@@ -276,11 +232,14 @@ export default function CreateReelScreen() {
   }, [params.battleId]);
 
   // ── Pick video ─────────────────────────────────────────────
-  const pickVideo = async (): Promise<void> => {
+  const pickVideo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["videos"] as ImagePicker.MediaType[],
-      quality:    0.7,
+      mediaTypes:        ["videos"] as ImagePicker.MediaType[],
+      quality:           1,
+      videoMaxDuration:  60,
+      videoExportPreset: ImagePicker.VideoExportPreset.MediumQuality,
     });
+
     if (!result.canceled && result.assets.length > 0) {
       const file = result.assets[0];
       setVideoAsset(file);
@@ -292,8 +251,15 @@ export default function CreateReelScreen() {
     }
   };
 
+  // ── Animate progress bar ───────────────────────────────────
+  const animateTo = (val: number) => {
+    Animated.timing(progressAnim, {
+      toValue: val, duration: 250, useNativeDriver: false,
+    }).start();
+  };
+
   // ── Upload reel ────────────────────────────────────────────
-  const uploadReel = async (): Promise<void> => {
+  const uploadReel = async () => {
     const uid = auth.currentUser?.uid;
     if (!uid)             { Alert.alert("Please login first.");                                               return; }
     if (!student)         { Alert.alert("Profile not found.");                                                return; }
@@ -305,53 +271,89 @@ export default function CreateReelScreen() {
     if (!allowed) return;
 
     setLoading(true);
+    setPhase("idle");
     setUploadProgress(0);
     progressAnim.setValue(0);
 
     try {
-      const response = await globalThis.fetch(videoAsset.uri);
-      const blob     = await response.blob();
+      // ── Step 1: Get one-time upload URL from Cloudflare Worker ──
+      setPhase("getting_url");
+      console.log("[Upload] Step 1: getting Cloudflare upload URL...");
 
-      // Path matches Storage rules: reels/{uid}/{fileName}
-      const fileRef    = ref(storage, `reels/${uid}/${Date.now()}.mp4`);
-      const uploadTask = uploadBytesResumable(fileRef, blob, {
-        contentType: videoAsset.mimeType ?? "video/mp4",
-      });
+      const { uploadURL, playbackUrl, thumbnailUrl: cfThumbUrl } =
+        await getStreamUploadUrl(params.battleTitle ?? "Vidya Skill Reel");
 
-      const mediaUrl: string = await new Promise<string>((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot: UploadTaskSnapshot) => {
-            const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(pct);
-            Animated.timing(progressAnim, {
-              toValue: pct, duration: 300, useNativeDriver: false,
-            }).start();
-          },
-          (error) => {
-            reject(
-              error.code === "storage/unauthorized"
-                ? new Error("Upload permission denied. Please contact support.")
-                : error
+      console.log("[Upload] Step 1 done. playbackUrl:", playbackUrl?.slice(0, 60));
+
+      // ── Step 2: Upload video to Cloudflare Stream ──────────────
+      setPhase("uploading");
+      setUploadProgress(0);
+      animateTo(0);
+      console.log("[Upload] Step 2: uploading video to Cloudflare Stream...");
+
+      const uploadResult = await uploadToStream(
+        uploadURL,
+        videoAsset.uri,
+        (pct) => {
+          setUploadProgress(Math.round(pct));
+          animateTo(pct);
+        },
+        params.battleTitle ?? "Vidya Reel"
+      );
+
+      // Use uid/playbackUrl from worker response
+      const finalPlaybackUrl  = uploadResult.playbackUrl  || playbackUrl  || "";
+      const finalThumbnailUrl = uploadResult.thumbnailUrl || cfThumbUrl   || "";
+      const finalVideoId      = uploadResult.uid;
+
+      console.log("[Upload] Step 2 done. uid:", finalVideoId);
+
+      // ── Step 3: Upload thumbnail to Firebase Storage ────────────
+      let thumbUrl = finalThumbnailUrl;
+      setPhase("thumb");
+
+      if (thumbnail) {
+        try {
+          console.log("[Upload] Step 3: uploading thumbnail to Firebase Storage...");
+          const thumbBlob = await globalThis.fetch(thumbnail).then((r) => r.blob());
+          const thumbRef  = ref(storage, `thumbnails/${uid}/${Date.now()}_thumb.jpg`);
+
+          await new Promise<void>((resolve, reject) => {
+            const task = uploadBytesResumable(thumbRef, thumbBlob, { contentType: "image/jpeg" });
+            task.on("state_changed", undefined,
+              (err) => { console.warn("[Upload] thumb error (non-fatal):", err); resolve(); }, // non-fatal
+              async () => {
+                try { thumbUrl = await getDownloadURL(task.snapshot.ref); } catch (_) {}
+                resolve();
+              }
             );
-          },
-          async () => resolve(await getDownloadURL(uploadTask.snapshot.ref))
-        );
-      });
+          });
 
-      // Save with status: "pending" — admin will change to in_review → approved/rejected
+          console.log("[Upload] Step 3 done. thumbUrl:", thumbUrl?.slice(0, 60));
+        } catch (e) {
+          console.warn("[Upload] Step 3 failed (non-fatal — using CF thumb):", e);
+        }
+      }
+
+      // ── Step 4: Save post document to Firestore ─────────────────
+      setPhase("saving");
+      console.log("[Upload] Step 4: saving Firestore doc...");
+
       await addDoc(collection(db, "posts"), {
+        // Identity
         userId:     uid,
         name:       student.name,
         school:     student.school,
         class:      student.class,
         profilePic: student.profilePic,
+        // Battle
         battleId:      params.battleId,
         battleTitle:   params.battleTitle,
         battleType:    params.battleType,
         isSkillBattle: true,
         postType:      "reel",
         month:         params.month,
+        // Location
         location: {
           city:     student.location.city,
           district: student.location.district,
@@ -359,11 +361,12 @@ export default function CreateReelScreen() {
           pincode:  student.location.pincode,
           country:  "India",
         },
-        mediaUrl,
-        thumbnail: thumbnail ?? "",
-        // ── Moderation fields ──────────────────────────────
-        status:          "pending",  // pending | in_review | approved | rejected
-        rejectionReason: "",         // filled by admin on reject
+        // Media — Cloudflare Stream playback URL (HLS)
+        mediaUrl:  finalPlaybackUrl,
+        thumbnail: thumbUrl ?? "",
+        // Moderation
+        status:          "pending",
+        rejectionReason: "",
         reviewedAt:      null,
         reviewedBy:      "",
         // Engagement
@@ -371,21 +374,40 @@ export default function CreateReelScreen() {
         createdAt: serverTimestamp(),
       });
 
+      console.log("[Upload] Step 4 done. Post saved ✅");
+
       setVideoAsset(null);
       setThumbnail(null);
       setShowMyPosts(true);
 
       Alert.alert(
         "🎉 Submitted!",
-        "Your reel is pending admin review.\n\nIt will show a watermark in the feed until approved.",
+        "Your reel is pending admin review.\n\nTrack its status in 'My Submissions' below.",
         [{ text: "OK" }]
       );
     } catch (e: unknown) {
-      Alert.alert("Upload Failed", e instanceof Error ? e.message : "Please try again.");
+      const msg = e instanceof Error ? e.message : "Upload failed. Please try again.";
+      console.error("[Upload] ERROR:", msg);
+      Alert.alert("Upload Failed", msg);
     } finally {
       setLoading(false);
+      setPhase("idle");
     }
   };
+
+  // ── Phase label & progress ─────────────────────────────────
+  const phaseLabel = (() => {
+    switch (phase) {
+      case "getting_url": return "🔗 Preparing upload...";
+      case "uploading":   return `📤 Uploading video... ${uploadProgress}%`;
+      case "thumb":       return "🖼️ Saving thumbnail...";
+      case "saving":      return "💾 Saving your reel...";
+      default:            return "";
+    }
+  })();
+
+  const showProgressBar = phase === "uploading";
+  const showSpinner     = phase === "getting_url" || phase === "thumb" || phase === "saving";
 
   // ── Not eligible screen ────────────────────────────────────
   if (notEligible) {
@@ -397,7 +419,7 @@ export default function CreateReelScreen() {
         <View style={styles.centered}>
           <Text style={{ fontSize: 50 }}>🔒</Text>
           <Text style={[styles.notEligibleTitle, { color: colors.text }]}>Not Eligible</Text>
-          <Text style={[styles.notEligibleText,  { color: colors.textSecondary }]}>
+          <Text style={[styles.notEligibleText, { color: colors.textSecondary }]}>
             Skill Battle is only available for{"\n"}students in Class 5 to 12.
             {"\n\n"}You are currently in Class {student?.class || "unknown"}.
           </Text>
@@ -415,10 +437,8 @@ export default function CreateReelScreen() {
   // ── Main UI ────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+
         {/* Back */}
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color={colors.text} />
@@ -427,20 +447,18 @@ export default function CreateReelScreen() {
 
         {/* Battle banner */}
         <LinearGradient
-          colors={isSp ? ["#2a1500", "#1a0e00"] : ["#170d40", "#0d1a4a"]}
+          colors={["#2a1500", "#1a0e00"]}
           style={styles.battleBanner}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         >
-          <View style={[styles.battleTypePill, { backgroundColor: isSp ? "#ff9f43" : accent }]}>
-            <Text style={styles.battleTypePillText}>
-              {isSp ? "🏅 Sponsored Battle" : "🎓 Free Battle"}
-            </Text>
+          <View style={[styles.battleTypePill, { backgroundColor: accent }]}>
+            <Text style={styles.battleTypePillText}>🏅 Sponsored Battle</Text>
           </View>
           <Text style={styles.battleBannerTitle}>{params.battleTitle}</Text>
           <Text style={styles.battleBannerMonth}>📅 {params.month}</Text>
         </LinearGradient>
 
-        {/* Student info card */}
+        {/* Student card */}
         {student && (
           <View style={[styles.studentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {student.profilePic ? (
@@ -467,7 +485,7 @@ export default function CreateReelScreen() {
           </View>
         )}
 
-        {/* ── My Submissions tracker ───────────────────────── */}
+        {/* My Submissions tracker */}
         {myPosts.length > 0 && (
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <TouchableOpacity
@@ -475,13 +493,9 @@ export default function CreateReelScreen() {
               onPress={() => setShowMyPosts((v) => !v)}
             >
               <View style={styles.sectionHeaderLeft}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  📋 My Submissions
-                </Text>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>📋 My Submissions</Text>
                 <View style={[styles.countBadge, { backgroundColor: `${accent}20` }]}>
-                  <Text style={[styles.countBadgeText, { color: accent }]}>
-                    {myPosts.length}/4
-                  </Text>
+                  <Text style={[styles.countBadgeText, { color: accent }]}>{myPosts.length}/4</Text>
                 </View>
               </View>
               <Ionicons
@@ -503,7 +517,6 @@ export default function CreateReelScreen() {
                         index > 0 && { borderTopWidth: 1, borderTopColor: colors.border },
                       ]}
                     >
-                      {/* Thumbnail with watermark overlay */}
                       <View style={styles.postThumbWrap}>
                         {post.thumbnail ? (
                           <Image source={{ uri: post.thumbnail }} style={styles.postThumb} />
@@ -512,15 +525,10 @@ export default function CreateReelScreen() {
                             <Text style={{ fontSize: 20 }}>🎬</Text>
                           </View>
                         )}
-                        {/* Watermark — only visible for non-approved */}
                         <PostStatusWatermark status={post.status} />
                       </View>
-
-                      {/* Info */}
                       <View style={{ flex: 1, gap: 5 }}>
-                        <Text style={[styles.postLabel, { color: colors.text }]}>
-                          Reel #{index + 1}
-                        </Text>
+                        <Text style={[styles.postLabel, { color: colors.text }]}>Reel #{index + 1}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                           <Text style={[styles.statusText, { color: cfg.color }]}>
                             {cfg.emoji}  {cfg.label}
@@ -561,6 +569,7 @@ export default function CreateReelScreen() {
           ]}
           onPress={pickVideo}
           activeOpacity={0.85}
+          disabled={loading}
         >
           {videoAsset ? (
             <>
@@ -586,7 +595,7 @@ export default function CreateReelScreen() {
                   Upload Your Skill Reel
                 </Text>
                 <Text style={[styles.videoPickerSub, { color: colors.textSecondary }]}>
-                  Tap to select a video from gallery
+                  Tap to select a video · Max 60 seconds
                 </Text>
                 <View style={[styles.videoPickerBtn, { backgroundColor: accent }]}>
                   <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
@@ -602,7 +611,7 @@ export default function CreateReelScreen() {
           <Text style={[styles.rulesTitle, { color: colors.text }]}>📋 Rules</Text>
           {[
             "Video must be your original skill content",
-            "Max 4 reels per battle",
+            "Max 4 reels per battle · Max 60 seconds",
             "Only Class 5–12 students can participate",
             "No inappropriate content",
             "Location is auto-detected from your profile",
@@ -617,27 +626,65 @@ export default function CreateReelScreen() {
 
         {/* Upload progress */}
         {loading && (
-          <View style={[styles.progressBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.progressLabel, { color: colors.text }]}>
-              📤 Uploading... {Math.round(uploadProgress)}%
-            </Text>
-            <View style={[styles.progressBg, { backgroundColor: "rgba(255,255,255,0.07)" }]}>
-              <Animated.View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: accent,
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 100], outputRange: ["0%", "100%"],
-                    }),
-                  },
-                ]}
-              />
+          <View style={[styles.progressBox, { backgroundColor: colors.card, borderColor: `${accent}40` }]}>
+            <View style={styles.progressLabelRow}>
+              {showSpinner && <ActivityIndicator size="small" color={accent} />}
+              <Text style={[styles.progressLabel, { color: colors.text }]}>{phaseLabel}</Text>
+            </View>
+
+            {showProgressBar && (
+              <View style={[styles.progressBg, { backgroundColor: "rgba(255,255,255,0.07)" }]}>
+                <Animated.View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: accent,
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 100], outputRange: ["0%", "100%"],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+            )}
+
+            {/* Step indicators */}
+            <View style={styles.stepsRow}>
+              {[
+                { key: "getting_url", label: "Prepare" },
+                { key: "uploading",   label: "Upload"  },
+                { key: "thumb",       label: "Thumb"   },
+                { key: "saving",      label: "Save"    },
+              ].map((step, i) => {
+                const phases: UploadPhase[] = ["getting_url", "uploading", "thumb", "saving"];
+                const stepIdx  = phases.indexOf(step.key as UploadPhase);
+                const curIdx   = phases.indexOf(phase);
+                const done     = curIdx > stepIdx;
+                const active   = curIdx === stepIdx;
+                return (
+                  <View key={step.key} style={styles.stepItem}>
+                    <View style={[
+                      styles.stepDot,
+                      done   && { backgroundColor: "#2ecc71" },
+                      active && { backgroundColor: accent },
+                      !done && !active && { backgroundColor: "rgba(255,255,255,0.15)" },
+                    ]}>
+                      {done
+                        ? <Text style={{ fontSize: 9, color: "#fff" }}>✓</Text>
+                        : <Text style={{ fontSize: 8, color: active ? "#fff" : "rgba(255,255,255,0.4)" }}>{i + 1}</Text>
+                      }
+                    </View>
+                    <Text style={[styles.stepLabel, { color: active ? accent : done ? "#2ecc71" : "rgba(255,255,255,0.3)" }]}>
+                      {step.label}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
         )}
 
-        {/* Submit */}
+        {/* Submit button */}
         <TouchableOpacity
           style={[
             styles.submitBtn,
@@ -655,6 +702,7 @@ export default function CreateReelScreen() {
             </>
           )}
         </TouchableOpacity>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -673,24 +721,13 @@ const styles = StyleSheet.create({
   backToListBtn:     { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, marginTop: 8 },
   backToListBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 
-  battleBanner: {
-    marginHorizontal: 16, marginBottom: 14,
-    borderRadius: 18, padding: 16, gap: 6,
-  },
-  battleTypePill: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 20, marginBottom: 4,
-  },
+  battleBanner: { marginHorizontal: 16, marginBottom: 14, borderRadius: 18, padding: 16, gap: 6 },
+  battleTypePill: { alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 4 },
   battleTypePillText: { color: "#fff", fontSize: 11, fontWeight: "800" },
   battleBannerTitle:  { color: "#fff", fontSize: 18, fontWeight: "900", lineHeight: 24 },
   battleBannerMonth:  { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "600" },
 
-  studentCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    marginHorizontal: 16, marginBottom: 12,
-    padding: 12, borderRadius: 14, borderWidth: 1,
-  },
+  studentCard: { flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 14, borderWidth: 1 },
   studentAvatar:            { width: 46, height: 46, borderRadius: 23 },
   studentAvatarPlaceholder: { width: 46, height: 46, borderRadius: 23, justifyContent: "center", alignItems: "center" },
   studentAvatarInitial:     { fontSize: 18, fontWeight: "900" },
@@ -699,14 +736,8 @@ const styles = StyleSheet.create({
   eligibleBadge:     { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1 },
   eligibleBadgeText: { fontSize: 10, fontWeight: "800" },
 
-  section: {
-    marginHorizontal: 16, marginBottom: 14,
-    borderRadius: 14, borderWidth: 1, overflow: "hidden",
-  },
-  sectionHeader: {
-    flexDirection: "row", alignItems: "center",
-    justifyContent: "space-between", padding: 14,
-  },
+  section: { marginHorizontal: 16, marginBottom: 14, borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14 },
   sectionHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle:      { fontSize: 13, fontWeight: "800" },
   countBadge:        { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 },
@@ -714,63 +745,31 @@ const styles = StyleSheet.create({
 
   postsList: { paddingHorizontal: 14, paddingBottom: 14 },
   postRow:   { flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 12 },
-
   postThumbWrap:  { position: "relative", width: 56, height: 80, borderRadius: 14, overflow: "hidden" },
-  postThumb:      { width: 56, height: 80, borderRadius: 0 },
+  postThumb:      { width: 56, height: 80 },
   postThumbEmpty: { width: 56, height: 80, justifyContent: "center", alignItems: "center" },
-
   postLabel:   { fontSize: 12, fontWeight: "700" },
   statusBadge: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   statusText:  { fontSize: 11, fontWeight: "800" },
   statusDesc:  { fontSize: 11, fontWeight: "500", lineHeight: 16 },
-
-  rejectionBox: {
-    marginTop: 4, padding: 8,
-    backgroundColor: "#e74c3c15",
-    borderRadius: 8, borderLeftWidth: 3, borderLeftColor: "#e74c3c",
-  },
+  rejectionBox: { marginTop: 4, padding: 8, backgroundColor: "#e74c3c15", borderRadius: 8, borderLeftWidth: 3, borderLeftColor: "#e74c3c" },
   rejectionLabel: { color: "#e74c3c", fontSize: 10, fontWeight: "800" },
   rejectionText:  { color: "#e74c3c", fontSize: 11, fontWeight: "500", marginTop: 2 },
 
-  infoBox: {
-    flexDirection: "row", alignItems: "flex-start", gap: 8,
-    marginHorizontal: 16, marginBottom: 14,
-    padding: 12, borderRadius: 12, borderWidth: 1,
-  },
+  infoBox: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 16, marginBottom: 14, padding: 12, borderRadius: 12, borderWidth: 1 },
   infoBoxText: { fontSize: 12, fontWeight: "600", flex: 1, lineHeight: 18 },
 
-  videoPicker: {
-    marginHorizontal: 16, marginBottom: 14,
-    borderRadius: 18, borderWidth: 1.5,
-    overflow: "hidden", minHeight: 220,
-  },
+  videoPicker: { marginHorizontal: 16, marginBottom: 14, borderRadius: 18, borderWidth: 1.5, overflow: "hidden", minHeight: 220 },
   videoPreview:   { width: "100%", height: 220 },
   videoOverlay:   { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", padding: 12 },
-  changeVideoBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    alignSelf: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-  },
+  changeVideoBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-end", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
   changeVideoText:   { color: "#fff", fontSize: 12, fontWeight: "700" },
-  thumbnailPreview:  {
-    position: "absolute", bottom: 12, left: 12,
-    width: 48, height: 72, borderRadius: 8,
-    borderWidth: 2, borderColor: "#fff",
-  },
+  thumbnailPreview:  { position: "absolute", bottom: 12, left: 12, width: 48, height: 72, borderRadius: 8, borderWidth: 2, borderColor: "#fff" },
   videoPickerEmpty:    { flex: 1 },
-  videoPickerGradient: {
-    flex: 1, minHeight: 220,
-    justifyContent: "center", alignItems: "center",
-    gap: 10, padding: 24,
-  },
+  videoPickerGradient: { flex: 1, minHeight: 220, justifyContent: "center", alignItems: "center", gap: 10, padding: 24 },
   videoPickerTitle:   { fontSize: 16, fontWeight: "800", textAlign: "center" },
   videoPickerSub:     { fontSize: 13, fontWeight: "500", textAlign: "center" },
-  videoPickerBtn:     {
-    flexDirection: "row", alignItems: "center", gap: 7,
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderRadius: 20, marginTop: 6,
-  },
+  videoPickerBtn:     { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginTop: 6 },
   videoPickerBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 
   rulesBox:   { marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 14, borderWidth: 1, gap: 8 },
@@ -779,15 +778,19 @@ const styles = StyleSheet.create({
   ruleDot:    { fontSize: 16, lineHeight: 20 },
   ruleText:   { fontSize: 12, fontWeight: "500", flex: 1, lineHeight: 18 },
 
-  progressBox:   { marginHorizontal: 16, marginBottom: 12, padding: 12, borderRadius: 12, borderWidth: 1, gap: 8 },
-  progressLabel: { fontSize: 12, fontWeight: "600" },
-  progressBg:    { height: 8, borderRadius: 5, overflow: "hidden" },
-  progressFill:  { height: "100%", borderRadius: 5 },
+  // Progress box
+  progressBox:      { marginHorizontal: 16, marginBottom: 12, padding: 14, borderRadius: 14, borderWidth: 1, gap: 10 },
+  progressLabelRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  progressLabel:    { fontSize: 13, fontWeight: "700", flex: 1 },
+  progressBg:       { height: 8, borderRadius: 5, overflow: "hidden" },
+  progressFill:     { height: "100%", borderRadius: 5 },
 
-  submitBtn: {
-    marginHorizontal: 16, marginBottom: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 16, borderRadius: 16,
-  },
+  // Step indicators
+  stepsRow:   { flexDirection: "row", justifyContent: "space-between", marginTop: 4 },
+  stepItem:   { alignItems: "center", gap: 4, flex: 1 },
+  stepDot:    { width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  stepLabel:  { fontSize: 9, fontWeight: "700" },
+
+  submitBtn: { marginHorizontal: 16, marginBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 16 },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
 });

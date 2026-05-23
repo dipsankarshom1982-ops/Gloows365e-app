@@ -1,6 +1,8 @@
 import Header from "@/components/header";
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
+import { claimSkillBattleRewards } from "@/services/vCoinsService";
+import { getVCoinForRank, VCOIN_DIST_PCT } from "@/utils/formatVCoins";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   collection,
@@ -10,9 +12,10 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   ScrollView,
@@ -72,6 +75,8 @@ interface CashPrizeRow {
 // }
 
 interface BattleConfig {
+  battleId:       string;
+  endDate:        string | null;   // ISO date string, null if no set end
   sponsorName:    string;
   sponsorLogo:    string;
   totalPool:      number;
@@ -91,16 +96,6 @@ const VCOIN_KEY: Record<LocationScope, keyof BattleConfig> = {
   local:    "vcoin_local",
 };
 
-// V-Coins distributed to top 10 in a scope — rank 1 gets most
-// Distribution: 30% → 20% → 14% → 10% → 8% → 5% × 5 (ranks 6–10)
-const VCOIN_DIST_PCT = [30, 20, 14, 10, 8, 4, 4, 3, 3, 4]; // must sum to 100
-
-const getVCoinForRank = (baseCoins: number, rank: number): number => {
-  if (rank < 1 || rank > 10 || baseCoins <= 0) return 0;
-  const pct = VCOIN_DIST_PCT[rank - 1] ?? 0;
-  return Math.round((baseCoins * pct) / 100);
-};
-
 // ─── Auto prize computation from pool + winnerCount ───────────
 // Used only if admin hasn't set cashPrizes manually
 // Distribution: 1st=30%, 2nd=20%, 3rd=12%, 4–10=3% ea, rest split equally
@@ -109,20 +104,23 @@ const autoCashPrizes = (pool: number, winners: number): CashPrizeRow[] => {
 
   const prizes: CashPrizeRow[] = [];
   const tiers = [
-    { rMin: 1,  rMax: 1,  pct: 30, medal: "🥇", badge: "Champion"      },
-    { rMin: 2,  rMax: 2,  pct: 20, medal: "🥈", badge: "Runner-Up"     },
-    { rMin: 3,  rMax: 3,  pct: 12, medal: "🥉", badge: "Rising Star"   },
-    { rMin: 4,  rMax: 10, pct: 3,  medal: "🏅", badge: "Top 10 Elite"  },
-    { rMin: 11, rMax: 25, pct: 1,  medal: "⭐", badge: "Top 25"        },
+    { rMin: 1,  rMax: 1,  pct: 30, maxCash: 9000, medal: "🥇", badge: "Champion"      },
+    { rMin: 2,  rMax: 2,  pct: 20, maxCash: 6000, medal: "🥈", badge: "Runner-Up"     },
+    { rMin: 3,  rMax: 3,  pct: 12, maxCash: 4000, medal: "🥉", badge: "Rising Star"   },
+    { rMin: 4,  rMax: 10, pct: 3,  maxCash: 1500, medal: "🏅", badge: "Top 10 Elite"  },
+    { rMin: 11, rMax: 25, pct: 1,  maxCash: 500,  medal: "⭐", badge: "Top 25"        },
   ];
 
   for (const t of tiers) {
     if (t.rMin > winners) break;
     const rankMax   = Math.min(t.rMax, winners);
     const slotCount = rankMax - t.rMin + 1;
-    const perSlot   = slotCount > 1
-      ? (pool * t.pct) / 100 / slotCount
-      : (pool * t.pct) / 100;
+    const perSlot   = Math.min(
+      slotCount > 1
+        ? (pool * t.pct) / 100 / slotCount
+        : (pool * t.pct) / 100,
+      t.maxCash
+    );
     if (perSlot < 10) continue;
 
     const rankLabel = t.rMin === rankMax
@@ -215,6 +213,9 @@ export default function SkillboardScreen() {
   );
   const [battle,         setBattle]         = useState<BattleConfig | null>(null);
   const [battleLoading,  setBattleLoading]  = useState(false);
+  const [claimedCoins,   setClaimedCoins]   = useState(0);
+  const claimAttemptRef  = useRef<string | null>(null);  // tracks last battleId claimed
+  const claimToastAnim   = useRef(new Animated.Value(0)).current;
 
   const availableMonths = getAvailableMonths();
 
@@ -266,7 +267,8 @@ export default function SkillboardScreen() {
         ));
         if (snap.empty) { setBattle(null); return; }
 
-        const d = snap.docs[0].data();
+        const battleDoc = snap.docs[0];
+        const d = battleDoc.data();
 
         // Use admin-set cashPrizes if present, else auto-generate from pool+winners
         const adminPrizes: CashPrizeRow[] = d.cashPrizes ?? [];
@@ -285,6 +287,8 @@ export default function SkillboardScreen() {
         }));
 
         setBattle({
+          battleId:       battleDoc.id,
+          endDate:        d.endDate        ?? null,
           sponsorName:    d.sponsorName    ?? "Official Sponsor",
           sponsorLogo:    d.sponsorLogo    ?? "🏪",
           totalPool:      d.totalPool      ?? 0,
@@ -423,6 +427,44 @@ export default function SkillboardScreen() {
     if (studentMeta) buildAllRanks();
   }, [buildAllRanks]);
 
+  // ── 5. Auto-credit V-Coins when battle has ended ──────────
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid || !battle || !battle.battleId || !battle.endDate) return;
+
+    // Only proceed if battle has actually ended
+    if (new Date(battle.endDate) >= new Date()) return;
+
+    // Skip if already attempted for this battleId this session
+    if (claimAttemptRef.current === battle.battleId) return;
+    claimAttemptRef.current = battle.battleId;
+
+    // Skip if user has no rank in any scope
+    if (!Object.values(myRanks).some((r) => r > 0)) return;
+
+    claimSkillBattleRewards({
+      uid,
+      battleId:    battle.battleId,
+      battleMonth: activeMonth,
+      ranks:       myRanks,
+      vcoins: {
+        vcoin_india:    battle.vcoin_india,
+        vcoin_state:    battle.vcoin_state,
+        vcoin_district: battle.vcoin_district,
+        vcoin_local:    battle.vcoin_local,
+      },
+    }).then((totalCredited) => {
+      if (totalCredited <= 0) return;
+      setClaimedCoins(totalCredited);
+      // Animate toast in, hold, then fade out
+      Animated.sequence([
+        Animated.timing(claimToastAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.delay(3000),
+        Animated.timing(claimToastAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start();
+    }).catch(() => { /* silent — user can claim next time */ });
+  }, [battle, myRanks, activeMonth, claimToastAnim]);
+
   // ─── Render helpers ───────────────────────────────────────
 
   // ── Sponsor banner ────────────────────────────────────────
@@ -431,7 +473,7 @@ export default function SkillboardScreen() {
     return (
       <View style={styles.sponsorBanner}>
         <LinearGradient
-          colors={["rgba(255,159,67,0.22)", "rgba(255,107,107,0.1)"]}
+          colors={["rgba(255,209,102,0.2)", "rgba(6,214,160,0.1)"]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
         />
@@ -718,7 +760,7 @@ export default function SkillboardScreen() {
     return (
       <View style={[styles.myCard, { borderColor: `${accent}40` }]}>
         <LinearGradient
-          colors={["#2a1200", "#1a1800"]}
+          colors={["#050c1f", "#0f1635", "#1a1b4b"]}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         />
@@ -801,9 +843,10 @@ export default function SkillboardScreen() {
   const renderPodium = () => {
     const top3  = entries.slice(0, 3);
     if (!top3.length) return null;
-    const order   = [top3[1], top3[0], top3[2]].filter(Boolean);
-    const heights = [90, 120, 72];
-    const ranks   = [2, 1, 3];
+    const order      = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const heights    = [90, 120, 72];
+    const ranks      = [2, 1, 3];
+    const barColors  = ["#a8a8c0CC", "#FFD700DD", "#cd7f32CC"]; // silver, gold, bronze
 
     return (
       <View style={styles.podiumRow}>
@@ -836,7 +879,7 @@ export default function SkillboardScreen() {
                   backgroundColor: activeScope === "india" ? "rgba(6,214,160,0.1)" : "rgba(99,179,237,0.1)",
                 }]}>{rewardStr}</Text>
               )}
-              <View style={[styles.podiumBar, { height: heights[i], backgroundColor: `${accent}${r === 1 ? "CC" : "55"}` }]} />
+              <View style={[styles.podiumBar, { height: heights[i], backgroundColor: barColors[i] }]} />
             </View>
           );
         })}
@@ -920,7 +963,21 @@ export default function SkillboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <Header hideMenu={true} />
 
-      <LinearGradient colors={["#2a1500", "#1a0e00"]} style={styles.topHeader}>
+      {/* V-Coins credited toast */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.claimToast,
+          {
+            opacity:   claimToastAnim,
+            transform: [{ translateY: claimToastAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+          },
+        ]}
+      >
+        <Text style={styles.claimToastText}>🪙 +{claimedCoins} V-Coins credited!</Text>
+      </Animated.View>
+
+      <LinearGradient colors={["#060414", "#0f0a2e", "#1a1548"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.topHeader}>
         {renderSponsorBanner()}
 
         <View style={styles.titleRow}>
@@ -1048,7 +1105,31 @@ export default function SkillboardScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:   { flex: 1 },
+  container:   { flex: 1, position: "relative" },
+
+  claimToast: {
+    position:        "absolute",
+    top:             60,
+    alignSelf:       "center",
+    backgroundColor: "#1a1a2e",
+    borderRadius:    24,
+    paddingHorizontal: 20,
+    paddingVertical:   10,
+    borderWidth:     1.5,
+    borderColor:     "#F59E0B",
+    zIndex:          99,
+    shadowColor:     "#F59E0B",
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   0.35,
+    shadowRadius:    8,
+    elevation:       8,
+  },
+  claimToastText: {
+    color:      "#F59E0B",
+    fontWeight: "800",
+    fontSize:   14,
+    letterSpacing: 0.3,
+  },
   listContent: { paddingBottom: 40 },
   centered:    { alignItems: "center", paddingVertical: 40, gap: 12 },
   loadingText: { fontSize: 14, fontWeight: "500" },
@@ -1057,29 +1138,29 @@ const styles = StyleSheet.create({
 
   topHeader: { paddingHorizontal: 16, paddingBottom: 0 },
 
-  sponsorBanner: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 12, padding: 9, marginBottom: 8, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,159,67,0.3)", position: "relative" },
-  sponsorLogo:    { fontSize: 24 },
-  sponsorName:    { fontSize: 12, fontWeight: "900", color: "#ff9f43" },
-  sponsorTag:     { fontSize: 9, color: "rgba(255,159,67,0.65)", fontWeight: "700" },
+  sponsorBanner: { flexDirection: "row", alignItems: "center", gap: 10, borderRadius: 14, padding: 11, marginBottom: 10, overflow: "hidden", borderWidth: 1.5, borderColor: "rgba(255,159,67,0.55)", position: "relative" },
+  sponsorLogo:    { fontSize: 28 },
+  sponsorName:    { fontSize: 13, fontWeight: "900", color: "#ffd166" },
+  sponsorTag:     { fontSize: 10, color: "rgba(255,209,102,0.75)", fontWeight: "700", marginTop: 1 },
   sponsorPoolBox: { alignItems: "flex-end" },
-  sponsorPoolAmt: { fontSize: 14, fontWeight: "900", color: "#ff9f43" },
-  sponsorPoolLbl: { fontSize: 8, color: "rgba(255,159,67,0.6)", fontWeight: "700", textTransform: "uppercase" },
+  sponsorPoolAmt: { fontSize: 16, fontWeight: "900", color: "#06d6a0" },
+  sponsorPoolLbl: { fontSize: 9, color: "rgba(6,214,160,0.7)", fontWeight: "700", textTransform: "uppercase" },
 
-  titleRow:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  appTitle:    { fontSize: 22, fontWeight: "900", color: "#fff" },
-  appSubtitle: { fontSize: 11, fontWeight: "700", marginTop: 1, color: "rgba(255,159,67,0.7)" },
+  titleRow:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  appTitle:    { fontSize: 24, fontWeight: "900", color: "#fff", letterSpacing: 0.3 },
+  appSubtitle: { fontSize: 12, fontWeight: "700", marginTop: 2, color: "#ff9f43" },
 
-  monthScroll: { marginBottom: 10 },
-  monthChip:   { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, marginRight: 7 },
-  monthChipText: { fontSize: 11, fontWeight: "800" },
+  monthScroll: { marginBottom: 12 },
+  monthChip:   { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, marginRight: 8 },
+  monthChipText: { fontSize: 12, fontWeight: "800" },
 
-  locTabs:  { flexDirection: "row", gap: 5, paddingBottom: 14 },
-  locTab:   { flex: 1, alignItems: "center", gap: 2, paddingVertical: 6, borderRadius: 12, borderWidth: 1.5, borderColor: "transparent" },
-  locTabIcon:    { fontSize: 14 },
+  locTabs:  { flexDirection: "row", gap: 6, paddingBottom: 14 },
+  locTab:   { flex: 1, alignItems: "center", gap: 2, paddingVertical: 8, borderRadius: 14, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(255,255,255,0.04)" },
+  locTabIcon:    { fontSize: 16 },
   locTabLabel:   { fontSize: 10, fontWeight: "800" },
   locTabScope:   { fontSize: 8, fontWeight: "600", textAlign: "center", maxWidth: 72 },
   locTabReward:  { fontSize: 8, fontWeight: "800" },
-  locTabCount:   { paddingHorizontal: 5, paddingVertical: 1, borderRadius: 10, marginTop: 1 },
+  locTabCount:   { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, marginTop: 1 },
   locTabCountText: { fontSize: 8, fontWeight: "800" },
 
   scopePill:     { marginHorizontal: 14, marginTop: 12, marginBottom: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, borderWidth: 1, alignSelf: "flex-start" },
@@ -1098,8 +1179,8 @@ const styles = StyleSheet.create({
   rewardBadge:         { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, borderWidth: 1 },
   rewardBadgeText:     { fontSize: 9, fontWeight: "800" },
   myRankBox:           { alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1.5 },
-  myRankNum:           { fontSize: 20, fontWeight: "900", lineHeight: 22 },
-  myRankLabel:         { fontSize: 8, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
+  myRankNum:           { fontSize: 22, fontWeight: "900", lineHeight: 24 },
+  myRankLabel:         { fontSize: 9, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
   myStatsRow:          { flexDirection: "row", gap: 6, marginBottom: 10 },
   myStatItem:          { flex: 1, borderRadius: 9, padding: 7, alignItems: "center" },
   myStatVal:           { fontSize: 12, fontWeight: "900" },
@@ -1169,10 +1250,10 @@ const styles = StyleSheet.create({
   podiumInitial:           { fontSize: 18, fontWeight: "800" },
   crown:                   { position: "absolute", top: -12, left: "50%", fontSize: 14, zIndex: 1 },
   podiumMedal:             { position: "absolute", bottom: -3, right: -3, fontSize: 13 },
-  podiumName:              { fontSize: 10, fontWeight: "800", textAlign: "center", maxWidth: 74 },
-  podiumScore:             { fontSize: 11, fontWeight: "900", marginBottom: 2 },
-  podiumReward:            { fontSize: 9, fontWeight: "800", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginBottom: 3 },
-  podiumBar:               { width: "100%", borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  podiumName:              { fontSize: 11, fontWeight: "800", textAlign: "center", maxWidth: 74 },
+  podiumScore:             { fontSize: 12, fontWeight: "900", marginBottom: 2 },
+  podiumReward:            { fontSize: 10, fontWeight: "800", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, marginBottom: 3 },
+  podiumBar:               { width: "100%", borderTopLeftRadius: 8, borderTopRightRadius: 8 },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 14, marginBottom: 6, marginTop: 4 },
   sectionTitle:  { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.8 },
@@ -1200,6 +1281,6 @@ const styles = StyleSheet.create({
   rowRankNum:           { fontSize: 11, fontWeight: "900" },
   rowRewardCol:         { width: 60, alignItems: "flex-end" },
   rowReward:            { fontSize: 10, fontWeight: "800", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 7, textAlign: "right" },
-  spRibbon:             { position: "absolute", top: 0, right: 0, backgroundColor: "#ff9f43", paddingHorizontal: 5, paddingVertical: 2, borderBottomLeftRadius: 7, borderTopRightRadius: 14 },
-  spRibbonText:         { fontSize: 7, fontWeight: "900", color: "#fff", letterSpacing: 0.3 },
+  spRibbon:             { position: "absolute", top: 0, right: 0, backgroundColor: "#c026d3", paddingHorizontal: 6, paddingVertical: 3, borderBottomLeftRadius: 8, borderTopRightRadius: 14 },
+  spRibbonText:         { fontSize: 8, fontWeight: "900", color: "#fff", letterSpacing: 0.5 },
 });

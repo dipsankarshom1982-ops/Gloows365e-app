@@ -1,10 +1,9 @@
 import {
-    collection,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    where,
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -14,39 +13,16 @@ let prevRanks: any = {};
 
 export const listenLeaderboard = (
   tab: string,
-  scope: string,
-  value: string | null,
   cb: (data: any[]) => void
 ) => {
-  let q;
-
-  const basePath = `leaderboards/${tab}/country`;
-
-  if (scope === "country") {
-    q = query(
-      collection(db, basePath),
-      orderBy("points", "desc"),
-      limit(50)
-    );
-  } else if (scope === "state") {
-    q = query(
-      collection(db, basePath),
-      where("stateCode", "==", value),
-      orderBy("points", "desc"),
-      limit(50)
-    );
-  } else {
-    q = query(
-      collection(db, basePath),
-      where("districtKey", "==", value),
-      orderBy("points", "desc"),
-      limit(50)
-    );
-  }
+  const q = query(
+    collection(db, `leaderboards/${tab}/country`),
+    orderBy("points", "desc"),
+    limit(100)
+  );
 
   return onSnapshot(q, (snap) => {
     const raw = snap.docs.map((d) => d.data());
-
     const ranked = addRanking(raw, prevRanks);
 
     prevRanks = {};

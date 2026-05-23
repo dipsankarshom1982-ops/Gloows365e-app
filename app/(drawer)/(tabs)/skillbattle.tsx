@@ -1,4 +1,5 @@
 import Header from "@/components/header";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
 import { Ionicons } from "@expo/vector-icons";
@@ -152,6 +153,7 @@ const rankStyles = StyleSheet.create({
 // ─── Component ────────────────────────────────────────────────
 export default function SkillBattleScreen() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const router     = useRouter();
 
   const [battles,    setBattles]    = useState<Battle[]>([]);
@@ -480,7 +482,7 @@ export default function SkillBattleScreen() {
                 <View style={{ alignItems: "center", paddingVertical: 8 }}>
                   <ActivityIndicator size="small" color={accent} />
                   <Text style={{ color: "rgba(255,159,67,0.6)", fontSize: 10, marginTop: 4 }}>
-                    Computing your ranks...
+                    {t("computingRanks")}
                   </Text>
                 </View>
               ) : (
@@ -534,7 +536,7 @@ export default function SkillBattleScreen() {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
                   <Ionicons name="trophy" size={15} color="#fff" />
-                  <Text style={styles.skillboardBtnText}>View Full Skillboard</Text>
+                  <Text style={styles.skillboardBtnText}>{t("viewFullSkillboard")}</Text>
                   <Ionicons name="chevron-forward" size={15} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
@@ -545,9 +547,9 @@ export default function SkillBattleScreen() {
               <View style={[styles.noRankBanner, { borderColor: "rgba(255,159,67,0.2)", backgroundColor: "rgba(255,159,67,0.06)" }]}>
                 <Text style={styles.noRankIcon}>🎯</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.noRankTitle, { color: accent }]}>You're not ranked yet</Text>
+                  <Text style={[styles.noRankTitle, { color: accent }]}>{t("notRankedYet")}</Text>
                   <Text style={[styles.noRankSub, { color: colors.textSecondary }]}>
-                    Upload a reel to enter the battle and earn ranks!
+                    {t("uploadReelPrompt")}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -557,7 +559,7 @@ export default function SkillBattleScreen() {
                     params: { battleId: item.id, month: item.month },
                   })}
                 >
-                  <Text style={[styles.skillboardBtnSmallText, { color: accent }]}>Leaderboard →</Text>
+                  <Text style={[styles.skillboardBtnSmallText, { color: accent }]}>{t("leaderboard")} →</Text>
                 </TouchableOpacity>
               </View>
             ) : null
@@ -584,7 +586,7 @@ export default function SkillBattleScreen() {
             ]}
             disabled={ended || (student ? !eligible : false)}
             onPress={() => router.push({
-              pathname:  "/create-post",
+              pathname:  "/Createreelscreen",
               params: {
                 battleId:    item.id,
                 battleTitle: item.title,
@@ -596,10 +598,10 @@ export default function SkillBattleScreen() {
             <Ionicons name={ended ? "lock-closed" : "videocam"} size={16} color="#fff" />
             <Text style={styles.ctaBtnText}>
               {ended
-                ? "Battle Ended"
+                ? t("battleEnded")
                 : student && !eligible
-                  ? "Not Eligible"
-                  : "🚀 Upload Reel"}
+                  ? t("notEligible")
+                  : `🚀 ${t("uploadReel")}`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -628,7 +630,7 @@ export default function SkillBattleScreen() {
           <Ionicons name="warning-outline" size={14} color="#ff6b9d" />
           <Text style={styles.errorText}>{fetchError}</Text>
           <TouchableOpacity onPress={fetchBattles}>
-            <Text style={[styles.retryText, { color: colors.accent }]}>Retry</Text>
+            <Text style={[styles.retryText, { color: colors.accent }]}>{t("retry")}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
@@ -637,7 +639,7 @@ export default function SkillBattleScreen() {
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading battles...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t("loadingBattles")}</Text>
         </View>
       ) : (
         <FlatList
@@ -652,15 +654,15 @@ export default function SkillBattleScreen() {
           ListEmptyComponent={
             <View style={styles.centered}>
               <Text style={{ fontSize: 44 }}>🎯</Text>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No Active Battles</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>{t("noActiveBattles")}</Text>
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Check back soon for new skill battles!
+                {t("checkBackSoon")}
               </Text>
               <TouchableOpacity
                 style={[styles.retryBtn, { backgroundColor: colors.accent }]}
                 onPress={fetchBattles}
               >
-                <Text style={styles.retryBtnText}>🔄 Refresh</Text>
+                <Text style={styles.retryBtnText}>🔄 {t("refresh")}</Text>
               </TouchableOpacity>
             </View>
           }

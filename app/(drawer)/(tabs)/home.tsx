@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import AdsCard from "@/components/AdsCard";
-import Chips from "@/components/Chips";
 import PostCard from "@/components/FeedPostCard";
 import Header from "@/components/header";
 import Stories from "@/components/Story";
@@ -20,6 +19,12 @@ import Stories from "@/components/Story";
 //import ExplorePreview from "@/components/explorePreview";
 import ShortLearnPreview from "@/components/ShortLearnPreview";
 import SkillShortPreview from "@/components/SkillShortPreview";
+
+import HomeAdsCarousel          from "@/components/HomeAdsCarousel";
+import KnowledgeHubSection      from "@/components/KnowledgeHubSection";
+import SeekhoPreviewSection     from "@/components/SeekhoPreviewSection";
+import VidyaStarPreviewSection from "@/components/VidyaStarPreviewSection";
+import SkillBattlePreviewSection from "@/components/SkillBattlePreviewSection";
 
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -58,7 +63,11 @@ export default function Home() {
     feed.push({ type: "stories" });
     feed.push({ type: "aiguru" });
     feed.push({ type: "skillshorts" });
-    feed.push({ type: "chips" });
+    feed.push({ type: "skillbattle_preview" });
+    feed.push({ type: "home_ads" });
+    feed.push({ type: "vidya_star" });
+    feed.push({ type: "seekho_preview" });
+    feed.push({ type: "knowledge_hub" });
 
     // Main feed loop
     while (postIndex < posts.length) {
@@ -108,15 +117,58 @@ export default function Home() {
         renderItem={({ item }) => (
           <View>
             {item.type === "aiguru" ? (
-              <TouchableOpacity onPress={() => router.push("/ai-guru")}>
+              <TouchableOpacity
+                onPress={() => router.push("/ai-guru")}
+                activeOpacity={0.88}
+                style={styles.aiWrap}
+              >
                 <LinearGradient
-                  colors={["#4f46e5", "#3b82f6"]}
+                  colors={["#0f0c29", "#302b63", "#24243e"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={styles.aiBox}
                 >
-                  <Text style={[styles.aiTitle, { color: colors.accent }]}>🤖 AI Guru</Text>
-                  <Text style={[styles.aiSubtitle, { color: colors.text }]}>
-                    Ask anything. Learn smarter.
-                  </Text>
+                  {/* Glow orb decoration */}
+                  <View style={styles.aiOrb} />
+
+                  {/* Top row */}
+                  <View style={styles.aiTopRow}>
+                    <View style={styles.aiBadge}>
+                      <Text style={styles.aiBadgeText}>✨ Powered by AI</Text>
+                    </View>
+                    <View style={styles.aiLiveTag}>
+                      <View style={styles.aiPulseDot} />
+                      <Text style={styles.aiLiveText}>Online</Text>
+                    </View>
+                  </View>
+
+                  {/* Main content */}
+                  <View style={styles.aiMain}>
+                    <Text style={styles.aiEmoji}>🤖</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.aiTitle}>AI Guru</Text>
+                      <Text style={styles.aiSubtitle}>Your personal learning assistant</Text>
+                    </View>
+                  </View>
+
+                  {/* Feature chips */}
+                  <View style={styles.aiChipsRow}>
+                    {["Ask Anything", "Instant Answers", "Study Help"].map((f) => (
+                      <View key={f} style={styles.aiChip}>
+                        <Text style={styles.aiChipText}>{f}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* CTA */}
+                  <LinearGradient
+                    colors={["#6366f1", "#8b5cf6"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.aiCta}
+                  >
+                    <Text style={styles.aiCtaText}>Start Chatting →</Text>
+                  </LinearGradient>
                 </LinearGradient>
               </TouchableOpacity>
             ) : item.type === "post" ? (
@@ -127,10 +179,18 @@ export default function Home() {
               <SkillShortPreview />
             ) : item.type === "stories" ? (
               <Stories />
-            ) : item.type === "chips" ? (
-              <Chips />
             ) : item.type === "learning" ? (
               <ShortLearnPreview />
+            ) : item.type === "skillbattle_preview" ? (
+              <SkillBattlePreviewSection />
+            ) : item.type === "home_ads" ? (
+              <HomeAdsCarousel />
+            ) : item.type === "vidya_star" ? (
+              <VidyaStarPreviewSection />
+            ) : item.type === "seekho_preview" ? (
+              <SeekhoPreviewSection />
+            ) : item.type === "knowledge_hub" ? (
+              <KnowledgeHubSection />
            // ) : item.type === "explore" ? (
            //   <ExplorePreview />
             ) : null}
@@ -149,28 +209,122 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  aiBox: {
+  aiWrap: {
     marginHorizontal: 15,
     marginVertical: 10,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(56, 189, 248, 0.2)",
+    borderRadius: 20,
+    elevation: 8,
+    shadowColor: "#6366f1",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
-
- aiTitle: {
-  color: "#3b82f6",
-  fontWeight: "800",
-  fontSize: 18,
-  marginBottom: 4,
-  textShadowColor: "rgba(59,130,246,0.4)",
-  textShadowOffset: { width: 0, height: 2 },
-  textShadowRadius: 6,
-},
-
- aiSubtitle: {
-  color: "#cbd5e1", // ✅ balanced light gray
-  fontSize: 14,
-  fontWeight: "500",
-},
+  aiBox: {
+    borderRadius: 20,
+    padding: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.35)",
+  },
+  aiOrb: {
+    position: "absolute",
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(99,102,241,0.18)",
+    top: -40,
+    right: -40,
+  },
+  aiTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  aiBadge: {
+    backgroundColor: "rgba(99,102,241,0.25)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(139,92,246,0.4)",
+  },
+  aiBadgeText: {
+    color: "#a5b4fc",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  aiLiveTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(16,185,129,0.15)",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(16,185,129,0.3)",
+  },
+  aiPulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10b981",
+  },
+  aiLiveText: {
+    color: "#10b981",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  aiMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
+  },
+  aiEmoji: {
+    fontSize: 44,
+  },
+  aiTitle: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 22,
+    letterSpacing: 0.3,
+  },
+  aiSubtitle: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  aiChipsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
+  aiChip: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+  },
+  aiChipText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  aiCta: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  aiCtaText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
 });

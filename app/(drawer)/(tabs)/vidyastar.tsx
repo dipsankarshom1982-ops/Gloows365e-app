@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Header from "@/components/header";
+import { useAppTranslation } from "@/context/LanguageContext";
 import UserService from "@/lib/userService";
 
 const { width } = Dimensions.get("window");
@@ -64,6 +65,7 @@ const ActionButton = ({ title, onPress, colors, icon }: any) => (
 
 const ContestCard = ({ item, joined, completed }: any) => {
   const router = useRouter();
+  const { t } = useAppTranslation();
   const userId = getAuth().currentUser?.uid;
   const isJoined = joined[item.id];
   const isCompleted = completed[item.id];
@@ -78,7 +80,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
       : 0;
 
   const handleJoin = async () => {
-    if (!userId) return Alert.alert("Login Required");
+    if (!userId) return Alert.alert(t("loginRequired"));
     await joinContest(userId, item);
   };
 
@@ -94,14 +96,14 @@ const ContestCard = ({ item, joined, completed }: any) => {
             {isLive && (
               <View style={styles.liveBadge}>
                 <View style={styles.pulseDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+                <Text style={styles.liveText}>{t("live").toUpperCase()}</Text>
               </View>
             )}
           </View>
           {isCompleted && (
             <View style={styles.doneBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#10b981" />
-              <Text style={styles.doneText}>Completed</Text>
+              <Text style={styles.doneText}>{t("completed")}</Text>
             </View>
           )}
         </View>
@@ -109,9 +111,19 @@ const ContestCard = ({ item, joined, completed }: any) => {
         {/* PRIZE INFO */}
         <View style={styles.prizeRow}>
           <MaterialCommunityIcons name="trophy-outline" size={20} color="#f59e0b" />
-          <Text style={styles.prizeLabel}>Prize Pool</Text>
+          <Text style={styles.prizeLabel}>{t("prizePool")}</Text>
           <Text style={styles.prizeValue}>{item.prizePool}</Text>
         </View>
+
+        {/* SPOTS */}
+        {(item.joinedCount != null || item.totalSpots != null) && (
+          <View style={styles.spotsRow}>
+            <Ionicons name="people-outline" size={15} color="#6b7280" />
+            <Text style={styles.spotsText}>
+              {item.joinedCount ?? 0} / {item.totalSpots ?? "∞"} joined
+            </Text>
+          </View>
+        )}
 
         {/* PROGRESS BAR */}
         {isLive && (
@@ -119,7 +131,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
             </View>
-            <Text style={styles.progressTimeText}>Ending Soon</Text>
+            <Text style={styles.progressTimeText}>{t("endingSoon")}</Text>
           </View>
         )}
 
@@ -127,7 +139,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
         <View style={styles.ctaWrapper}>
           {isCompleted && (
             <ActionButton
-              title="View Result"
+              title={t("viewResult")}
               colors={["#10b981", "#059669"]}
               icon="stats-chart"
               onPress={() =>
@@ -143,14 +155,14 @@ const ContestCard = ({ item, joined, completed }: any) => {
             <>
               {!isJoined ? (
                 <ActionButton
-                  title="Join Now"
+                  title={t("joinNow")}
                   colors={["#6366f1", "#4f46e5"]}
                   icon="flash"
                   onPress={handleJoin}
                 />
               ) : (
                 <ActionButton
-                  title="Participate"
+                  title={t("participate")}
                   colors={["#4f46e5", "#3730a3"]}
                   icon="play"
                   onPress={() =>
@@ -168,7 +180,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
             <>
               {!isJoined ? (
                 <ActionButton
-                  title="Reserve Spot"
+                  title={t("reserveSpot")}
                   colors={["#6366f1", "#4f46e5"]}
                   icon="calendar"
                   onPress={handleJoin}
@@ -176,7 +188,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
               ) : (
                 <View style={styles.timerBadge}>
                   <Ionicons name="time-outline" size={18} color="#f59e0b" />
-                  <Text style={styles.timerText}>Starts Soon</Text>
+                  <Text style={styles.timerText}>{t("startsSoon")}</Text>
                 </View>
               )}
             </>
@@ -189,7 +201,8 @@ const ContestCard = ({ item, joined, completed }: any) => {
 
 export default function ShikshastarScreen() {
   const { colors } = useTheme();
-  const { contests = [] } = useContests();
+  const { t } = useAppTranslation();
+  const { contests = [], loading: contestsLoading } = useContests();
   const userId = getAuth().currentUser?.uid;
   const { joined = {}, completed = {} } = useUserContests(userId || "");
 
@@ -215,14 +228,14 @@ export default function ShikshastarScreen() {
   });
   const upcoming = limited.filter((c: any) => {
     const s = getDate(c.startTime);
-    return s && s > now && joined[c.id];
+    return s && s > now;
   });
   const done = limited.filter((c: any) => completed[c.id]);
 
   const data =
     chip === "all" ? limited : chip === "live" ? live : chip === "upcoming" ? upcoming : done;
 
-  if (!contests.length) {
+  if (contestsLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4f46e5" />
@@ -235,10 +248,10 @@ export default function ShikshastarScreen() {
       <Header />
       <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {["all", "live", "upcoming", "completed"].map((c) => (
+          {(["all", "live", "upcoming", "completed"] as const).map((c) => (
             <Chip
               key={c}
-              label={c.charAt(0).toUpperCase() + c.slice(1)}
+              label={t(c === "all" ? "all" : c === "live" ? "live" : c === "upcoming" ? "upcoming" : "completed")}
               active={chip === c}
               onPress={() => setChip(c)}
             />
@@ -329,6 +342,8 @@ const styles = StyleSheet.create({
   },
   prizeLabel: { fontSize: 14, color: "#6b7280", marginLeft: 8 },
   prizeValue: { fontSize: 15, fontWeight: "700", color: "#1f2937", marginLeft: "auto" },
+  spotsRow: { flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6 },
+  spotsText: { fontSize: 12, color: "#6b7280", fontWeight: "600" },
   progressContainer: { marginTop: 15 },
   progressBarBg: { height: 8, backgroundColor: "#e5e7eb", borderRadius: 4, overflow: "hidden" },
   progressBarFill: { height: "100%", backgroundColor: "#4f46e5" },

@@ -1,5 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import { resolveStreamUrl } from "@/lib/cloudflareStream";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useState } from "react";
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -15,7 +16,8 @@ export default function ProfilePostCard({ item, onEdit, onDelete }: Props) {
   const [play, setPlay] = useState(false);
   const isPhotoPost = item.postType === "photo";
 
-  const player = useVideoPlayer(item.videoUrl || item.mediaUrl || "", (player) => {
+  const rawUrl = item.videoUrl || item.mediaUrl || "";
+  const player = useVideoPlayer(resolveStreamUrl(rawUrl) ?? rawUrl, (player) => {
     player.loop = true;
   });
 

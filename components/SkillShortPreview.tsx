@@ -1,7 +1,7 @@
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -11,54 +11,73 @@ import {
   View,
 } from "react-native";
 
-import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+
+const STATUS_CFG: Record<string, { emoji: string; label: string; bg: string }> = {
+  pending:   { emoji: "⏳", label: "Pending Review", bg: "rgba(243,156,18,0.92)" },
+  in_review: { emoji: "🔍", label: "In Review",      bg: "rgba(52,152,219,0.92)"  },
+  rejected:  { emoji: "❌", label: "Rejected",        bg: "rgba(231,76,60,0.92)"   },
+};
 
 export default function SkillShortPreview() {
   const { colors } = useTheme();
-  const [reels, setReels] = useState<any[]>([]);
+  const [reels,      setReels]      = useState<any[]>([]);
+  const [ownPending, setOwnPending] = useState<any[]>([]);
 
-  // 🎥 FETCH ONLY APPROVED SKILL BATTLE REELS
-  const fetchReels = useCallback(async () => {
-    try {
-      // Only fetch approved posts — pending/in_review/rejected stay hidden from feed
-      const q = query(
-        collection(db, "posts"),
-        where("isSkillBattle", "==", true),
-        where("status",        "==", "approved")
-      );
-      const snap = await getDocs(q);
-
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      // Sort by views descending, take top 10
-      const sorted = data
+  // 🎥 APPROVED SKILL BATTLE REELS — real-time listener
+  useEffect(() => {
+    const q = query(
+      collection(db, "posts"),
+      where("isSkillBattle", "==", true),
+      where("status",        "==", "approved")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const sorted = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
         .sort((a: any, b: any) => (b.views || 0) - (a.views || 0))
         .slice(0, 10);
-
       setReels(sorted);
-    } catch (error) {
-      console.log("SkillShort error:", error);
-      setReels([]);
-    }
+    }, () => setReels([]));
+    return () => unsub();
   }, []);
 
+  // 👤 OWN PENDING / IN-REVIEW REELS — shown first with status badge
   useEffect(() => {
-    fetchReels();
-  }, [fetchReels]);
+    let unsubQuery: (() => void) | null = null;
 
-  // 🔄 REFRESH ON SCREEN FOCUS
-  useFocusEffect(
-    useCallback(() => {
-      fetchReels();
-    }, [fetchReels])
-  );
+    const unsubAuth = auth.onAuthStateChanged((user) => {
+      if (unsubQuery) { unsubQuery(); unsubQuery = null; }
+      if (!user) { setOwnPending([]); return; }
+
+      // Simple single-field query — no composite index needed
+      const q = query(
+        collection(db, "posts"),
+        where("userId", "==", user.uid)
+      );
+      unsubQuery = onSnapshot(q, (snap) => {
+        const pending = snap.docs
+          .filter((d) => {
+            const data = d.data();
+            return data.isSkillBattle === true && data.status !== "approved";
+          })
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a: any, b: any) =>
+            (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+          );
+        setOwnPending(pending);
+      }, () => setOwnPending([]));
+    });
+
+    return () => {
+      unsubAuth();
+      if (unsubQuery) unsubQuery();
+    };
+  }, []);
+
+  const displayReels = [...ownPending, ...reels];
 
   // 🎯 RENDER ITEM
   const renderItem = ({ item }: any) => (
@@ -110,6 +129,15 @@ export default function SkillShortPreview() {
       <View style={styles.badge}>
         <Text style={styles.badgeText}>⚡ Battle</Text>
       </View>
+
+      {/* 🕐 STATUS PILL — own pending/in_review reels */}
+      {item.status !== "approved" && STATUS_CFG[item.status] && (
+        <View style={[styles.statusPill, { backgroundColor: STATUS_CFG[item.status].bg }]}>
+          <Text style={styles.statusPillText}>
+            {STATUS_CFG[item.status].emoji} {STATUS_CFG[item.status].label}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -119,10 +147,10 @@ export default function SkillShortPreview() {
         🔥 Skill Battle Shorts
       </Text>
 
-      {reels.length > 0 ? (
+      {displayReels.length > 0 ? (
         <FlatList
           horizontal
-          data={reels}
+          data={displayReels}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           showsHorizontalScrollIndicator={false}
@@ -247,5 +275,20 @@ const styles = StyleSheet.create({
     color:      "#94a3b8",
     fontSize:   14,
     fontWeight: "500",
+  },
+
+  statusPill: {
+    position:        "absolute",
+    bottom:          8,
+    right:           8,
+    paddingHorizontal: 7,
+    paddingVertical:   4,
+    borderRadius:    6,
+  },
+
+  statusPillText: {
+    color:      "#fff",
+    fontSize:   10,
+    fontWeight: "800",
   },
 });

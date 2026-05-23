@@ -8,6 +8,7 @@ import {
 
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
+import VCoinsHeaderBadge from "@/components/VCoinsHeaderBadge";
 import { Ionicons } from "@expo/vector-icons";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
@@ -23,14 +24,12 @@ import { useEffect, useState } from "react";
 
 type Props = {
   title?: string;
-  coins?: number;
   hideMenu?: boolean;
   hideTitle?: boolean;
 };
 
 export default function Header({
   title = "VidyaAI",
-  coins,
   hideMenu = false,
   hideTitle = false,
 }: Props) {
@@ -39,46 +38,21 @@ export default function Header({
   const router = useRouter();
 
   const [profilePic, setProfilePic] = useState<string | null>(null);
-  const [walletCoins, setWalletCoins] = useState<number | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // 📸 Fetch profile picture from database
   useEffect(() => {
     const fetchProfilePic = async () => {
       try {
-        if (!auth.currentUser) {
-          return;
-        }
-
-        const studentDoc = await getDoc(
-          doc(db, "students", auth.currentUser.uid)
-        );
-
-        const userDoc = await getDoc(
-          doc(db, "users", auth.currentUser.uid)
-        );
-
+        if (!auth.currentUser) return;
+        const studentDoc = await getDoc(doc(db, "students", auth.currentUser.uid));
         if (studentDoc.exists() && studentDoc.data()?.profilePic) {
           setProfilePic(studentDoc.data().profilePic);
-        }
-
-        if (userDoc.exists() && typeof userDoc.data()?.coins === "number") {
-          setWalletCoins(userDoc.data().coins);
-          return;
-        }
-
-        if (studentDoc.exists()) {
-          const studentCoins = studentDoc.data()?.stats?.coins;
-
-          if (typeof studentCoins === "number") {
-            setWalletCoins(studentCoins);
-          }
         }
       } catch (error) {
         console.log("Error fetching profile picture:", error);
       }
     };
-
     fetchProfilePic();
   }, []);
 
@@ -100,24 +74,17 @@ export default function Header({
   }, []);
 
   const handleMenuPress = () => {
-    let currentNav: any = navigation;
-
-    while (currentNav) {
-      if (typeof currentNav.openDrawer === "function") {
-        currentNav.openDrawer();
+    // Walk up the navigator chain until we find the drawer (state.type === 'drawer')
+    let nav: any = navigation;
+    while (nav) {
+      if (nav.getState?.()?.type === "drawer") {
+        nav.dispatch(DrawerActions.openDrawer());
         return;
       }
-
-      currentNav = currentNav.getParent?.();
+      nav = nav.getParent?.();
     }
-
-    if (navigation?.dispatch) {
-      try {
-        navigation.dispatch(DrawerActions.openDrawer());
-      } catch {
-        console.log("Drawer navigation not available for this screen");
-      }
-    }
+    // Fallback: dispatch from current navigator and let React Navigation bubble it
+    navigation?.dispatch(DrawerActions.openDrawer());
   };
 
   const handleProfilePress = () => {
@@ -150,12 +117,7 @@ export default function Header({
         <View style={styles.right}>
 
           {/* COINS */}
-          <View style={styles.coinBox}>
-            <Ionicons name="logo-bitcoin" size={16} color="#FFD700" />
-            <Text style={styles.coinText}>
-              {coins ?? walletCoins ?? 120}
-            </Text>
-          </View>
+          <VCoinsHeaderBadge uid={auth.currentUser?.uid ?? null} />
 
           {/* NOTIFICATION */}
           <TouchableOpacity
@@ -238,23 +200,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-  },
-
-  coinBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-
-  coinText: {
-    color: "#f59e0b",
-    fontWeight: "bold",
-    marginLeft: 5,
   },
 
   iconBtn: {

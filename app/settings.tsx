@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -13,7 +13,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 // Internal Imports
 import Header from "@/components/header";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 // ─── Types ─────────────────────────────────────────────────
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -44,30 +46,30 @@ type SettingOption = ToggleSettingOption | NavigationSettingOption;
 // ─── Component ─────────────────────────────────────────────
 export default function SettingsScreen() {
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { t } = useAppTranslation();
   const router = useRouter();
-
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
+  const { enabled: notificationsEnabled, loading: notifLoading, toggle: toggleNotifications } = usePushNotifications();
 
   const settingOptions: SettingOption[] = [
     {
       id: "profile",
-      title: "👤 Profile Settings",
-      description: "Edit your personal details",
+      title: `👤 ${t("profileSettings")}`,
+      description: t("editProfile"),
       icon: "person",
       toggle: false,
       route: "/profile-settings",
     },
     {
       id: "language",
-      title: "🌐 Language",
-      description: "Change app & content language",
+      title: `🌐 ${t("language")}`,
+      description: t("changeLanguage"),
       icon: "globe",
       toggle: false,
       route: "/language-settings",
     },
     {
       id: "theme",
-      title: "🌙 Dark Theme",
+      title: `🌙 ${t("darkTheme")}`,
       description: isDarkMode ? "Turn off for Light mode" : "Turn on for Dark mode",
       icon: "moon",
       toggle: true,
@@ -76,23 +78,23 @@ export default function SettingsScreen() {
     },
     {
       id: "notifications",
-      title: "🔔 Notifications",
+      title: `🔔 ${t("notifications")}`,
       description: "Receive push notifications",
       icon: "notifications",
       toggle: true,
       value: notificationsEnabled,
-      onToggle: () => setNotificationsEnabled((prev) => !prev),
+      onToggle: toggleNotifications,
     },
     {
       id: "privacy",
-      title: "🔒 Privacy",
+      title: `🔒 ${t("privacy")}`,
       description: "Manage your privacy settings",
       icon: "lock-closed",
       toggle: false,
     },
     {
       id: "about",
-      title: "ℹ️ About",
+      title: `ℹ️ ${t("about")}`,
       description: "Learn more about VidyaAI",
       icon: "information-circle",
       toggle: false,
@@ -113,9 +115,9 @@ export default function SettingsScreen() {
 
         {/* TITLE */}
         <View style={styles.headerText}>
-          <Text style={[styles.title, { color: colors.accent }]}>⚙️ Settings</Text>
+          <Text style={[styles.title, { color: colors.accent }]}>⚙️ {t("settings")}</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Customize your experience
+            {t("customizeExperience")}
           </Text>
         </View>
 
@@ -150,6 +152,7 @@ export default function SettingsScreen() {
                 <Switch
                   value={option.value}
                   onValueChange={option.onToggle}
+                  disabled={option.id === "notifications" && notifLoading}
                   thumbColor={option.value ? colors.accent : colors.textSecondary}
                   trackColor={{ false: colors.border, true: `${colors.accent}40` }}
                 />

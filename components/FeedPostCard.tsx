@@ -1,5 +1,6 @@
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
+import { resolveStreamUrl } from "@/lib/cloudflareStream";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import {
@@ -148,7 +149,7 @@ export default function PostCard({ data }: any) {
   }, [commentsVisible, data?.id]);
   
   // 🎬 Video player for playing video posts
-  const videoPlayer = useVideoPlayer(data?.mediaUrl, (player) => {
+  const videoPlayer = useVideoPlayer(resolveStreamUrl(data?.mediaUrl) ?? undefined, (player) => {
     player.muted = true;
   });
 

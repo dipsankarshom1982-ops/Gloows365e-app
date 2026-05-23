@@ -8,7 +8,7 @@ export default function Shikshastar() {
     {
       id: "1",
       title: "Mega Learning Battle",
-      prize: "₹10,000",
+      prize: "₹9,000",
       time: "02:10:25",
     },
     {

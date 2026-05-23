@@ -1,33 +1,30 @@
 // hooks/useUserContests.ts
 
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 export const useUserContests = (userId: string) => {
-  const [joined, setJoined] = useState<any>({});
-  const [completed, setCompleted] = useState<any>({});
+  const [joined, setJoined]       = useState<Record<string, boolean>>({});
+  const [completed, setCompleted] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!userId) return;
 
+    // Collection group query across all contests/{id}/participant subcollections
     const q = query(
-      collection(db, "participant"), // ✅ FIXED
+      collectionGroup(db, "participant"),
       where("userId", "==", userId)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const j: any = {};
-      const c: any = {};
+      const j: Record<string, boolean> = {};
+      const c: Record<string, any>     = {};
 
       snap.docs.forEach((doc) => {
         const data = doc.data();
-
         j[data.contestId] = true;
-
-        if (data.completed) {
-          c[data.contestId] = data;
-        }
+        if (data.completed) c[data.contestId] = data;
       });
 
       setJoined(j);

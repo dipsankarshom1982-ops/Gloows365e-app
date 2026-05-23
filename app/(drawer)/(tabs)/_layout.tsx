@@ -1,5 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
@@ -38,11 +38,11 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="dashboard"
+        name="seekho"
         options={{
-          title: "Dashboard",
+          title: "Seekho",
           tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="dashboard" size={size} color={color} />
+            <Ionicons name="school-outline" size={size} color={color} />
           ),
         }}
       />
@@ -58,9 +58,9 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
-        name="shikshastar"
+        name="vidyastar"
         options={{
-          title: "Shikshastar",
+          title: "VidyaStar",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="star" size={size} color={color} />
           ),

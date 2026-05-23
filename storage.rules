@@ -20,6 +20,42 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // 📖 Stories — each user uploads to their own subfolder
+    match /stories/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 50 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('video/.*')
+        );
+      allow delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // 🎬 Reels (post videos) — each user uploads to their own subfolder
+    match /reels/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 200 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    // 🖼️ Profile pictures
+    match /profilePics/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
     // 🗂️ Default deny
     match /{allPaths=**} {
       allow read, write: if false;

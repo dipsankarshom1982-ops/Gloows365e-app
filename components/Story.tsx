@@ -23,6 +23,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Linking,
   Modal,
   Platform,
   StyleSheet,
@@ -35,16 +36,15 @@ import { useTheme } from "@/context/ThemeContext";
 
 import * as ImagePicker from "expo-image-picker";
 import { useVideoPlayer, VideoView } from "expo-video";
-import * as VideoThumbnails from "expo-video-thumbnails";
 
 import { getAuth } from "firebase/auth";
 import {
   collection,
   doc,
   getDoc,
-  getDocs,
   getFirestore,
   increment,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -57,6 +57,11 @@ import {
   ref,
   uploadBytesResumable,
 } from "firebase/storage";
+import {
+  getStreamUploadUrl,
+  resolveStreamUrl,
+  uploadToStream,
+} from "@/lib/cloudflareStream";
 
 // ─── Constants ────────────────────────────────────────────
 const AVATAR_SIZE    = 64;
@@ -87,6 +92,12 @@ interface StoryDoc {
   isFeatured?: boolean;
   createdAt: any;
   expiresAt: any;
+  // Linked story fields (admin-only)
+  storyKind?: "normal" | "linked";
+  learnMoreUrl?: string;
+  partnerId?: string;
+  partnerName?: string;
+  partnerLogoUrl?: string;
 }
 
 interface GroupedUser {
@@ -194,9 +205,15 @@ const StoryAvatar = React.memo(({ item, onPress }: { item: GroupedUser; onPress:
   const isVideo = first?.type === "video";
   const initial = item.userName?.[0]?.toUpperCase() ?? "?";
 
+  const ringColor =
+    first?.storyKind === "linked" ? "#FFD700" :
+    first?.status === "pending"   ? "#F59E0B" :
+    first?.status === "rejected"  ? "#EF4444" :
+    "#6C63FF";
+
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={av.wrap}>
-      <View style={av.ring}>
+      <View style={[av.ring, { borderColor: ringColor }]}>
         {thumb
           ? <Image source={{ uri: thumb }} style={av.img} resizeMode="cover" fadeDuration={0} />
           : <View style={av.fallback}><Text style={av.initial}>{initial}</Text></View>
@@ -206,6 +223,21 @@ const StoryAvatar = React.memo(({ item, onPress }: { item: GroupedUser; onPress:
         )}
       </View>
       <Text style={av.name} numberOfLines={1}>{item.userName}</Text>
+      {first?.storyKind === "linked" && (
+        <View style={[av.statusBadge, { backgroundColor: "#FEF9C3" }]}>
+          <Text style={[av.statusTxt, { color: "#92400E" }]}>🔗 Sponsored</Text>
+        </View>
+      )}
+      {first?.status === "pending" && first?.storyKind !== "linked" && (
+        <View style={av.statusBadge}>
+          <Text style={av.statusTxt}>⏳ Pending</Text>
+        </View>
+      )}
+      {first?.status === "rejected" && (
+        <View style={[av.statusBadge, { backgroundColor: "#FEE2E2" }]}>
+          <Text style={[av.statusTxt, { color: "#DC2626" }]}>✗ Rejected</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 });
@@ -217,8 +249,10 @@ const av = StyleSheet.create({
   fallback: { width: "100%", height: "100%", backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center" },
   initial:  { fontSize: 22, fontWeight: "700", color: "#6C63FF" },
   name:     { fontSize: 11, color: "#374151", marginTop: 5, textAlign: "center", maxWidth: AVATAR_SIZE + 8 },
-  vidBadge: { position: "absolute", bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" },
-  vidTxt:   { color: "#fff", fontSize: 7, marginLeft: 1 },
+  vidBadge:    { position: "absolute", bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" },
+  vidTxt:      { color: "#fff", fontSize: 7, marginLeft: 1 },
+  statusBadge: { marginTop: 3, backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1 },
+  statusTxt:   { fontSize: 9, fontWeight: "700", color: "#92400E" },
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -258,35 +292,70 @@ export default function Story() {
   const group = groupedStories[currentUser];
   const story = group?.stories[currentStory];
 
-  // ── Fetch ──────────────────────────────────────────────
-  const fetchStories = useCallback(async () => {
-    try {
-      const q    = query(collection(db, "stories"), where("status", "==", "approved"));
-      const snap = await getDocs(q);
-      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];
+  // ── Real-time story listeners ──────────────────────────
+  // Two onSnapshot listeners run in parallel.
+  // Either firing re-merges both result sets so an admin
+  // approval (status: pending → approved) is reflected
+  // instantly without any manual refresh.
+  const ownDocsRef      = useRef<StoryDoc[]>([]);
+  const approvedDocsRef = useRef<StoryDoc[]>([]);
+  const profileCache    = useRef<Record<string, UserProfile>>({});
 
-      // Always resolve real name + class from DB
-      // (old uploads saved "Student" and hardcoded class 8)
-      const profileCache: Record<string, UserProfile> = {};
-      for (const s of docs) {
-        if (!profileCache[s.userId]) {
-          profileCache[s.userId] = await fetchUserProfile(s.userId);
-        }
-        const { name, userClass } = profileCache[s.userId];
-        if (name && name !== "Student") s.userName = name;
-        if (userClass !== null) s.userClass = userClass;
+  const mergeAndSet = useCallback(async (
+    own: StoryDoc[],
+    approved: StoryDoc[],
+  ) => {
+    const ownIds  = new Set(own.map((d) => d.id));
+    const allDocs = [...own, ...approved.filter((d) => !ownIds.has(d.id))];
+
+    for (const s of allDocs) {
+      if (!profileCache.current[s.userId]) {
+        profileCache.current[s.userId] = await fetchUserProfile(s.userId);
       }
+      const { name, userClass } = profileCache.current[s.userId];
+      if (name && name !== "Student") s.userName = name;
+      if (userClass !== null) s.userClass = userClass;
+    }
 
-      const map: Record<string, GroupedUser> = {};
-      docs.forEach((s) => {
-        if (!map[s.userId]) map[s.userId] = { userId: s.userId, userName: s.userName, stories: [] };
-        map[s.userId].stories.push(s);
-      });
-      setGroupedStories(Object.values(map));
-    } catch (e) { console.error("fetchStories:", e); }
+    const map: Record<string, GroupedUser> = {};
+    allDocs.forEach((s) => {
+      if (!map[s.userId]) map[s.userId] = { userId: s.userId, userName: s.userName, stories: [] };
+      map[s.userId].stories.push(s);
+    });
+    setGroupedStories(Object.values(map));
   }, []);
 
-  useEffect(() => { fetchStories(); }, [fetchStories]);
+  useEffect(() => {
+    const uid = user?.uid;
+
+    // Listener 1 — own stories (all statuses)
+    let unsubOwn: (() => void) | undefined;
+    if (uid) {
+      unsubOwn = onSnapshot(
+        query(collection(db, "stories"), where("userId", "==", uid)),
+        (snap) => {
+          ownDocsRef.current = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];
+          mergeAndSet(ownDocsRef.current, approvedDocsRef.current);
+        },
+        (e) => console.error("fetchStories (own):", e),
+      );
+    }
+
+    // Listener 2 — public approved stories
+    const unsubApproved = onSnapshot(
+      query(collection(db, "stories"), where("status", "==", "approved")),
+      (snap) => {
+        approvedDocsRef.current = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];
+        mergeAndSet(ownDocsRef.current, approvedDocsRef.current);
+      },
+      (e) => console.error("fetchStories (approved):", e),
+    );
+
+    return () => {
+      unsubOwn?.();
+      unsubApproved();
+    };
+  }, [user, mergeAndSet]);
 
   // ── Progress (images only) ─────────────────────────────
   const goNext = useCallback(() => {
@@ -327,7 +396,7 @@ export default function Story() {
 
     if (s.type === "video" && s.mediaUrl) {
       player.pause();
-      player.replaceAsync({ uri: s.mediaUrl }).catch(() => {});
+      player.replaceAsync({ uri: resolveStreamUrl(s.mediaUrl) ?? s.mediaUrl }).catch(() => {});
       // User must tap ▶ to play
     } else {
       player.pause();
@@ -389,37 +458,47 @@ export default function Story() {
 
     setUploadPct(0); setUploadPhase("uploading"); setUploading(true); uploadAnim.setValue(0);
 
+    const storyId = Date.now().toString();
+    let mediaUrl    = "";
     let thumbnailUrl = "";
+
     if (isVideo) {
-      try {
-        const { uri: tUri } = await VideoThumbnails.getThumbnailAsync(asset.uri, { time: 500 });
-        const tBlob = await (await fetch(tUri)).blob();
-        const tRef  = ref(storage, `stories/${user?.uid}/${Date.now()}_thumb.jpg`);
-        await new Promise<void>((res, rej) => {
-          const t = uploadBytesResumable(tRef, tBlob);
-          t.on("state_changed", null, rej, res);
-        });
-        thumbnailUrl = await getDownloadURL(tRef);
-      } catch (_) {}
+      // ── Cloudflare Stream for videos ──────────────────────
+      const { uploadURL, playbackUrl, thumbnailUrl: cfThumb } = await getStreamUploadUrl();
+      await uploadToStream(uploadURL, asset.uri, (pct) => {
+        setUploadPct(pct);
+        Animated.timing(uploadAnim, { toValue: pct / 100, duration: 250, useNativeDriver: false }).start();
+      });
+      mediaUrl     = playbackUrl;
+      thumbnailUrl = cfThumb;
+
+    } else {
+      // ── Firebase Storage for images (unchanged) ───────────
+      const blob: Blob = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.onload  = () => resolve(xhr.response);
+        xhr.onerror = () => reject(new Error("Network request failed"));
+        xhr.responseType = "blob";
+        xhr.open("GET", asset.uri, true);
+        xhr.send(null);
+      });
+
+      const mediaRef = ref(storage, `stories/${user?.uid}/${storyId}`);
+      mediaUrl = await new Promise<string>((resolve, reject) => {
+        const task = uploadBytesResumable(mediaRef, blob);
+        task.on(
+          "state_changed",
+          (snap) => {
+            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+            setUploadPct(pct);
+            Animated.timing(uploadAnim, { toValue: pct / 100, duration: 250, useNativeDriver: false }).start();
+          },
+          (err) => { setUploading(false); reject(err); },
+          async () => resolve(await getDownloadURL(task.snapshot.ref))
+        );
+      });
+      thumbnailUrl = mediaUrl;
     }
-
-    const storyId  = Date.now().toString();
-    const mediaRef = ref(storage, `stories/${user?.uid}/${storyId}`);
-    const blob     = await (await fetch(asset.uri)).blob();
-
-    const mediaUrl = await new Promise<string>((resolve, reject) => {
-      const task = uploadBytesResumable(mediaRef, blob);
-      task.on(
-        "state_changed",
-        (snap) => {
-          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          setUploadPct(pct);
-          Animated.timing(uploadAnim, { toValue: pct / 100, duration: 250, useNativeDriver: false }).start();
-        },
-        (err) => { setUploading(false); reject(err); },
-        async () => resolve(await getDownloadURL(task.snapshot.ref))
-      );
-    });
 
     setUploadPhase("saving");
     Animated.timing(uploadAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
@@ -436,8 +515,9 @@ export default function Story() {
     });
 
     setUploadPhase("done");
-    setTimeout(() => { setUploading(false); fetchStories(); }, 1200);
-  }, [user, fetchStories, uploadAnim]);
+    // Listeners auto-refresh — just close the overlay after a short delay
+    setTimeout(() => { setUploading(false); }, 1200);
+  }, [user, uploadAnim]);
 
   // ── Render ─────────────────────────────────────────────
   return (
@@ -552,7 +632,17 @@ export default function Story() {
 
           {/* Badges */}
           <View style={s.badgeRow} pointerEvents="none">
-            {!!story?.category && (
+            {story?.status === "pending" && (
+              <View style={[s.badge, { backgroundColor: "#FEF3C7" }]}>
+                <Text style={s.badgeTxt}>⏳ Pending Approval</Text>
+              </View>
+            )}
+            {story?.status === "rejected" && (
+              <View style={[s.badge, { backgroundColor: "#FEE2E2" }]}>
+                <Text style={[s.badgeTxt, { color: "#DC2626" }]}>✗ Not Approved</Text>
+              </View>
+            )}
+            {!!story?.category && story?.status === "approved" && (
               <View style={[s.badge, story.category === "achievement" ? s.badgeAch : s.badgeTes]}>
                 <Text style={s.badgeTxt}>{story.category === "achievement" ? "🏆 Achievement" : "💬 Testimonial"}</Text>
               </View>
@@ -567,6 +657,29 @@ export default function Story() {
             {!!story?.title       && <Text style={s.title} numberOfLines={2}>{story.title}</Text>}
             {!!story?.description && <Text style={s.desc}  numberOfLines={3}>{story.description}</Text>}
           </View>
+
+          {/* Partner banner — linked stories only */}
+          {story?.storyKind === "linked" && !!story?.learnMoreUrl && (
+            <View style={s.partnerBar}>
+              <View style={s.partnerInfo}>
+                {story.partnerLogoUrl ? (
+                  <Image source={{ uri: story.partnerLogoUrl }} style={s.partnerLogo} resizeMode="contain" />
+                ) : (
+                  <Text style={s.partnerEmoji}>🔗</Text>
+                )}
+                <Text style={s.partnerName} numberOfLines={1}>
+                  {story.partnerName ?? "Learn More"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={s.learnMoreBtn}
+                activeOpacity={0.85}
+                onPress={() => Linking.openURL(story.learnMoreUrl!).catch(() => {})}
+              >
+                <Text style={s.learnMoreTxt}>Learn More →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Like + Views — these need touches so no pointerEvents="none" */}
           <View style={s.actions}>
@@ -671,6 +784,14 @@ const s = StyleSheet.create({
   actionCount: { color: "#fff", fontSize: 12, fontWeight: "600", marginTop: 2 },
 
   // tapLeft / tapRight removed — unified touchLayer handles all navigation
+
+  partnerBar:    { position: "absolute", bottom: 90, left: 14, right: 14, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(255,215,0,0.35)" },
+  partnerInfo:   { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  partnerLogo:   { width: 28, height: 28, borderRadius: 6, backgroundColor: "#fff" },
+  partnerEmoji:  { fontSize: 20 },
+  partnerName:   { color: "#fff", fontSize: 13, fontWeight: "600", flex: 1 },
+  learnMoreBtn:  { backgroundColor: "#FFD700", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginLeft: 10 },
+  learnMoreTxt:  { color: "#1a1a1a", fontSize: 12, fontWeight: "800" },
 
   upOverlay:    { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
   upCard:       { backgroundColor: "#fff", borderRadius: 20, paddingVertical: 32, paddingHorizontal: 28, width: "100%", alignItems: "center", elevation: 10 },

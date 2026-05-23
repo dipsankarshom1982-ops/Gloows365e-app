@@ -23,7 +23,7 @@ const contests = [
     subject: "Education",
     startTime: Timestamp.fromDate(new Date(Date.now() + 60 * 60 * 1000)),
     endTime: Timestamp.fromDate(new Date(Date.now() + 2 * 60 * 60 * 1000)),
-    prizePool: 10000,
+    prizePool: 9999,
     totalSpots: 1000,
     joinedCount: 280,
     entryFee: 0,
