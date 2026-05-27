@@ -15,7 +15,8 @@ const { getReactNativePersistence } = require("firebase/auth");
 
 // 🔥 Config
 export const firebaseConfig = {
-  apiKey: "AIzaSyCpS6KjmnGAD5vCuB_swM2SWRd6-nhoiys",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+
   authDomain: "gloows-03b6sz.firebaseapp.com",
   projectId: "gloows-03b6sz",
   storageBucket: "gloows-03b6sz.firebasestorage.app",
