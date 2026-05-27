@@ -33,20 +33,16 @@ export function AuthProvider({ children }: any) {
         }
 
         setUser(user);
+        setLoading(false); // auth confirmed — stop spinner before Firestore fetch
 
-        // 🔥 BEST PRACTICE → UID based fetch
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          setRoles([]);
-          setLoading(false);
-          return;
+        // Fetch roles in background; failure is non-fatal
+        try {
+          const ref = doc(db, "users", user.uid);
+          const snap = await getDoc(ref);
+          setRoles(snap.exists() ? (snap.data().roles ?? []) : []);
+        } catch (error) {
+          console.log("Role fetch error:", error);
         }
-
-        const data = snap.data();
-        setRoles(data.roles || []);
-        setLoading(false);
 
       } catch (error) {
         console.log("Auth Error:", error);

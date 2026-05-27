@@ -1,19 +1,51 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = void 0;
+exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoDailyRevisionReminder = exports.seekhoGetDailyStudyPlan = exports.seekhoCreateSubscription = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const functionsV1 = require("firebase-functions/v1");
 const gemini_1 = require("./gemini");
 const usageCheck_1 = require("./usageCheck");
 const validateLesson_1 = require("./validateLesson");
+const redish_1 = require("./redish");
 admin.initializeApp();
 const db = admin.firestore();
+// ── Discover AI ────────────────────────────────────────────────────────────
+var discover_1 = require("./discover");
+Object.defineProperty(exports, "discoverSearch", { enumerable: true, get: function () { return discover_1.discoverSearch; } });
+Object.defineProperty(exports, "discoverTrending", { enumerable: true, get: function () { return discover_1.discoverTrending; } });
+// ── VidyaGuru AI Teacher ───────────────────────────────────────────────────
+var vidyaguru_1 = require("./vidyaguru");
+Object.defineProperty(exports, "vidyaguruChat", { enumerable: true, get: function () { return vidyaguru_1.vidyaguruChat; } });
+// ── Seekho module ──────────────────────────────────────────────────────────
+var seekho_1 = require("./seekho");
+Object.defineProperty(exports, "seekhoOnChapterComplete", { enumerable: true, get: function () { return seekho_1.seekhoOnChapterComplete; } });
+Object.defineProperty(exports, "seekhoUpdateRevisionQueue", { enumerable: true, get: function () { return seekho_1.seekhoUpdateRevisionQueue; } });
+Object.defineProperty(exports, "seekhoCreateSubscription", { enumerable: true, get: function () { return seekho_1.seekhoCreateSubscription; } });
+Object.defineProperty(exports, "seekhoGetDailyStudyPlan", { enumerable: true, get: function () { return seekho_1.seekhoGetDailyStudyPlan; } });
+Object.defineProperty(exports, "seekhoDailyRevisionReminder", { enumerable: true, get: function () { return seekho_1.seekhoDailyRevisionReminder; } });
+// ── Leaderboard ────────────────────────────────────────────────────────────
+var leaderboard_1 = require("./leaderboard");
+Object.defineProperty(exports, "getLeaderboard", { enumerable: true, get: function () { return leaderboard_1.getLeaderboard; } });
+// ── Feed (home + reels) ────────────────────────────────────────────────────
+var feed_1 = require("./feed");
+Object.defineProperty(exports, "getHomeFeed", { enumerable: true, get: function () { return feed_1.getHomeFeed; } });
+Object.defineProperty(exports, "getReelsFeed", { enumerable: true, get: function () { return feed_1.getReelsFeed; } });
+// ── VCoins ─────────────────────────────────────────────────────────────────
+var vcoins_1 = require("./vcoins");
+Object.defineProperty(exports, "claimVCoinReward", { enumerable: true, get: function () { return vcoins_1.claimVCoinReward; } });
+Object.defineProperty(exports, "getVCoinBalance", { enumerable: true, get: function () { return vcoins_1.getVCoinBalance; } });
+// ── AI Personalized Dashboard ───────────────────────────────────────────────
+var personalDashboard_1 = require("./personalDashboard");
+Object.defineProperty(exports, "getPersonalizedDashboard", { enumerable: true, get: function () { return personalDashboard_1.getPersonalizedDashboard; } });
+// ── Ask AI Guru (Sarvam AI) ─────────────────────────────────────────────────
+var askAiGuru_1 = require("./askAiGuru");
+Object.defineProperty(exports, "askAiGuruQuestion", { enumerable: true, get: function () { return askAiGuru_1.askAiGuruQuestion; } });
 // ───────────────────────────────────────────────────────────
 // FUNCTION 1: updateSkillboard
 // Triggers on any post write — updates skillboard + ranks
 // ───────────────────────────────────────────────────────────
-exports.updateSkillboard = (0, firestore_1.onDocumentWritten)("posts/{postId}", async (event) => {
+exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts/{postId}", secrets: ["REDIS_URL", "REDIS_TOKEN"] }, async (event) => {
     const change = event.data;
     if (!change)
         return null;
@@ -138,7 +170,7 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)("posts/{postId}", 
 // FUNCTION 2: onPostCreated
 // Increments participantCount on skillBattles when new post added
 // ───────────────────────────────────────────────────────────
-exports.onPostCreated = (0, firestore_1.onDocumentWritten)("posts/{postId}", async (event) => {
+exports.onPostCreated = (0, firestore_1.onDocumentWritten)({ document: "posts/{postId}", secrets: ["REDIS_URL", "REDIS_TOKEN"] }, async (event) => {
     const change = event.data;
     if (!change)
         return null;
@@ -162,6 +194,9 @@ exports.onPostCreated = (0, firestore_1.onDocumentWritten)("posts/{postId}", asy
     catch (err) {
         console.error("❌ Failed to increment participantCount:", err);
     }
+    // Invalidate home and reels feed caches for this post's class
+    const cls = post.class !== undefined ? String(post.class) : "all";
+    (0, redish_1.getRedis)().del(redish_1.RK.homeFeed("all"), redish_1.RK.homeFeed(cls), redish_1.RK.reelsFeed("all"), redish_1.RK.reelsFeed(cls)).catch(() => { });
     return null;
 });
 // ───────────────────────────────────────────────────────────
@@ -246,18 +281,28 @@ exports.generateLesson = functionsV1
         res.status(200).json({ lessonId, lessonJson });
     }
     catch (err) {
-        console.error("generateLesson error:", err.message);
+        const msg = err?.message ?? "Unknown error";
+        console.error("generateLesson error:", msg);
         if (lessonId) {
             await db.doc(`aiGuruLessons/${lessonId}`).update({
-                status: "failed", errorMessage: err.message,
+                status: "failed", errorMessage: msg,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }).catch(() => { });
         }
-        if (err.message?.startsWith("FREE_LIMIT_REACHED:")) {
-            res.status(429).json({ error: err.message.replace("FREE_LIMIT_REACHED:", ""), code: "FREE_LIMIT_REACHED" });
+        if (msg.startsWith("FREE_LIMIT_REACHED:")) {
+            res.status(429).json({ error: msg.replace("FREE_LIMIT_REACHED:", ""), code: "FREE_LIMIT_REACHED" });
+        }
+        else if (msg.includes("GEMINI_API_KEY")) {
+            res.status(500).json({ error: "AI service not configured. Contact support.", code: "CONFIG_ERROR" });
+        }
+        else if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+            res.status(429).json({ error: "AI is busy right now. Please wait a minute and try again.", code: "QUOTA_EXCEEDED" });
+        }
+        else if (msg.includes("Missing required field") || msg.includes("Expected at least")) {
+            res.status(500).json({ error: "AI returned an incomplete lesson. Please try again.", code: "VALIDATION_ERROR" });
         }
         else {
-            res.status(500).json({ error: "Failed to generate lesson. Please try again." });
+            res.status(500).json({ error: msg });
         }
     }
 });
@@ -365,6 +410,12 @@ async function recalculateRank(scopeKey, filters) {
             });
         });
         await batch.commit();
+        // Cache India top-50 leaderboard after rank update
+        if (scopeKey === "india") {
+            const top50 = snap.docs.slice(0, 50).map((d) => ({ id: d.id, ...d.data() }));
+            const cacheKey = redish_1.RK.leaderboard("india", filters.class ?? "", filters.month ?? "");
+            (0, redish_1.getRedis)().set(cacheKey, top50, { ex: redish_1.TTL.leaderboard }).catch(() => { });
+        }
         console.log(`✅ ${scopeKey} ranks updated for ${snap.size} students ` +
             `(class=${filters.class}, month=${filters.month})`);
     }

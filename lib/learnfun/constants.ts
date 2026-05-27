@@ -20,66 +20,8 @@ export const DAILY_SKILL_ROTATION: Record<number, Skill | "boss_battle"> = {
   0: "Goal Setting",
 };
 
-// ─── GAMES (32 total, 4 per class 5-12) ───────────────────────────────────────
+// ─── GAMES (28 total, 4 per class 6-12) ───────────────────────────────────────
 export const GAMES: LearnFunGame[] = [
-  // ── Class 5 ──────────────────────────────────────────────────────────────────
-  {
-    id: "c5_budget_1",
-    title: "Pocket Money Shop",
-    classRange: [5],
-    skill: "Money Management",
-    gameType: "budget_simulator",
-    difficulty: "easy",
-    durationMinutes: 8,
-    description: "You have ₹50 pocket money. Shop wisely — buy what you need and save the rest!",
-    emoji: "🛒",
-    gradientColors: ["#F59E0B", "#EF4444"],
-    isActive: true,
-    isComingSoon: false,
-  },
-  {
-    id: "c5_time_1",
-    title: "My Daily Routine",
-    classRange: [5],
-    skill: "Time Management",
-    gameType: "time_planner",
-    difficulty: "easy",
-    durationMinutes: 7,
-    description: "Plan your perfect school day — study, play and sleep on time!",
-    emoji: "📅",
-    gradientColors: ["#10B981", "#059669"],
-    isActive: true,
-    isComingSoon: false,
-  },
-  {
-    id: "c5_choice_1",
-    title: "Good Choice Story",
-    classRange: [5],
-    skill: "Decision Making",
-    gameType: "choice_story",
-    difficulty: "easy",
-    durationMinutes: 6,
-    description: "Help Ramu make good choices at school and at home!",
-    emoji: "📖",
-    gradientColors: ["#8B5CF6", "#6366F1"],
-    isActive: true,
-    isComingSoon: false,
-  },
-  {
-    id: "c5_digital_1",
-    title: "Safe Screen Junior",
-    classRange: [5],
-    skill: "Digital Safety",
-    gameType: "digital_safety",
-    difficulty: "easy",
-    durationMinutes: 6,
-    description: "Learn to use screens safely — spot what is OK and what is not!",
-    emoji: "🛡️",
-    gradientColors: ["#0EA5E9", "#38BDF8"],
-    isActive: true,
-    isComingSoon: false,
-  },
-
   // ── Class 6 ──────────────────────────────────────────────────────────────────
   {
     id: "c6_budget_1",
@@ -492,7 +434,7 @@ export const COMING_SOON: LearnFunGame[] = [
   {
     id: "cs_leadership_1",
     title: "Leadership Challenge",
-    classRange: [5, 6, 7, 8, 9, 10, 11, 12],
+    classRange: [6, 7, 8, 9, 10, 11, 12],
     skill: "Leadership",
     gameType: "choice_story",
     difficulty: "medium",
@@ -506,7 +448,7 @@ export const COMING_SOON: LearnFunGame[] = [
   {
     id: "cs_startup_1",
     title: "Startup Founder",
-    classRange: [5, 6, 7, 8, 9, 10, 11, 12],
+    classRange: [6, 7, 8, 9, 10, 11, 12],
     skill: "Decision Making",
     gameType: "career_goal",
     difficulty: "hard",
@@ -520,7 +462,7 @@ export const COMING_SOON: LearnFunGame[] = [
   {
     id: "cs_stress_1",
     title: "Stress Balance Mission",
-    classRange: [5, 6, 7, 8, 9, 10, 11, 12],
+    classRange: [6, 7, 8, 9, 10, 11, 12],
     skill: "Emotional Control",
     gameType: "choice_story",
     difficulty: "medium",
@@ -534,7 +476,7 @@ export const COMING_SOON: LearnFunGame[] = [
   {
     id: "cs_speaking_1",
     title: "Public Speaking Stage",
-    classRange: [5, 6, 7, 8, 9, 10, 11, 12],
+    classRange: [6, 7, 8, 9, 10, 11, 12],
     skill: "Communication",
     gameType: "choice_story",
     difficulty: "hard",

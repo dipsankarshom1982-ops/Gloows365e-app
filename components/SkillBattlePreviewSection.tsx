@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { db } from "@/lib/firebase";
 import { LinearGradient } from "expo-linear-gradient";
@@ -61,11 +62,12 @@ function Pulse({ w, h, r = 10 }: { w: number; h: number; r?: number }) {
 }
 
 function BattleCard({ item }: { item: Battle }) {
+  const { t } = useAppTranslation();
   const timeLeft  = getTimeLeft(item.endDate);
   const ended     = timeLeft === "Ended";
   const isOngoing = timeLeft === "Ongoing";
 
-  const statusLabel = ended ? "✅ Ended" : isOngoing ? "🔴 LIVE" : `⏰ ${timeLeft}`;
+  const statusLabel = ended ? `✅ ${t("battleEnded")}` : isOngoing ? "🔴 LIVE" : `⏰ ${timeLeft}`;
   const statusBg    = ended ? "#6b7280" : isOngoing ? "#ef4444" : "#f59e0b";
   const totalVCoins = (item.vcoin_india ?? 0) + (item.vcoin_state ?? 0) + (item.vcoin_district ?? 0);
 
@@ -89,7 +91,7 @@ function BattleCard({ item }: { item: Battle }) {
         <Text style={S.cardTitle} numberOfLines={2}>{item.title}</Text>
 
         {item.sponsor ? (
-          <Text style={S.sponsor}>Powered by {item.sponsor}</Text>
+          <Text style={S.sponsor}>{t("poweredBy", { name: item.sponsor })}</Text>
         ) : null}
 
         {item.month ? (
@@ -117,7 +119,7 @@ function BattleCard({ item }: { item: Battle }) {
         {(item.participantCount ?? 0) > 0 ? (
           <View style={S.rewardRow}>
             <Text style={S.rewardIcon}>👥</Text>
-            <Text style={S.rewardVal}>{fmt(item.participantCount!)} joined</Text>
+            <Text style={S.rewardVal}>{t("joinedCount", { count: fmt(item.participantCount!) })}</Text>
           </View>
         ) : null}
 
@@ -127,7 +129,7 @@ function BattleCard({ item }: { item: Battle }) {
           activeOpacity={0.8}
         >
           <Text style={S.joinBtnText}>
-            {ended ? "View Results →" : "Participate Now →"}
+            {ended ? t("viewResults") : t("participateNow")}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -137,6 +139,7 @@ function BattleCard({ item }: { item: Battle }) {
 
 export default function SkillBattlePreviewSection() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [items,   setItems]   = useState<Battle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(false);
@@ -182,13 +185,13 @@ export default function SkillBattlePreviewSection() {
     <View style={S.section}>
       <View style={S.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[S.sectionTitle, { color: colors.text }]}>⚔️ SkillBattle Challenge</Text>
+          <Text style={[S.sectionTitle, { color: colors.text }]}>{t("skillBattlePreviewTitle")}</Text>
           <Text style={[S.sectionSub, { color: colors.textSecondary }]}>
-            Compete, rank higher, and win exciting prizes
+            {t("skillBattlePreviewSub")}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.push("/(drawer)/(tabs)/skillbattle")}>
-          <Text style={S.viewAll}>View All →</Text>
+          <Text style={S.viewAll}>{t("viewAll")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -199,12 +202,12 @@ export default function SkillBattlePreviewSection() {
       ) : error ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>⚠️</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>Could not load battles.</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("couldNotLoadBattles")}</Text>
         </View>
       ) : items.length === 0 ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>🏆</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>New battles coming soon!</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("battlesComingSoon")}</Text>
         </View>
       ) : (
         <FlatList

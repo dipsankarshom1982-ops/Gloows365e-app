@@ -1,5 +1,6 @@
 import Header from "@/components/header";
 import { useTheme } from "@/context/ThemeContext";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { auth, db, firebaseConfig, storage } from "@/lib/firebase";
 import { INDIAN_LANGUAGES } from "@/app/language-settings";
 import { Ionicons } from "@expo/vector-icons";
@@ -27,7 +28,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ─── Constants ─────────────────────────────────────────────
-const CLASS_OPTIONS: string[] = ["4", "5", "6", "7", "8", "9", "10", "11", "12"];
+const CLASS_OPTIONS: string[] = ["4", "6", "7", "8", "9", "10", "11", "12"];
 const BOARDS: string[] = ["CBSE", "ICSE", "State Board", "IB", "IGCSE"];
 const INTEREST_OPTIONS: string[] = ["GK", "Science", "Math", "History", "Geography", "English", "Coding", "Arts"];
 
@@ -127,6 +128,7 @@ function getPhoneVerifyAuth() {
 // ─── Main Component ─────────────────────────────────────────
 export default function ProfileSettingsScreen() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const router = useRouter();
 
   // ─── UI State ───────────────────────────────────────────
@@ -366,7 +368,7 @@ export default function ProfileSettingsScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert("⚠️ Delete Account", "This permanently deletes your Vidya AI profile and cannot be undone.", [
+    Alert.alert("⚠️ Delete Account", "This permanently deletes your NextVidya profile and cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
@@ -502,7 +504,7 @@ export default function ProfileSettingsScreen() {
           {/* ── FORM ─────────────────────────────────── */}
           <View style={styles.formContainer}>
 
-            <SectionTitle icon="🧑" label="Basic Information" colors={colors as ThemeColors} />
+            <SectionTitle icon="🧑" label={t("basicInfo")} colors={colors as ThemeColors} />
             <Field label="Full Name" icon="person-outline" value={name} onChangeText={setName}
               placeholder="Enter full name" isEditing={isEditing} colors={colors as ThemeColors} />
 
@@ -579,7 +581,7 @@ export default function ProfileSettingsScreen() {
               placeholder="Enter age" keyboardType="numeric" autoCapitalize="none"
               isEditing={isEditing} colors={colors as ThemeColors} />
 
-            <SectionTitle icon="📚" label="Academic Details" colors={colors as ThemeColors} />
+            <SectionTitle icon="📚" label={t("academicDetails")} colors={colors as ThemeColors} />
             <Field label="School / Institution" icon="business-outline" value={school} onChangeText={setSchool}
               placeholder="Enter school name" isEditing={isEditing} colors={colors as ThemeColors} />
 
@@ -691,7 +693,7 @@ export default function ProfileSettingsScreen() {
                 >
                   {saving
                     ? <ActivityIndicator size="small" color="#fff" />
-                    : <><Ionicons name="checkmark-outline" size={20} color="#fff" /><Text style={styles.buttonText}>Save Changes</Text></>
+                    : <><Ionicons name="checkmark-outline" size={20} color="#fff" /><Text style={styles.buttonText}>{t("saveChanges")}</Text></>
                   }
                 </TouchableOpacity>
               </View>
@@ -702,7 +704,7 @@ export default function ProfileSettingsScreen() {
           <View style={[styles.dangerZone, { borderColor: "#FF4D4D30", backgroundColor: "#FF4D4D08" }]}>
             <Text style={[styles.dangerTitle, { color: "#FF4D4D" }]}>⚠️ Danger Zone</Text>
             <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>
-              Deleting your account removes all your Vidya AI data permanently.
+              Deleting your account removes all your NextVidya data permanently.
             </Text>
             <TouchableOpacity style={[styles.dangerRow, { opacity: deleting ? 0.6 : 1 }]}
               onPress={handleDelete} disabled={deleting}>

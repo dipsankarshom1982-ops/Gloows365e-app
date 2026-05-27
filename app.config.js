@@ -2,12 +2,12 @@ import "dotenv/config";
 
 export default {
   expo: {
-    name:        "vidya",
-    slug:        "vidya",
+    name:        "NextVidya",
+    slug:        "nextvidya",
     version:     "1.0.0",
     orientation: "portrait",
     icon:        "./assets/images/icon.png",
-    scheme:      "vidya",
+    scheme:      "nextvidya",
     userInterfaceStyle: "automatic",
     newArchEnabled:     true,
 
@@ -24,7 +24,7 @@ export default {
       },
       edgeToEdgeEnabled:             true,
       predictiveBackGestureEnabled:  false,
-      package:                       "com.anonymous.vidya",
+      package:                       "com.anonymous.nextvidya",
     },
 
     web: {

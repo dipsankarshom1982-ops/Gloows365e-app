@@ -86,18 +86,28 @@ export default function SettingsScreen() {
       onToggle: toggleNotifications,
     },
     {
+      id: "password",
+      title: `🔑 Change Password`,
+      description: "Update your account password",
+      icon: "key",
+      toggle: false,
+      route: "/change-password",
+    },
+    {
       id: "privacy",
       title: `🔒 ${t("privacy")}`,
       description: "Manage your privacy settings",
       icon: "lock-closed",
       toggle: false,
+      route: "/privacy",
     },
     {
       id: "about",
       title: `ℹ️ ${t("about")}`,
-      description: "Learn more about VidyaAI",
+      description: "Learn more about NextVidya",
       icon: "information-circle",
       toggle: false,
+      route: "/about",
     },
   ];
 

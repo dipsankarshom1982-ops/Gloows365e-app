@@ -30,6 +30,19 @@ export async function callGeminiWithImage(
   return result.response.text();
 }
 
+export async function callGeminiWithAudio(
+  prompt: string,
+  audioBase64: string,
+  mimeType: string
+): Promise<string> {
+  const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash" });
+  const result = await model.generateContent([
+    { inlineData: { data: audioBase64, mimeType: mimeType as any } },
+    prompt,
+  ]);
+  return result.response.text();
+}
+
 export function parseJsonFromResponse(raw: string): unknown {
   // Strip thinking blocks (gemini-2.5-flash may include <thinking>...</thinking>)
   let cleaned = raw.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();

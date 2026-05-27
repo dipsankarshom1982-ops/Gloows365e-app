@@ -3,7 +3,7 @@ export const BOARDS = [
   "Tripura Board", "West Bengal Board", "Assam Board", "Other",
 ];
 
-export const CLASSES = Array.from({ length: 8 }, (_, i) => String(i + 5)); // "5" to "12"
+export const CLASSES = Array.from({ length: 7 }, (_, i) => String(i + 6)); // "6" to "12"
 
 export const SUBJECTS = [
   "Computer", "Science", "Math", "English",
@@ -41,8 +41,9 @@ export const LESSON_STYLE_DESC: Record<string, { emoji: string; desc: string }> 
   "Fun Game Mode":      { emoji: "🎮", desc: "Gamified learning with XP" },
 };
 
-export const FREE_DAILY_LESSONS  = 2;
+export const FREE_DAILY_LESSONS   = 2;
 export const FREE_DAILY_FOLLOWUPS = 5;
+export const FREE_DAILY_ASK       = 5;
 
 export const XP_PER_CORRECT: Record<string, number> = {
   easy: 10, medium: 15, hard: 20,

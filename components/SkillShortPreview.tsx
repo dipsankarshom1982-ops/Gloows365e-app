@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +25,7 @@ const STATUS_CFG: Record<string, { emoji: string; label: string; bg: string }> =
 
 export default function SkillShortPreview() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [reels,      setReels]      = useState<any[]>([]);
   const [ownPending, setOwnPending] = useState<any[]>([]);
 
@@ -86,10 +88,7 @@ export default function SkillShortPreview() {
       onPress={() =>
         router.push({
           pathname: "/reels",
-          // ✅ Pass post id — let the reels screen find its own index
-          // This avoids out-of-range crash when reels screen has a
-          // different list size than this preview
-          params: { postId: item.id },
+          params: { postId: item.id, filter: "skillbattle" },
         })
       }
       activeOpacity={0.8}
@@ -127,7 +126,7 @@ export default function SkillShortPreview() {
 
       {/* 🎯 BADGE */}
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>⚡ Battle</Text>
+        <Text style={styles.badgeText}>{t("battleBadge")}</Text>
       </View>
 
       {/* 🕐 STATUS PILL — own pending/in_review reels */}
@@ -143,9 +142,18 @@ export default function SkillShortPreview() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        🔥 Skill Battle Shorts
-      </Text>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {t("skillBattleShortsTitle")}
+        </Text>
+        <TouchableOpacity
+          onPress={() =>
+            router.push({ pathname: "/reels", params: { filter: "skillbattle" } })
+          }
+        >
+          <Text style={styles.viewAll}>{t("viewAll")}</Text>
+        </TouchableOpacity>
+      </View>
 
       {displayReels.length > 0 ? (
         <FlatList
@@ -159,7 +167,7 @@ export default function SkillShortPreview() {
       ) : (
         <View style={styles.empty}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No skill battle videos yet
+            {t("noSkillBattleVideos")}
           </Text>
         </View>
       )}
@@ -174,11 +182,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
 
+  header: {
+    flexDirection:   "row",
+    alignItems:      "center",
+    justifyContent:  "space-between",
+    marginBottom:    12,
+  },
+
   title: {
-    color:        "#fff",
-    fontSize:     20,
-    fontWeight:   "800",
-    marginBottom: 12,
+    color:      "#fff",
+    fontSize:   20,
+    fontWeight: "800",
+  },
+
+  viewAll: {
+    fontSize:   13,
+    fontWeight: "700",
+    color:      "#f97316",
   },
 
   card: {

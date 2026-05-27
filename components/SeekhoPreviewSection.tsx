@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -17,7 +18,7 @@ const CATEGORIES = [
   { emoji: "🎵", label: "Singing",            colors: ["#4c1d95", "#7c3aed"] as [string, string] },
   { emoji: "🎨", label: "Drawing",            colors: ["#7c2d12", "#ea580c"] as [string, string] },
   { emoji: "✂️", label: "Craft",              colors: ["#134e4a", "#0d9488"] as [string, string] },
-  { emoji: "📚", label: "Class 5–12",         colors: ["#1e3a5f", "#2563eb"] as [string, string] },
+  { emoji: "📚", label: "Class 6–12",         colors: ["#1e3a5f", "#2563eb"] as [string, string] },
   { emoji: "🔬", label: "Science",            colors: ["#1a2e05", "#4d7c0f"] as [string, string] },
   { emoji: "🔢", label: "Mathematics",        colors: ["#450a0a", "#b91c1c"] as [string, string] },
   { emoji: "🌟", label: "General\nSkills",    colors: ["#451a03", "#d97706"] as [string, string] },
@@ -27,6 +28,7 @@ const CARD_W = 110;
 
 export default function SeekhoPreviewSection() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const scrollRef = useRef<ScrollView>(null);
   const idxRef    = useRef(0);
 
@@ -45,13 +47,13 @@ export default function SeekhoPreviewSection() {
     <View style={S.section}>
       <View style={S.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[S.sectionTitle, { color: colors.text }]}>📖 Seekho</Text>
+          <Text style={[S.sectionTitle, { color: colors.text }]}>{t("seekhoPreviewTitle")}</Text>
           <Text style={[S.sectionSub, { color: colors.textSecondary }]}>
-            Learn subjects, skills and creative activities
+            {t("seekhoPreviewSub")}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.push("/(drawer)/(tabs)/seekho")}>
-          <Text style={S.viewAll}>Explore →</Text>
+          <Text style={S.viewAll}>{t("explore")}</Text>
         </TouchableOpacity>
       </View>
 

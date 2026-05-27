@@ -29,10 +29,15 @@ export default function TabsLayout() {
 
       <Tabs.Screen
         name="learnFun"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="skillboost"
         options={{
-          title: "LearnFun",
+          title: "SkillBoost",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+            <Ionicons name="flash" size={size} color={color} />
           ),
         }}
       />

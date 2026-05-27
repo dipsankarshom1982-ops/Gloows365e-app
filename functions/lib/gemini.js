@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.callGeminiText = callGeminiText;
 exports.callGeminiWithImage = callGeminiWithImage;
+exports.callGeminiWithAudio = callGeminiWithAudio;
 exports.parseJsonFromResponse = parseJsonFromResponse;
 const generative_ai_1 = require("@google/generative-ai");
 let _genAI = null;
@@ -23,6 +24,14 @@ async function callGeminiWithImage(prompt, imageBase64, imageMimeType) {
     const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent([
         { inlineData: { data: imageBase64, mimeType: imageMimeType } },
+        prompt,
+    ]);
+    return result.response.text();
+}
+async function callGeminiWithAudio(prompt, audioBase64, mimeType) {
+    const model = getGenAI().getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent([
+        { inlineData: { data: audioBase64, mimeType: mimeType } },
         prompt,
     ]);
     return result.response.text();

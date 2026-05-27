@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { getStreamUploadUrl, uploadToStream } from "@/lib/cloudflareStream";
 import { auth, db, storage } from "@/lib/firebase";
 import { Ionicons } from "@expo/vector-icons";
@@ -64,37 +65,37 @@ interface MyPost {
 
 // ─── Status watermark config ──────────────────────────────────
 const WATERMARK_CONFIG: Partial<
-  Record<PostStatus, { label: string; emoji: string; bg: string }>
+  Record<PostStatus, { labelKey: string; emoji: string; bg: string }>
 > = {
-  pending:   { label: "PENDING REVIEW", emoji: "⏳", bg: "rgba(243,156,18,0.82)"  },
-  in_review: { label: "IN REVIEW",      emoji: "🔍", bg: "rgba(52,152,219,0.82)"  },
-  rejected:  { label: "REJECTED",       emoji: "❌", bg: "rgba(231,76,60,0.82)"   },
+  pending:   { labelKey: "pendingReview", emoji: "⏳", bg: "rgba(243,156,18,0.82)"  },
+  in_review: { labelKey: "inReview",      emoji: "🔍", bg: "rgba(52,152,219,0.82)"  },
+  rejected:  { labelKey: "rejected",      emoji: "❌", bg: "rgba(231,76,60,0.82)"   },
 };
 
 // ─── Status badge config ──────────────────────────────────────
 const STATUS_CONFIG: Record<
   PostStatus,
-  { label: string; emoji: string; color: string; bg: string; description: string }
+  { labelKey: string; emoji: string; color: string; bg: string; description: string }
 > = {
   pending: {
-    label: "Pending Review", emoji: "⏳", color: "#f39c12", bg: "#f39c1218",
+    labelKey: "pendingReview", emoji: "⏳", color: "#f39c12", bg: "#f39c1218",
     description: "Waiting to be reviewed by our team.",
   },
   in_review: {
-    label: "In Review", emoji: "🔍", color: "#3498db", bg: "#3498db18",
+    labelKey: "inReview", emoji: "🔍", color: "#3498db", bg: "#3498db18",
     description: "Our team is currently reviewing your reel.",
   },
   approved: {
-    label: "Approved ✓ Live", emoji: "✅", color: "#2ecc71", bg: "#2ecc7118",
+    labelKey: "approved", emoji: "✅", color: "#2ecc71", bg: "#2ecc7118",
     description: "Your reel is live in the battle feed!",
   },
   rejected: {
-    label: "Rejected", emoji: "❌", color: "#e74c3c", bg: "#e74c3c18",
+    labelKey: "rejected", emoji: "❌", color: "#e74c3c", bg: "#e74c3c18",
     description: "Your reel did not meet the guidelines.",
   },
 };
 
-const ELIGIBLE_CLASSES = ["5", "6", "7", "8", "9", "10", "11", "12"];
+const ELIGIBLE_CLASSES = ["6", "7", "8", "9", "10", "11", "12"];
 
 // ─── Post limit check ─────────────────────────────────────────
 const checkPostLimit = async (battleId: string, uid: string): Promise<boolean> => {
@@ -106,7 +107,6 @@ const checkPostLimit = async (battleId: string, uid: string): Promise<boolean> =
   );
   const snap = await getDocs(q);
   if (snap.size >= 4) {
-    Alert.alert("Limit Reached", "You can upload maximum 4 reels per battle.");
     return false;
   }
   return true;
@@ -114,13 +114,14 @@ const checkPostLimit = async (battleId: string, uid: string): Promise<boolean> =
 
 // ─── Status Watermark Overlay ─────────────────────────────────
 export function PostStatusWatermark({ status }: { status: PostStatus }) {
+  const { t } = useAppTranslation();
   const cfg = WATERMARK_CONFIG[status];
   if (!cfg) return null;
   return (
     <View style={wmStyles.wrapper} pointerEvents="none">
       <View style={wmStyles.dim} />
       <View style={[wmStyles.banner, { backgroundColor: cfg.bg }]}>
-        <Text style={wmStyles.bannerText}>{cfg.emoji}  {cfg.label}</Text>
+        <Text style={wmStyles.bannerText}>{cfg.emoji}  {t(cfg.labelKey as any)}</Text>
       </View>
     </View>
   );
@@ -148,6 +149,7 @@ type UploadPhase =
 // ─── Component ────────────────────────────────────────────────
 export default function CreateReelScreen() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const router     = useRouter();
   const params     = useLocalSearchParams<{
     battleId:    string;
@@ -264,11 +266,11 @@ export default function CreateReelScreen() {
     if (!uid)             { Alert.alert("Please login first.");                                               return; }
     if (!student)         { Alert.alert("Profile not found.");                                                return; }
     if (!videoAsset)      { Alert.alert("Please select a video.");                                            return; }
-    if (notEligible)      { Alert.alert("Not eligible", "Only Class 5–12 students can upload skill reels."); return; }
+    if (notEligible)      { Alert.alert("Not eligible", "Only Class 6–12 students can upload skill reels."); return; }
     if (!params.battleId) { Alert.alert("No battle selected.");                                               return; }
 
     const allowed = await checkPostLimit(params.battleId, uid);
-    if (!allowed) return;
+    if (!allowed) { Alert.alert(t("limitReached"), t("limitReachedDesc")); return; }
 
     setLoading(true);
     setPhase("idle");
@@ -420,7 +422,7 @@ export default function CreateReelScreen() {
           <Text style={{ fontSize: 50 }}>🔒</Text>
           <Text style={[styles.notEligibleTitle, { color: colors.text }]}>Not Eligible</Text>
           <Text style={[styles.notEligibleText, { color: colors.textSecondary }]}>
-            Skill Battle is only available for{"\n"}students in Class 5 to 12.
+            Skill Battle is only available for{"\n"}students in Class 6 to 12.
             {"\n\n"}You are currently in Class {student?.class || "unknown"}.
           </Text>
           <TouchableOpacity
@@ -531,7 +533,7 @@ export default function CreateReelScreen() {
                         <Text style={[styles.postLabel, { color: colors.text }]}>Reel #{index + 1}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                           <Text style={[styles.statusText, { color: cfg.color }]}>
-                            {cfg.emoji}  {cfg.label}
+                            {cfg.emoji}  {t(cfg.labelKey as any)}
                           </Text>
                         </View>
                         <Text style={[styles.statusDesc, { color: colors.textSecondary }]}>
@@ -612,7 +614,7 @@ export default function CreateReelScreen() {
           {[
             "Video must be your original skill content",
             "Max 4 reels per battle · Max 60 seconds",
-            "Only Class 5–12 students can participate",
+            "Only Class 6–12 students can participate",
             "No inappropriate content",
             "Location is auto-detected from your profile",
             "All reels go through admin review before approval",

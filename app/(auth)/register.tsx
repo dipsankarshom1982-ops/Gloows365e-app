@@ -81,7 +81,7 @@ export default function StudentRegister() {
   const [otpError, setOtpError]             = useState("");
 
   const boards        = ["CBSE", "ICSE", "State Board", "Other"];
-  const classOptions  = ["5", "6", "7", "8", "9", "10", "11", "12"];
+  const classOptions  = ["6", "7", "8", "9", "10", "11", "12"];
   const languageOptions = INDIAN_LANGUAGES.map((l) => l.name);
   const interestOptions = [
     "Maths","Science","Coding","AI","Robotics",

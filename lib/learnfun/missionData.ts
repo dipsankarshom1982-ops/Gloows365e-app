@@ -1,46 +1,10 @@
-// lib/learnfun/missionData.ts
-// 8 sample daily missions + 4 fallback missions
+﻿// lib/learnfun/missionData.ts
+// 7 sample daily missions (class 6–12) + 4 fallback missions
 // Indian context: ₹ amounts, Indian names, Indian school settings
 
 import { DailyMission } from "./types";
 
-// ─── CLASS 5-6 MISSIONS ───────────────────────────────────────────────────────
-
-export const mission_c5_pocket_money: DailyMission = {
-  id: "mission_c5_pocket_money_001",
-  missionTitle: "Pocket Money Shop",
-  class: 5,
-  skill: "Money Management",
-  gameType: "budget_simulator",
-  difficulty: "easy",
-  storyIntro:
-    "Rohan gets ₹50 pocket money from his Dadi every week. Today he goes to the school shop. His pencil is broken, his eraser is lost, and he also wants a yummy chocolate. Can he buy what he needs AND save some money?",
-  characterDialogue:
-    "Hi! I am LifeBuddy 🤖. Remember: needs come first, then wants, then savings! Let's be a smart shopper today!",
-  goal: "Buy all needs (pencil + eraser) and save at least ₹15 from ₹50.",
-  timerSeconds: 90,
-  choicesOrItems: [
-    { name: "Pencil", price: 10, type: "need", emoji: "✏️" },
-    { name: "Eraser", price: 5, type: "need", emoji: "🧼" },
-    { name: "Chocolate", price: 15, type: "want", emoji: "🍫" },
-    { name: "Comic Book", price: 25, type: "want", emoji: "📕" },
-    { name: "Save in Piggy Bank", price: 20, type: "saving", emoji: "🐷" },
-  ],
-  hints: [
-    "Need = something important you must have!",
-    "Want = something fun but not urgent.",
-    "Save first, spend later — that's the smart way!",
-    "Pencil and eraser are must-buys for school.",
-  ],
-  successFeedback:
-    "Brilliant! 🎉 Rohan bought his pencil and eraser AND saved money! You are a Smart Saver! Your Dadi will be so proud!",
-  tryAgainFeedback:
-    "Oops! Rohan ran out of money or didn't buy what he needed. Remember: needs first, then wants, then save! Try again!",
-  reward: { coins: 20, xp: 30, badge: "badge_money_saver" },
-  parentInsight:
-    "Your child practised distinguishing needs vs wants with pocket money. At home, give them a small weekly allowance (₹20-50) and let them decide what to buy. Discuss their choices together!",
-  nextRecommendedSkill: "Time Management",
-};
+// ─── CLASS 6 MISSIONS ────────────────────────────────────────
 
 export const mission_c6_savings_jar: DailyMission = {
   id: "mission_c6_savings_jar_001",
@@ -470,7 +434,6 @@ export const fallback_goal_basics: DailyMission = {
 
 // ─── EXPORTED COLLECTIONS ────────────────────────────────────────────────────
 export const SAMPLE_MISSIONS: DailyMission[] = [
-  mission_c5_pocket_money,
   mission_c6_savings_jar,
   mission_c7_exam_planner,
   mission_c8_emergency_wallet,

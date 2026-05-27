@@ -14,9 +14,40 @@ import {
   incrementGenerationUsage,
 } from "./usageCheck";
 import { validateLessonJson } from "./validateLesson";
+import { getRedis, RK, TTL } from "./redish";
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// ── Discover AI ────────────────────────────────────────────────────────────
+export { discoverSearch, discoverTrending } from "./discover";
+
+// ── VidyaGuru AI Teacher ───────────────────────────────────────────────────
+export { vidyaguruChat } from "./vidyaguru";
+
+// ── Seekho module ──────────────────────────────────────────────────────────
+export {
+  seekhoOnChapterComplete,
+  seekhoUpdateRevisionQueue,
+  seekhoCreateSubscription,
+  seekhoGetDailyStudyPlan,
+  seekhoDailyRevisionReminder,
+} from "./seekho";
+
+// ── Leaderboard ────────────────────────────────────────────────────────────
+export { getLeaderboard } from "./leaderboard";
+
+// ── Feed (home + reels) ────────────────────────────────────────────────────
+export { getHomeFeed, getReelsFeed } from "./feed";
+
+// ── VCoins ─────────────────────────────────────────────────────────────────
+export { claimVCoinReward, getVCoinBalance } from "./vcoins";
+
+// ── AI Personalized Dashboard ───────────────────────────────────────────────
+export { getPersonalizedDashboard } from "./personalDashboard";
+
+// ── Ask AI Guru (Sarvam AI) ─────────────────────────────────────────────────
+export { askAiGuruQuestion } from "./askAiGuru";
 
 // ───────────────────────────────────────────────────────────
 // TYPES
@@ -92,7 +123,7 @@ interface SkillboardDoc {
 // ───────────────────────────────────────────────────────────
 
 export const updateSkillboard = onDocumentWritten(
-  "posts/{postId}",
+  { document: "posts/{postId}", secrets: ["REDIS_URL", "REDIS_TOKEN"] },
   async (
     event: FirestoreEvent<Change<DocumentSnapshot> | undefined>
   ): Promise<null> => {
@@ -243,7 +274,7 @@ export const updateSkillboard = onDocumentWritten(
 // ───────────────────────────────────────────────────────────
 
 export const onPostCreated = onDocumentWritten(
-  "posts/{postId}",
+  { document: "posts/{postId}", secrets: ["REDIS_URL", "REDIS_TOKEN"] },
   async (
     event: FirestoreEvent<Change<DocumentSnapshot> | undefined>
   ): Promise<null> => {
@@ -271,6 +302,15 @@ export const onPostCreated = onDocumentWritten(
     } catch (err) {
       console.error("❌ Failed to increment participantCount:", err);
     }
+
+    // Invalidate home and reels feed caches for this post's class
+    const cls = post.class !== undefined ? String(post.class) : "all";
+    getRedis().del(
+      RK.homeFeed("all"),
+      RK.homeFeed(cls),
+      RK.reelsFeed("all"),
+      RK.reelsFeed(cls)
+    ).catch(() => {});
 
     return null;
   }
@@ -360,17 +400,24 @@ export const generateLesson = functionsV1
       await incrementGenerationUsage(uid, db);
       res.status(200).json({ lessonId, lessonJson });
     } catch (err: any) {
-      console.error("generateLesson error:", err.message);
+      const msg: string = err?.message ?? "Unknown error";
+      console.error("generateLesson error:", msg);
       if (lessonId) {
         await db.doc(`aiGuruLessons/${lessonId}`).update({
-          status: "failed", errorMessage: err.message,
+          status: "failed", errorMessage: msg,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }).catch(() => {});
       }
-      if (err.message?.startsWith("FREE_LIMIT_REACHED:")) {
-        res.status(429).json({ error: err.message.replace("FREE_LIMIT_REACHED:", ""), code: "FREE_LIMIT_REACHED" });
+      if (msg.startsWith("FREE_LIMIT_REACHED:")) {
+        res.status(429).json({ error: msg.replace("FREE_LIMIT_REACHED:", ""), code: "FREE_LIMIT_REACHED" });
+      } else if (msg.includes("GEMINI_API_KEY")) {
+        res.status(500).json({ error: "AI service not configured. Contact support.", code: "CONFIG_ERROR" });
+      } else if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+        res.status(429).json({ error: "AI is busy right now. Please wait a minute and try again.", code: "QUOTA_EXCEEDED" });
+      } else if (msg.includes("Missing required field") || msg.includes("Expected at least")) {
+        res.status(500).json({ error: "AI returned an incomplete lesson. Please try again.", code: "VALIDATION_ERROR" });
       } else {
-        res.status(500).json({ error: "Failed to generate lesson. Please try again." });
+        res.status(500).json({ error: msg });
       }
     }
   });
@@ -484,6 +531,13 @@ async function recalculateRank(
     );
 
     await batch.commit();
+
+    // Cache India top-50 leaderboard after rank update
+    if (scopeKey === "india") {
+      const top50 = snap.docs.slice(0, 50).map((d) => ({ id: d.id, ...d.data() }));
+      const cacheKey = RK.leaderboard("india", filters.class ?? "", filters.month ?? "");
+      getRedis().set(cacheKey, top50, { ex: TTL.leaderboard }).catch(() => {});
+    }
 
     console.log(
       `✅ ${scopeKey} ranks updated for ${snap.size} students ` +

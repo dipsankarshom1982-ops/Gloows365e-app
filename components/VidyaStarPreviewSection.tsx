@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { db } from "@/lib/firebase";
 import { LinearGradient } from "expo-linear-gradient";
@@ -55,6 +56,7 @@ function Pulse({ w, h, r = 10 }: { w: number; h: number; r?: number }) {
 }
 
 function ContestCard({ item }: { item: ContestItem }) {
+  const { t } = useAppTranslation();
   const status = getContestStatus(item);
   const cfg    = STATUS_CFG[status];
 
@@ -96,7 +98,7 @@ function ContestCard({ item }: { item: ContestItem }) {
           activeOpacity={0.8}
         >
           <Text style={S.participateBtnText}>
-            {status === "ended" ? "View Results →" : "Participate Now →"}
+            {status === "ended" ? t("viewResults") : t("participateNow")}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -106,6 +108,7 @@ function ContestCard({ item }: { item: ContestItem }) {
 
 export default function VidyaStarPreviewSection() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [contests, setContests] = useState<ContestItem[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(false);
@@ -135,29 +138,29 @@ export default function VidyaStarPreviewSection() {
     <View style={S.section}>
       <View style={S.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[S.sectionTitle, { color: colors.text }]}>🌟 VidyaStar Contest</Text>
+          <Text style={[S.sectionTitle, { color: colors.text }]}>{t("vidyaStarPreviewTitle")}</Text>
           <Text style={[S.sectionSub, { color: colors.textSecondary }]}>
-            Showcase your talent and win prizes
+            {t("vidyaStarPreviewSub")}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.push("/(drawer)/(tabs)/vidyastar")}>
-          <Text style={S.viewAll}>View All →</Text>
+          <Text style={S.viewAll}>{t("viewAll")}</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={{ flexDirection: "row", paddingLeft: 16 }}>
-          {[0, 1, 2].map((i) => <Pulse key={i} w={170} h={240} r={16} />)}
+          {[0, 1, 2].map((i) => <Pulse key={i} w={180} h={230} r={16} />)}
         </View>
       ) : error ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>⚠️</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>Could not load contests.</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("couldNotLoadContests")}</Text>
         </View>
       ) : contests.length === 0 ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>🌟</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>Exciting contests coming soon!</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("contestsComingSoon")}</Text>
         </View>
       ) : (
         <FlatList
@@ -180,8 +183,8 @@ const S = StyleSheet.create({
   sectionSub:   { fontSize: 12, fontWeight: "500" },
   viewAll:      { fontSize: 13, fontWeight: "700", color: "#7c3aed", marginTop: 4 },
 
-  card:     { marginRight: 12, borderRadius: 16, overflow: "hidden", elevation: 6, shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  cardGrad: { width: 170, padding: 14, minHeight: 240 },
+  card:     { marginRight: 12, width: 180, height: 230, borderRadius: 16, overflow: "hidden", elevation: 6, shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  cardGrad: { flex: 1, padding: 14, justifyContent: "space-between" },
 
   statusBadge: { alignSelf: "flex-end", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginBottom: 8 },
   statusText:  { color: "#fff", fontSize: 10, fontWeight: "800" },

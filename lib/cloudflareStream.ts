@@ -13,10 +13,7 @@ import {
   cacheDirectory,
   copyAsync,
   deleteAsync,
-  FileSystemSessionType,
-  FileSystemUploadType,
   getInfoAsync,
-  uploadAsync,
 } from "expo-file-system/legacy";
 
 const CF_CUSTOMER_CODE = "cif09s9962jkfc36";
@@ -52,10 +49,10 @@ export async function getStreamUploadUrl(title?: string): Promise<{
 }
 
 // ── Upload video through worker proxy ─────────────────────────
-// Sends raw video to worker /upload → worker uploads to CF Stream API.
-// Returns { uid, playbackUrl, thumbnailUrl } from worker response.
+// Uses XMLHttpRequest so upload.onprogress fires real byte-level progress.
+// uploadAsync (expo-file-system) only resolves at 100% with no intermediate events.
 export async function uploadToStream(
-  uploadURL:   string,  // = WORKER_URL/upload
+  uploadURL:   string,
   localUri:    string,
   onProgress?: (pct: number) => void,
   title?:      string
@@ -63,7 +60,7 @@ export async function uploadToStream(
   console.log("[CF-2] localUri:", localUri.slice(0, 60));
   console.log("[CF-2] Uploading via worker proxy:", uploadURL);
 
-  // Ensure stable file:// URI
+  // Ensure stable file:// URI (content:// URIs crash XHR on Android)
   let uploadUri  = localUri;
   let cacheUri: string | null = null;
   if (localUri.startsWith("content://")) {
@@ -77,40 +74,58 @@ export async function uploadToStream(
     const info = await getInfoAsync(uploadUri);
     if (!info.exists) throw new Error("Video file not found: " + uploadUri);
 
-    console.log("[CF-2] Sending to worker...");
+    console.log("[CF-2] Sending to worker via XHR...");
 
-    // Send raw binary to worker — worker builds multipart and forwards to CF
-    const result = await uploadAsync(uploadURL, uploadUri, {
-      httpMethod:  "POST",
-      uploadType:  FileSystemUploadType.BINARY_CONTENT,
-      mimeType:    "video/mp4",
-      headers: {
-        "Content-Type":   "video/mp4",
-        "X-Video-Title":  title ?? "Vidya Reel",
-      },
-      sessionType: FileSystemSessionType.BACKGROUND,
-    });
+    const result = await new Promise<{ uid: string; playbackUrl: string; thumbnailUrl: string }>(
+      (resolve, reject) => {
+        const xhr = new XMLHttpRequest();
 
-    console.log("[CF-2] Worker response status:", result.status);
-    console.log("[CF-2] Worker response:", result.body?.slice(0, 300));
+        // Real byte-level progress during upload
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable && onProgress) {
+            // Cap at 95% — last 5% reserved for server processing + response
+            onProgress(Math.min(Math.round((event.loaded / event.total) * 95), 95));
+          }
+        };
 
-    if (result.status < 200 || result.status >= 300) {
-      throw new Error(
-        `Worker upload failed — HTTP ${result.status}: ${result.body?.slice(0, 300)}`
-      );
-    }
+        xhr.onload = () => {
+          console.log("[CF-2] Worker response status:", xhr.status);
+          console.log("[CF-2] Worker response:", xhr.responseText?.slice(0, 300));
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              if (!data.uid) {
+                reject(new Error(`Worker response missing uid: ${xhr.responseText.slice(0, 200)}`));
+                return;
+              }
+              onProgress?.(100);
+              console.log("[CF-2] ✅ Upload complete. uid:", data.uid);
+              resolve({
+                uid:          data.uid,
+                playbackUrl:  data.playbackUrl  ?? streamPlaybackUrl(data.uid),
+                thumbnailUrl: data.thumbnailUrl ?? streamThumbnailUrl(data.uid),
+              });
+            } catch (e) {
+              reject(new Error(`Failed to parse worker response: ${xhr.responseText.slice(0, 200)}`));
+            }
+          } else {
+            reject(new Error(`Worker upload failed — HTTP ${xhr.status}: ${xhr.responseText?.slice(0, 300)}`));
+          }
+        };
 
-    const data = JSON.parse(result.body ?? "{}");
-    if (!data.uid) throw new Error(`Worker response missing uid: ${result.body?.slice(0, 200)}`);
+        xhr.onerror   = () => reject(new Error("Network error during upload"));
+        xhr.ontimeout = () => reject(new Error("Upload timed out"));
 
-    onProgress?.(100);
-    console.log("[CF-2] ✅ Upload complete. uid:", data.uid);
+        xhr.open("POST", uploadURL);
+        xhr.setRequestHeader("Content-Type",  "video/mp4");
+        xhr.setRequestHeader("X-Video-Title", title ?? "Vidya Reel");
 
-    return {
-      uid:          data.uid,
-      playbackUrl:  data.playbackUrl  ?? streamPlaybackUrl(data.uid),
-      thumbnailUrl: data.thumbnailUrl ?? streamThumbnailUrl(data.uid),
-    };
+        // React Native XHR reads file:// URI natively and streams raw bytes
+        xhr.send({ uri: uploadUri, type: "video/mp4", name: "upload.mp4" } as any);
+      }
+    );
+
+    return result;
   } finally {
     if (cacheUri) deleteAsync(cacheUri, { idempotent: true }).catch(() => {});
   }

@@ -101,6 +101,88 @@ export type TranslationSet = {
   startsSoon: string;
   all: string;
   upcoming: string;
+  // ── Home screen ────────────────────────────────────────────
+  aiGuruSubtitle: string;
+  askAnything: string;
+  instantAnswers: string;
+  studyHelp: string;
+  startChatting: string;
+  // ── AI Guru ────────────────────────────────────────────────
+  premiumFeature: string;
+  premiumUnlockMsg: string;
+  maybeLater: string;
+  upgrade: string;
+  aiClassroom: string;
+  freeLessonsLeft: string;
+  unlimitedAccess: string;
+  lessonSetup: string;
+  continueBtn: string;
+  fillRequiredFields: string;
+  fillRequiredFieldsDesc: string;
+  // ── VidyaGuru ──────────────────────────────────────────────
+  vidyaGuruAI: string;
+  personalAiTeacher: string;
+  readyToHelp: string;
+  thinking: string;
+  speaking: string;
+  listening: string;
+  paywallTitle: string;
+  paywallBody: string;
+  upgradeToPremium: string;
+  // ── Seekho ─────────────────────────────────────────────────
+  seekhoSignIn: string;
+  curriculumAligned: string;
+  subjects: string;
+  continueLearning: string;
+  resumeLearning: string;
+  revisionDue: string;
+  revisionReady: string;
+  unlockCurriculum: string;
+  // ── Create Reels ───────────────────────────────────────────
+  pendingReview: string;
+  inReview: string;
+  approved: string;
+  rejected: string;
+  limitReached: string;
+  limitReachedDesc: string;
+  // ── Home feed sections ────────────────────────────────────────
+  seekhoPreviewTitle?: string;
+  seekhoPreviewSub?: string;
+  explore?: string;
+  vidyaStarPreviewTitle?: string;
+  vidyaStarPreviewSub?: string;
+  couldNotLoadContests?: string;
+  contestsComingSoon?: string;
+  viewResults?: string;
+  participateNow?: string;
+  skillBattlePreviewTitle?: string;
+  skillBattlePreviewSub?: string;
+  couldNotLoadBattles?: string;
+  battlesComingSoon?: string;
+  poweredBy?: string;
+  joinedCount?: string;
+  knowledgeHubTitle?: string;
+  knowledgeHubSub?: string;
+  watchMore?: string;
+  couldNotLoadVideos?: string;
+  moreVideosSoon?: string;
+  noVideosInCat?: string;
+  shortLearningTitle?: string;
+  noLearningVideos?: string;
+  skillBattleShortsTitle?: string;
+  noSkillBattleVideos?: string;
+  battleBadge?: string;
+  shikshaStarPreviewTitle?: string;
+  shikshaStarPreviewSub?: string;
+  viewStars?: string;
+  couldNotLoadStars?: string;
+  shikshaStarEmpty?: string;
+  becomeShikshaStar?: string;
+  discoverPreviewTitle?: string;
+  discoverPreviewSub?: string;
+  discoverTitle?: string;
+  discoverSubtitle?: string;
+  discoverCta?: string;
 };
 
 type Translations = Record<string, TranslationSet>;
@@ -149,6 +231,28 @@ const translations: Translations = {
     prizePool: "Prize Pool", endingSoon: "Ending Soon", viewResult: "View Result",
     joinNow: "Join Now", participate: "Participate", reserveSpot: "Reserve Spot",
     startsSoon: "Starts Soon", all: "All", upcoming: "Upcoming",
+    aiGuruSubtitle: "Your personal learning assistant", askAnything: "Ask Anything", instantAnswers: "Instant Answers", studyHelp: "Study Help", startChatting: "Start Chatting →",
+    premiumFeature: "Premium Feature", premiumUnlockMsg: "Upgrade to AI Guru Premium to unlock this feature.", maybeLater: "Maybe Later", upgrade: "Upgrade",
+    aiClassroom: "Your personal AI classroom\npowered by Gemini", freeLessonsLeft: "free lessons left today", unlimitedAccess: "Unlimited Premium Access Active",
+    lessonSetup: "Lesson Setup", continueBtn: "Continue →", fillRequiredFields: "Fill Required Fields", fillRequiredFieldsDesc: "Please select a subject and enter chapter name.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "Your personal AI teacher", readyToHelp: "Ready to help!", thinking: "Thinking...", speaking: "Speaking...", listening: "Listening...",
+    paywallTitle: "Continue with VidyaGuru?", paywallBody: "You've used your free question for today. Upgrade to Premium for unlimited conversations!", upgradeToPremium: "Upgrade to Premium",
+    seekhoSignIn: "Sign in to access Seekho", curriculumAligned: "Curriculum-aligned learning", subjects: "Subjects", continueLearning: "Continue Learning", resumeLearning: "Resume where you left off",
+    revisionDue: "Revision Due!", revisionReady: "concepts ready for review", unlockCurriculum: "Unlock Full Curriculum",
+    pendingReview: "Pending Review", inReview: "In Review", approved: "Approved", rejected: "Rejected", limitReached: "Limit Reached", limitReachedDesc: "You've reached the upload limit for this battle.",
+    seekhoPreviewTitle: "📖 Seekho", seekhoPreviewSub: "Learn subjects, skills and creative activities", explore: "Explore →",
+    vidyaStarPreviewTitle: "🌟 VidyaStar Contest", vidyaStarPreviewSub: "Showcase your talent and win prizes",
+    couldNotLoadContests: "Could not load contests.", contestsComingSoon: "Exciting contests coming soon!", viewResults: "View Results →", participateNow: "Participate Now →",
+    skillBattlePreviewTitle: "⚔️ SkillBattle Challenge", skillBattlePreviewSub: "Compete, rank higher, and win exciting prizes",
+    couldNotLoadBattles: "Could not load battles.", battlesComingSoon: "New battles coming soon!", poweredBy: "Powered by {{name}}", joinedCount: "{{count}} joined",
+    knowledgeHubTitle: "🌐 Knowledge Hub", knowledgeHubSub: "Videos for learning, growth and daily life", watchMore: "Watch More →",
+    couldNotLoadVideos: "Could not load videos.", moreVideosSoon: "More videos coming soon!", noVideosInCat: "No \"{{cat}}\" videos yet.",
+    shortLearningTitle: "Short Learning", noLearningVideos: "No learning videos yet",
+    skillBattleShortsTitle: "🔥 Skill Battle Shorts", noSkillBattleVideos: "No skill battle videos yet", battleBadge: "⚡ Battle",
+    shikshaStarPreviewTitle: "⭐ ShikshaStar", shikshaStarPreviewSub: "Celebrating talented students of Vidya", viewStars: "View Stars →",
+    couldNotLoadStars: "Could not load stars.", shikshaStarEmpty: "Your talent can be featured here soon!", becomeShikshaStar: "Become a ShikshaStar",
+    discoverPreviewTitle: "🧭 Discover AI", discoverPreviewSub: "AI-powered career, college & scholarship discovery",
+    discoverTitle: "Vidya Discover AI", discoverSubtitle: "Find your perfect career, college & scholarships", discoverCta: "Explore Your Future →",
   },
 
   // ─────────────────────────── Hindi ────────────────────────────────
@@ -194,6 +298,28 @@ const translations: Translations = {
     prizePool: "पुरस्कार राशि", endingSoon: "जल्द समाप्त होगा", viewResult: "परिणाम देखें",
     joinNow: "अभी जुड़ें", participate: "भाग लें", reserveSpot: "सीट बुक करें",
     startsSoon: "जल्द शुरू होगा", all: "सभी", upcoming: "आगामी",
+    aiGuruSubtitle: "आपका व्यक्तिगत शिक्षण सहायक", askAnything: "कुछ भी पूछें", instantAnswers: "तत्काल उत्तर", studyHelp: "पढ़ाई में मदद", startChatting: "बात शुरू करें →",
+    premiumFeature: "प्रीमियम फीचर", premiumUnlockMsg: "इस फीचर को अनलॉक करने के लिए AI Guru Premium अपग्रेड करें।", maybeLater: "बाद में", upgrade: "अपग्रेड करें",
+    aiClassroom: "आपकी व्यक्तिगत AI क्लासरूम\nGemini द्वारा संचालित", freeLessonsLeft: "आज के मुफ़्त पाठ शेष", unlimitedAccess: "असीमित प्रीमियम एक्सेस सक्रिय",
+    lessonSetup: "पाठ सेटअप", continueBtn: "जारी रखें →", fillRequiredFields: "आवश्यक फ़ील्ड भरें", fillRequiredFieldsDesc: "कृपया विषय चुनें और अध्याय का नाम दर्ज करें।",
+    vidyaGuruAI: "विद्यागुरु AI", personalAiTeacher: "आपके व्यक्तिगत AI शिक्षक", readyToHelp: "मदद के लिए तैयार!", thinking: "सोच रहा हूँ...", speaking: "बोल रहा हूँ...", listening: "सुन रहा हूँ...",
+    paywallTitle: "विद्यागुरु के साथ जारी रखें?", paywallBody: "आज का मुफ़्त प्रश्न समाप्त। असीमित बातचीत के लिए प्रीमियम अपग्रेड करें!", upgradeToPremium: "प्रीमियम में अपग्रेड करें",
+    seekhoSignIn: "Seekho एक्सेस करने के लिए लॉगिन करें", curriculumAligned: "पाठ्यक्रम-आधारित शिक्षण", subjects: "विषय", continueLearning: "सीखना जारी रखें", resumeLearning: "जहाँ छोड़ा था वहाँ से शुरू करें",
+    revisionDue: "रिवीजन करें!", revisionReady: "अवधारणाएं समीक्षा के लिए तैयार", unlockCurriculum: "पूरा पाठ्यक्रम अनलॉक करें",
+    pendingReview: "समीक्षा प्रतीक्षित", inReview: "जांच में", approved: "स्वीकृत", rejected: "अस्वीकृत", limitReached: "सीमा पहुंच गई", limitReachedDesc: "आपने इस बैटल की अपलोड सीमा पार कर ली है।",
+    seekhoPreviewTitle: "📖 सीखो", seekhoPreviewSub: "विषय, कौशल और रचनात्मक गतिविधियाँ सीखें", explore: "एक्सप्लोर करें →",
+    vidyaStarPreviewTitle: "🌟 विद्यास्टार प्रतियोगिता", vidyaStarPreviewSub: "अपनी प्रतिभा दिखाएं और पुरस्कार जीतें",
+    couldNotLoadContests: "प्रतियोगिताएं लोड नहीं हो सकीं।", contestsComingSoon: "रोमांचक प्रतियोगिताएं जल्द आ रही हैं!", viewResults: "परिणाम देखें →", participateNow: "अभी भाग लें →",
+    skillBattlePreviewTitle: "⚔️ स्किलबैटल चैलेंज", skillBattlePreviewSub: "प्रतिस्पर्धा करें, रैंक बढ़ाएं और पुरस्कार जीतें",
+    couldNotLoadBattles: "बैटल लोड नहीं हो सके।", battlesComingSoon: "नई बैटल जल्द आ रही हैं!", poweredBy: "{{name}} द्वारा संचालित", joinedCount: "{{count}} शामिल हुए",
+    knowledgeHubTitle: "🌐 नॉलेज हब", knowledgeHubSub: "सीखने, विकास और दैनिक जीवन के लिए वीडियो", watchMore: "और देखें →",
+    couldNotLoadVideos: "वीडियो लोड नहीं हो सके।", moreVideosSoon: "और वीडियो जल्द आएंगे!", noVideosInCat: "\"{{cat}}\" में अभी कोई वीडियो नहीं।",
+    shortLearningTitle: "शॉर्ट लर्निंग", noLearningVideos: "अभी कोई लर्निंग वीडियो नहीं",
+    skillBattleShortsTitle: "🔥 स्किल बैटल शॉर्ट्स", noSkillBattleVideos: "अभी कोई स्किल बैटल वीडियो नहीं", battleBadge: "⚡ बैटल",
+    shikshaStarPreviewTitle: "⭐ शिक्षास्टार", shikshaStarPreviewSub: "विद्या के प्रतिभाशाली छात्रों का जश्न", viewStars: "स्टार देखें →",
+    couldNotLoadStars: "स्टार लोड नहीं हो सके।", shikshaStarEmpty: "आपकी प्रतिभा यहाँ जल्द दिखाई जा सकती है!", becomeShikshaStar: "शिक्षास्टार बनें",
+    discoverPreviewTitle: "🧭 डिस्कवर AI", discoverPreviewSub: "AI-संचालित करियर, कॉलेज और छात्रवृत्ति खोज",
+    discoverTitle: "विद्या डिस्कवर AI", discoverSubtitle: "अपना सही करियर, कॉलेज और छात्रवृत्ति खोजें", discoverCta: "अपना भविष्य एक्सप्लोर करें →",
   },
 
   // ─────────────────────────── Bengali ──────────────────────────────
@@ -239,6 +365,28 @@ const translations: Translations = {
     prizePool: "পুরস্কার পুল", endingSoon: "শীঘ্রই শেষ হবে", viewResult: "ফলাফল দেখুন",
     joinNow: "এখনই যোগ দিন", participate: "অংশগ্রহণ করুন", reserveSpot: "জায়গা বুক করুন",
     startsSoon: "শীঘ্রই শুরু হবে", all: "সব", upcoming: "আসন্ন",
+    aiGuruSubtitle: "আপনার ব্যক্তিগত শিক্ষা সহায়ক", askAnything: "যেকোনো কিছু জিজ্ঞেস করুন", instantAnswers: "তাৎক্ষণিক উত্তর", studyHelp: "পড়াশুনায় সাহায্য", startChatting: "চ্যাট শুরু করুন →",
+    premiumFeature: "প্রিমিয়াম ফিচার", premiumUnlockMsg: "এই ফিচার আনলক করতে AI Guru Premium আপগ্রেড করুন।", maybeLater: "পরে", upgrade: "আপগ্রেড",
+    aiClassroom: "আপনার ব্যক্তিগত AI ক্লাসরুম\nGemini দ্বারা চালিত", freeLessonsLeft: "আজকের বিনামূল্যে পাঠ বাকি", unlimitedAccess: "সীমাহীন প্রিমিয়াম অ্যাক্সেস সক্রিয়",
+    lessonSetup: "পাঠ সেটআপ", continueBtn: "চালিয়ে যান →", fillRequiredFields: "প্রয়োজনীয় তথ্য পূরণ করুন", fillRequiredFieldsDesc: "অনুগ্রহ করে বিষয় নির্বাচন করুন এবং অধ্যায়ের নাম লিখুন।",
+    vidyaGuruAI: "বিদ্যাগুরু AI", personalAiTeacher: "আপনার ব্যক্তিগত AI শিক্ষক", readyToHelp: "সাহায্যের জন্য প্রস্তুত!", thinking: "ভাবছি...", speaking: "বলছি...", listening: "শুনছি...",
+    paywallTitle: "বিদ্যাগুরুর সাথে চালিয়ে যান?", paywallBody: "আজকের বিনামূল্যে প্রশ্ন শেষ। সীমাহীন কথোপকথনের জন্য প্রিমিয়াম আপগ্রেড করুন!", upgradeToPremium: "প্রিমিয়ামে আপগ্রেড করুন",
+    seekhoSignIn: "Seekho অ্যাক্সেস করতে লগইন করুন", curriculumAligned: "পাঠ্যক্রম-ভিত্তিক শিক্ষা", subjects: "বিষয়সমূহ", continueLearning: "শেখা চালিয়ে যান", resumeLearning: "যেখানে ছেড়েছিলেন সেখান থেকে শুরু করুন",
+    revisionDue: "রিভিশন করুন!", revisionReady: "ধারণাসমূহ পুনরালোচনার জন্য প্রস্তুত", unlockCurriculum: "সম্পূর্ণ পাঠ্যক্রম আনলক করুন",
+    pendingReview: "পর্যালোচনা বাকি", inReview: "পর্যালোচনায়", approved: "অনুমোদিত", rejected: "প্রত্যাখ্যাত", limitReached: "সীমা পৌঁছেছে", limitReachedDesc: "আপনি এই ব্যাটেলের আপলোড সীমায় পৌঁছে গেছেন।",
+    seekhoPreviewTitle: "📖 শেখো", seekhoPreviewSub: "বিষয়, দক্ষতা ও সৃজনশীল কার্যক্রম শিখুন", explore: "এক্সপ্লোর করুন →",
+    vidyaStarPreviewTitle: "🌟 বিদ্যাস্টার প্রতিযোগিতা", vidyaStarPreviewSub: "আপনার প্রতিভা দেখান এবং পুরস্কার জিতুন",
+    couldNotLoadContests: "প্রতিযোগিতা লোড করা যায়নি।", contestsComingSoon: "রোমাঞ্চকর প্রতিযোগিতা শীঘ্রই আসছে!", viewResults: "ফলাফল দেখুন →", participateNow: "এখনই অংশগ্রহণ করুন →",
+    skillBattlePreviewTitle: "⚔️ স্কিলব্যাটেল চ্যালেঞ্জ", skillBattlePreviewSub: "প্রতিযোগিতা করুন, র‌্যাংক বাড়ান এবং পুরস্কার জিতুন",
+    couldNotLoadBattles: "ব্যাটেল লোড করা যায়নি।", battlesComingSoon: "নতুন ব্যাটেল শীঘ্রই আসছে!", poweredBy: "{{name}} দ্বারা চালিত", joinedCount: "{{count}} জন যোগ দিয়েছেন",
+    knowledgeHubTitle: "🌐 নলেজ হাব", knowledgeHubSub: "শেখার, বিকাশের ও দৈনন্দিন জীবনের ভিডিও", watchMore: "আরও দেখুন →",
+    couldNotLoadVideos: "ভিডিও লোড করা যায়নি।", moreVideosSoon: "আরও ভিডিও শীঘ্রই আসছে!", noVideosInCat: "\"{{cat}}\" এর কোনো ভিডিও নেই এখনো।",
+    shortLearningTitle: "শর্ট লার্নিং", noLearningVideos: "এখনো কোনো লার্নিং ভিডিও নেই",
+    skillBattleShortsTitle: "🔥 স্কিল ব্যাটেল শর্টস", noSkillBattleVideos: "এখনো কোনো স্কিল ব্যাটেল ভিডিও নেই", battleBadge: "⚡ ব্যাটেল",
+    shikshaStarPreviewTitle: "⭐ শিক্ষাস্টার", shikshaStarPreviewSub: "বিদ্যার প্রতিভাবান শিক্ষার্থীদের উদযাপন", viewStars: "স্টার দেখুন →",
+    couldNotLoadStars: "স্টার লোড করা যায়নি।", shikshaStarEmpty: "আপনার প্রতিভা এখানে শীঘ্রই প্রদর্শিত হতে পারে!", becomeShikshaStar: "শিক্ষাস্টার হন",
+    discoverPreviewTitle: "🧭 ডিসকভার AI", discoverPreviewSub: "AI-চালিত ক্যারিয়ার, কলেজ ও বৃত্তি আবিষ্কার",
+    discoverTitle: "বিদ্যা ডিসকভার AI", discoverSubtitle: "আপনার সেরা ক্যারিয়ার, কলেজ ও বৃত্তি খুঁজুন", discoverCta: "আপনার ভবিষ্যৎ এক্সপ্লোর করুন →",
   },
 
   // ─────────────────────────── Tamil ────────────────────────────────
@@ -284,6 +432,28 @@ const translations: Translations = {
     prizePool: "பரிசு தொகை", endingSoon: "விரைவில் முடியும்", viewResult: "முடிவை பார்",
     joinNow: "இப்போது சேர்", participate: "பங்கேற்கவும்", reserveSpot: "இடம் முதல்",
     startsSoon: "விரைவில் தொடங்கும்", all: "அனைத்தும்", upcoming: "வரவிருக்கும்",
+    aiGuruSubtitle: "உங்கள் தனிப்பட்ட கற்றல் உதவியாளர்", askAnything: "எதையும் கேளுங்கள்", instantAnswers: "உடனடி பதில்கள்", studyHelp: "படிப்பு உதவி", startChatting: "பேசத் தொடங்கு →",
+    premiumFeature: "பிரீமியம் அம்சம்", premiumUnlockMsg: "இந்த அம்சத்தை திறக்க AI Guru Premium க்கு மேம்படுத்துங்கள்.", maybeLater: "பிறகு பார்க்கலாம்", upgrade: "மேம்படுத்து",
+    aiClassroom: "உங்கள் தனிப்பட்ட AI வகுப்பறை\nGemini ஆல் இயக்கப்படுகிறது", freeLessonsLeft: "இன்று இலவச பாடங்கள் மீதம்", unlimitedAccess: "வரம்பற்ற பிரீமியம் அணுகல் செயலில்",
+    lessonSetup: "பாட அமைப்பு", continueBtn: "தொடரவும் →", fillRequiredFields: "தேவையான தகவல்களை நிரப்பவும்", fillRequiredFieldsDesc: "பாடத்தை தேர்வு செய்து அத்தியாயம் பெயர் உள்ளிடவும்.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "உங்கள் தனிப்பட்ட AI ஆசிரியர்", readyToHelp: "உதவ தயாராக இருக்கிறேன்!", thinking: "யோசிக்கிறேன்...", speaking: "பேசுகிறேன்...", listening: "கேட்கிறேன்...",
+    paywallTitle: "VidyaGuru உடன் தொடரவும்?", paywallBody: "இன்றைய இலவச கேள்வி முடிந்தது. வரம்பற்ற உரையாடலுக்கு பிரீமியம் மேம்படுத்துங்கள்!", upgradeToPremium: "பிரீமியத்திற்கு மேம்படுத்து",
+    seekhoSignIn: "Seekho அணுக உள்நுழையவும்", curriculumAligned: "பாடத்திட்டம் சார்ந்த கற்றல்", subjects: "பாடங்கள்", continueLearning: "கற்றலை தொடரவும்", resumeLearning: "நிறுத்திய இடத்திலிருந்து தொடர்",
+    revisionDue: "மீட்டுரைவு தேவை!", revisionReady: "கருத்துகள் மதிப்பாய்விற்கு தயார்", unlockCurriculum: "முழு பாடத்திட்டத்தை திறக்கவும்",
+    pendingReview: "மதிப்பாய்வு நிலுவையில்", inReview: "மதிப்பாய்வில்", approved: "அனுமதிக்கப்பட்டது", rejected: "நிராகரிக்கப்பட்டது", limitReached: "வரம்பை அடைந்தது", limitReachedDesc: "இந்த போரில் உங்கள் பதிவேற்ற வரம்பை அடைந்தீர்கள்.",
+    seekhoPreviewTitle: "📖 சீக்கோ", seekhoPreviewSub: "பாடங்கள், திறன்கள் மற்றும் படைப்பு செயல்கள் கற்கவும்", explore: "ஆராய்க →",
+    vidyaStarPreviewTitle: "🌟 விதியாஸ்டார் போட்டி", vidyaStarPreviewSub: "உங்கள் திறமையை காட்டுங்கள் பரிசு வெல்லுங்கள்",
+    couldNotLoadContests: "போட்டிகளை ஏற்ற முடியவில்லை.", contestsComingSoon: "உற்சாகமான போட்டிகள் விரைவில்!", viewResults: "முடிவுகளை பார் →", participateNow: "இப்போது பங்கேற்கவும் →",
+    skillBattlePreviewTitle: "⚔️ திறன் சவால்", skillBattlePreviewSub: "போட்டியிடுங்கள், தரவரிசை அதிகரிக்கவும், பரிசுகள் வெல்லுங்கள்",
+    couldNotLoadBattles: "போர்களை ஏற்ற முடியவில்லை.", battlesComingSoon: "புதிய போர்கள் விரைவில்!", poweredBy: "{{name}} மூலம்", joinedCount: "{{count}} சேர்ந்தனர்",
+    knowledgeHubTitle: "🌐 அறிவு மையம்", knowledgeHubSub: "கற்றல், வளர்ச்சி மற்றும் அன்றாட வாழ்க்கைக்கான வீடியோக்கள்", watchMore: "மேலும் பார் →",
+    couldNotLoadVideos: "வீடியோக்களை ஏற்ற முடியவில்லை.", moreVideosSoon: "மேலும் வீடியோக்கள் விரைவில்!", noVideosInCat: "\"{{cat}}\" வீடியோக்கள் இல்லை இன்னும்.",
+    shortLearningTitle: "குறுகிய கற்றல்", noLearningVideos: "இன்னும் கற்றல் வீடியோக்கள் இல்லை",
+    skillBattleShortsTitle: "🔥 திறன் போர் ஷார்ட்ஸ்", noSkillBattleVideos: "இன்னும் திறன் போர் வீடியோக்கள் இல்லை", battleBadge: "⚡ போர்",
+    shikshaStarPreviewTitle: "⭐ சிக்ஷாஸ்டார்", shikshaStarPreviewSub: "விதியாவின் திறமையான மாணவர்களை கொண்டாடுகிறோம்", viewStars: "நட்சத்திரங்களை பார் →",
+    couldNotLoadStars: "நட்சத்திரங்களை ஏற்ற முடியவில்லை.", shikshaStarEmpty: "உங்கள் திறமை விரைவில் இங்கே சேர்க்கப்படலாம்!", becomeShikshaStar: "சிக்ஷாஸ்டார் ஆகுங்கள்",
+    discoverPreviewTitle: "🧭 டிஸ்கவர் AI", discoverPreviewSub: "AI-ஆல் இயக்கப்படும் தொழில், கல்லூரி மற்றும் உதவித்தொகை கண்டுபிடிப்பு",
+    discoverTitle: "விதியா டிஸ்கவர் AI", discoverSubtitle: "உங்கள் சிறந்த தொழில், கல்லூரி மற்றும் உதவித்தொகை கண்டுபிடிக்கவும்", discoverCta: "உங்கள் எதிர்காலத்தை ஆராயுங்கள் →",
   },
 
   // ─────────────────────────── Telugu ───────────────────────────────
@@ -329,6 +499,28 @@ const translations: Translations = {
     prizePool: "బహుమతి నిధి", endingSoon: "త్వరలో ముగుస్తుంది", viewResult: "ఫలితం చూడండి",
     joinNow: "ఇప్పుడే చేరండి", participate: "పాల్గొనండి", reserveSpot: "సీటు బుక్ చేయండి",
     startsSoon: "త్వరలో ప్రారంభమవుతుంది", all: "అన్నీ", upcoming: "రాబోయే",
+    aiGuruSubtitle: "మీ వ్యక్తిగత అభ్యాస సహాయకుడు", askAnything: "ఏదైనా అడగండి", instantAnswers: "తక్షణ సమాధానాలు", studyHelp: "చదువులో సహాయం", startChatting: "చాటింగ్ ప్రారంభించండి →",
+    premiumFeature: "ప్రీమియం ఫీచర్", premiumUnlockMsg: "ఈ ఫీచర్ అన్‌లాక్ చేయడానికి AI Guru Premium కి అప్‌గ్రేడ్ చేయండి.", maybeLater: "తర్వాత", upgrade: "అప్‌గ్రేడ్",
+    aiClassroom: "మీ వ్యక్తిగత AI తరగతిగది\nGemini ద్వారా నడుపబడింది", freeLessonsLeft: "ఈరోజు ఉచిత పాఠాలు మిగిలాయి", unlimitedAccess: "అపరిమిత ప్రీమియం యాక్సెస్ సక్రియంగా ఉంది",
+    lessonSetup: "పాఠం సెటప్", continueBtn: "కొనసాగించండి →", fillRequiredFields: "అవసరమైన ఫీల్డ్‌లు పూరించండి", fillRequiredFieldsDesc: "దయచేసి సబ్జెక్ట్ ఎంచుకుని అధ్యాయం పేరు నమోదు చేయండి.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "మీ వ్యక్తిగత AI ఉపాధ్యాయుడు", readyToHelp: "సహాయానికి సిద్ధంగా ఉన్నాను!", thinking: "ఆలోచిస్తున్నాను...", speaking: "మాట్లాడుతున్నాను...", listening: "వింటున్నాను...",
+    paywallTitle: "VidyaGuru తో కొనసాగించాలా?", paywallBody: "ఈరోజు ఉచిత ప్రశ్న ఉపయోగించారు. అపరిమిత సంభాషణల కోసం ప్రీమియం కి అప్‌గ్రేడ్ చేయండి!", upgradeToPremium: "ప్రీమియం కి అప్‌గ్రేడ్ చేయండి",
+    seekhoSignIn: "Seekho యాక్సెస్ చేయడానికి లాగిన్ అవ్వండి", curriculumAligned: "పాఠ్యప్రణాళిక-ఆధారిత అభ్యాసం", subjects: "విషయాలు", continueLearning: "నేర్చుకోవడం కొనసాగించండి", resumeLearning: "మీరు ఆగిన చోట నుండి కొనసాగించండి",
+    revisionDue: "సమీక్ష అవసరం!", revisionReady: "భావనలు సమీక్షకు సిద్ధంగా ఉన్నాయి", unlockCurriculum: "పూర్తి పాఠ్యప్రణాళికను అన్‌లాక్ చేయండి",
+    pendingReview: "సమీక్ష నిలబడ్డది", inReview: "సమీక్షలో", approved: "ఆమోదించబడింది", rejected: "తిరస్కరించబడింది", limitReached: "పరిమితి చేరుకుంది", limitReachedDesc: "ఈ బ్యాటిల్ కోసం అప్‌లోడ్ పరిమితిని చేరుకున్నారు.",
+    seekhoPreviewTitle: "📖 సీఖో", seekhoPreviewSub: "సబ్జెక్ట్‌లు, నైపుణ్యాలు మరియు సృజనాత్మక కార్యకలాపాలు నేర్చుకోండి", explore: "అన్వేషించండి →",
+    vidyaStarPreviewTitle: "🌟 విద్యాస్టార్ పోటీ", vidyaStarPreviewSub: "మీ ప్రతిభ చూపించి బహుమతులు గెలుచుకోండి",
+    couldNotLoadContests: "పోటీలు లోడ్ కాలేదు.", contestsComingSoon: "ఉత్తేజకరమైన పోటీలు త్వరలో!", viewResults: "ఫలితాలు చూడండి →", participateNow: "ఇప్పుడే పాల్గొనండి →",
+    skillBattlePreviewTitle: "⚔️ స్కిల్‌బ్యాటిల్ చాలెంజ్", skillBattlePreviewSub: "పోటీపడండి, ర్యాంక్ పెంచుకోండి మరియు బహుమతులు గెలుచుకోండి",
+    couldNotLoadBattles: "బ్యాటిల్‌లు లోడ్ కాలేదు.", battlesComingSoon: "కొత్త బ్యాటిల్‌లు త్వరలో!", poweredBy: "{{name}} ద్వారా", joinedCount: "{{count}} మంది చేరారు",
+    knowledgeHubTitle: "🌐 నాలెడ్జ్ హబ్", knowledgeHubSub: "నేర్చుకోవడానికి, వికాసానికి మరియు రోజువారీ జీవితానికి వీడియోలు", watchMore: "మరిన్ని చూడండి →",
+    couldNotLoadVideos: "వీడియోలు లోడ్ కాలేదు.", moreVideosSoon: "మరిన్ని వీడియోలు త్వరలో!", noVideosInCat: "\"{{cat}}\" వీడియోలు ఇంకా లేవు.",
+    shortLearningTitle: "షార్ట్ లర్నింగ్", noLearningVideos: "ఇంకా నేర్చుకునే వీడియోలు లేవు",
+    skillBattleShortsTitle: "🔥 స్కిల్ బ్యాటిల్ షార్ట్స్", noSkillBattleVideos: "ఇంకా స్కిల్ బ్యాటిల్ వీడియోలు లేవు", battleBadge: "⚡ బ్యాటిల్",
+    shikshaStarPreviewTitle: "⭐ శిక్షాస్టార్", shikshaStarPreviewSub: "విద్యా ప్రతిభావంతులైన విద్యార్థులను వేడుక చేసుకుంటున్నాం", viewStars: "స్టార్‌లను చూడండి →",
+    couldNotLoadStars: "స్టార్‌లు లోడ్ కాలేదు.", shikshaStarEmpty: "మీ ప్రతిభ త్వరలో ఇక్కడ ప్రదర్శించబడవచ్చు!", becomeShikshaStar: "శిక్షాస్టార్ అవ్వండి",
+    discoverPreviewTitle: "🧭 డిస్కవర్ AI", discoverPreviewSub: "AI-ఆధారిత కెరీర్, కళాశాల & స్కాలర్‌షిప్ ఆవిష్కరణ",
+    discoverTitle: "విద్యా డిస్కవర్ AI", discoverSubtitle: "మీ సరైన కెరీర్, కళాశాల & స్కాలర్‌షిప్ కనుగొనండి", discoverCta: "మీ భవిష్యత్తును అన్వేషించండి →",
   },
 
   // ─────────────────────────── Kannada ──────────────────────────────
@@ -374,6 +566,28 @@ const translations: Translations = {
     prizePool: "ಬಹುಮಾನ ನಿಧಿ", endingSoon: "ಶೀಘ್ರದಲ್ಲೇ ಮುಗಿಯಲಿದೆ", viewResult: "ಫಲಿತಾಂಶ ನೋಡಿ",
     joinNow: "ಈಗ ಸೇರಿ", participate: "ಭಾಗವಹಿಸಿ", reserveSpot: "ಸ್ಥಾನ ಕಾಯ್ದಿರಿಸಿ",
     startsSoon: "ಶೀಘ್ರದಲ್ಲೇ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ", all: "ಎಲ್ಲಾ", upcoming: "ಮುಂಬರುವ",
+    aiGuruSubtitle: "ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಕಲಿಕೆ ಸಹಾಯಕ", askAnything: "ಯಾವುದನ್ನಾದರೂ ಕೇಳಿ", instantAnswers: "ತಕ್ಷಣದ ಉತ್ತರಗಳು", studyHelp: "ಅಧ್ಯಯನ ಸಹಾಯ", startChatting: "ಚಾಟ್ ಪ್ರಾರಂಭಿಸಿ →",
+    premiumFeature: "ಪ್ರೀಮಿಯಂ ವೈಶಿಷ್ಟ್ಯ", premiumUnlockMsg: "ಈ ವೈಶಿಷ್ಟ್ಯ ಅನ್‌ಲಾಕ್ ಮಾಡಲು AI Guru Premium ಗೆ ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಿ.", maybeLater: "ನಂತರ", upgrade: "ಅಪ್‌ಗ್ರೇಡ್",
+    aiClassroom: "ನಿಮ್ಮ ವೈಯಕ್ತಿಕ AI ತರಗತಿ\nGemini ಮೂಲಕ ನಡೆಸಲ್ಪಡುತ್ತಿದೆ", freeLessonsLeft: "ಇಂದು ಉಚಿತ ಪಾಠಗಳು ಉಳಿದಿವೆ", unlimitedAccess: "ಅಮಿತ ಪ್ರೀಮಿಯಂ ಪ್ರವೇಶ ಸಕ್ರಿಯ",
+    lessonSetup: "ಪಾಠ ಸೆಟಪ್", continueBtn: "ಮುಂದುವರಿಸಿ →", fillRequiredFields: "ಅಗತ್ಯ ಮಾಹಿತಿ ತುಂಬಿ", fillRequiredFieldsDesc: "ದಯವಿಟ್ಟು ವಿಷಯ ಆಯ್ಕೆ ಮಾಡಿ ಮತ್ತು ಅಧ್ಯಾಯ ಹೆಸರು ನಮೂದಿಸಿ.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "ನಿಮ್ಮ ವೈಯಕ್ತಿಕ AI ಶಿಕ್ಷಕ", readyToHelp: "ಸಹಾಯ ಮಾಡಲು ಸಿದ್ಧ!", thinking: "ಯೋಚಿಸುತ್ತಿದ್ದೇನೆ...", speaking: "ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ...", listening: "ಕೇಳುತ್ತಿದ್ದೇನೆ...",
+    paywallTitle: "VidyaGuru ಜೊತೆ ಮುಂದುವರಿಯಬೇಕೆ?", paywallBody: "ಇಂದಿನ ಉಚಿತ ಪ್ರಶ್ನೆ ಬಳಸಿದ್ದೀರಿ. ಅಮಿತ ಸಂಭಾಷಣೆಗೆ ಪ್ರೀಮಿಯಂ ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಿ!", upgradeToPremium: "ಪ್ರೀಮಿಯಂ ಗೆ ಅಪ್‌ಗ್ರೇಡ್ ಮಾಡಿ",
+    seekhoSignIn: "Seekho ಪ್ರವೇಶಿಸಲು ಲಾಗಿನ್ ಮಾಡಿ", curriculumAligned: "ಪಠ್ಯಕ್ರಮ-ಆಧಾರಿತ ಕಲಿಕೆ", subjects: "ವಿಷಯಗಳು", continueLearning: "ಕಲಿಕೆ ಮುಂದುವರಿಸಿ", resumeLearning: "ನಿಲ್ಲಿಸಿದ ಕಡೆಯಿಂದ ಪ್ರಾರಂಭಿಸಿ",
+    revisionDue: "ಪುನರಾವರ್ತನೆ ಬೇಕು!", revisionReady: "ಪರಿಕಲ್ಪನೆಗಳು ಮರು ಪರಿಶೀಲನೆಗೆ ಸಿದ್ಧ", unlockCurriculum: "ಸಂಪೂರ್ಣ ಪಠ್ಯಕ್ರಮ ಅನ್‌ಲಾಕ್ ಮಾಡಿ",
+    pendingReview: "ಪರಿಶೀಲನೆ ಬಾಕಿ", inReview: "ಪರಿಶೀಲನೆಯಲ್ಲಿ", approved: "ಅನುಮೋದಿಸಲಾಗಿದೆ", rejected: "ತಿರಸ್ಕರಿಸಲಾಗಿದೆ", limitReached: "ಮಿತಿ ತಲುಪಿದೆ", limitReachedDesc: "ಈ ಬ್ಯಾಟಲ್‌ಗೆ ಅಪ್‌ಲೋಡ್ ಮಿತಿ ತಲುಪಿದ್ದೀರಿ.",
+    seekhoPreviewTitle: "📖 ಸೀಖೋ", seekhoPreviewSub: "ವಿಷಯಗಳು, ಕೌಶಲ್ಯ ಮತ್ತು ಸೃಜನಶೀಲ ಚಟುವಟಿಕೆಗಳನ್ನು ಕಲಿಯಿರಿ", explore: "ಅನ್ವೇಷಿಸಿ →",
+    vidyaStarPreviewTitle: "🌟 ವಿದ್ಯಾಸ್ಟಾರ್ ಸ್ಪರ್ಧೆ", vidyaStarPreviewSub: "ನಿಮ್ಮ ಪ್ರತಿಭೆ ತೋರಿಸಿ ಬಹುಮಾನ ಗೆಲ್ಲಿ",
+    couldNotLoadContests: "ಸ್ಪರ್ಧೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", contestsComingSoon: "ರೋಮಾಂಚಕ ಸ್ಪರ್ಧೆಗಳು ಶೀಘ್ರದಲ್ಲೇ!", viewResults: "ಫಲಿತಾಂಶ ನೋಡಿ →", participateNow: "ಈಗ ಭಾಗವಹಿಸಿ →",
+    skillBattlePreviewTitle: "⚔️ ಸ್ಕಿಲ್‌ಬ್ಯಾಟಲ್ ಚಾಲೆಂಜ್", skillBattlePreviewSub: "ಸ್ಪರ್ಧಿಸಿ, ಶ್ರೇಣಿ ಹೆಚ್ಚಿಸಿ ಮತ್ತು ಬಹುಮಾನ ಗೆಲ್ಲಿ",
+    couldNotLoadBattles: "ಬ್ಯಾಟಲ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", battlesComingSoon: "ಹೊಸ ಬ್ಯಾಟಲ್‌ಗಳು ಶೀಘ್ರದಲ್ಲೇ!", poweredBy: "{{name}} ಮೂಲಕ", joinedCount: "{{count}} ಸೇರಿದ್ದಾರೆ",
+    knowledgeHubTitle: "🌐 ನಾಲೆಡ್ಜ್ ಹಬ್", knowledgeHubSub: "ಕಲಿಕೆ, ಬೆಳವಣಿಗೆ ಮತ್ತು ದೈನಂದಿನ ಜೀವನಕ್ಕೆ ವೀಡಿಯೋಗಳು", watchMore: "ಇನ್ನಷ್ಟು ನೋಡಿ →",
+    couldNotLoadVideos: "ವೀಡಿಯೋಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", moreVideosSoon: "ಇನ್ನಷ್ಟು ವೀಡಿಯೋಗಳು ಶೀಘ್ರದಲ್ಲೇ!", noVideosInCat: "\"{{cat}}\" ವೀಡಿಯೋಗಳು ಇನ್ನೂ ಇಲ್ಲ.",
+    shortLearningTitle: "ಶಾರ್ಟ್ ಲರ್ನಿಂಗ್", noLearningVideos: "ಇನ್ನೂ ಯಾವುದೇ ಕಲಿಕೆ ವೀಡಿಯೋಗಳಿಲ್ಲ",
+    skillBattleShortsTitle: "🔥 ಸ್ಕಿಲ್ ಬ್ಯಾಟಲ್ ಶಾರ್ಟ್ಸ್", noSkillBattleVideos: "ಇನ್ನೂ ಯಾವುದೇ ಸ್ಕಿಲ್ ಬ್ಯಾಟಲ್ ವೀಡಿಯೋಗಳಿಲ್ಲ", battleBadge: "⚡ ಬ್ಯಾಟಲ್",
+    shikshaStarPreviewTitle: "⭐ ಶಿಕ್ಷಾಸ್ಟಾರ್", shikshaStarPreviewSub: "ವಿದ್ಯಾದ ಪ್ರತಿಭಾಶಾಲಿ ವಿದ್ಯಾರ್ಥಿಗಳನ್ನು ಆಚರಿಸುತ್ತಿದ್ದೇವೆ", viewStars: "ಸ್ಟಾರ್‌ಗಳ ನೋಡಿ →",
+    couldNotLoadStars: "ಸ್ಟಾರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", shikshaStarEmpty: "ನಿಮ್ಮ ಪ್ರತಿಭೆ ಶೀಘ್ರದಲ್ಲೇ ಇಲ್ಲಿ ತೋರಿಸಬಹುದು!", becomeShikshaStar: "ಶಿಕ್ಷಾಸ್ಟಾರ್ ಆಗಿ",
+    discoverPreviewTitle: "🧭 ಡಿಸ್ಕವರ್ AI", discoverPreviewSub: "AI-ಚಾಲಿತ ವೃತ್ತಿ, ಕಾಲೇಜು & ವಿದ್ಯಾರ್ಥಿವೇತನ ಸಂಶೋಧನೆ",
+    discoverTitle: "ವಿದ್ಯಾ ಡಿಸ್ಕವರ್ AI", discoverSubtitle: "ನಿಮ್ಮ ಸರಿಯಾದ ವೃತ್ತಿ, ಕಾಲೇಜು & ವಿದ್ಯಾರ್ಥಿವೇತನ ಹುಡುಕಿ", discoverCta: "ನಿಮ್ಮ ಭವಿಷ್ಯ ಅನ್ವೇಷಿಸಿ →",
   },
 
   // ─────────────────────────── Malayalam ────────────────────────────
@@ -419,6 +633,15 @@ const translations: Translations = {
     prizePool: "സമ്മാനക്കലവറ", endingSoon: "ഉടൻ അവസാനിക്കും", viewResult: "ഫലം കാണുക",
     joinNow: "ഇപ്പോൾ ചേരുക", participate: "പങ്കെടുക്കുക", reserveSpot: "സ്ഥലം ബുക്ക് ചെയ്യുക",
     startsSoon: "ഉടൻ ആരംഭിക്കും", all: "എല്ലാം", upcoming: "വരാനിരിക്കുന്നത്",
+    aiGuruSubtitle: "നിങ്ങളുടെ വ്യക്തിഗത പഠന സഹായി", askAnything: "എന്തും ചോദിക്കൂ", instantAnswers: "തൽക്ഷണ ഉത്തരങ്ങൾ", studyHelp: "പഠന സഹായം", startChatting: "ചാറ്റ് ആരംഭിക്കൂ →",
+    premiumFeature: "പ്രീമിയം ഫീച്ചർ", premiumUnlockMsg: "ഈ ഫീച്ചർ അൺലോക്ക് ചെയ്യാൻ AI Guru Premium ലേക്ക് അപ്‌ഗ്രേഡ് ചെയ്യൂ.", maybeLater: "പിന്നീട്", upgrade: "അപ്‌ഗ്രേഡ്",
+    aiClassroom: "നിങ്ങളുടെ വ്യക്തിഗത AI ക്ലാസ്‌റൂം\nGemini ഉപയോഗിച്ച് പ്രവർത്തിക്കുന്നു", freeLessonsLeft: "ഇന്ന് ഉള്ള സൗജന്യ പാഠങ്ങൾ ബാക്കി", unlimitedAccess: "പരിധിയില്ലാത്ത പ്രീമിയം ആക്‌സസ് സജീവം",
+    lessonSetup: "പാഠ സജ്ജീകരണം", continueBtn: "തുടരുക →", fillRequiredFields: "ആവശ്യമായ ഫീൽഡുകൾ പൂരിപ്പിക്കൂ", fillRequiredFieldsDesc: "ദയവായി വിഷയം തിരഞ്ഞെടുക്കുക, അദ്ധ്യായ നാമം നൽകുക.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "നിങ്ങളുടെ വ്യക്തിഗത AI അദ്ധ്യാപകൻ", readyToHelp: "സഹായിക്കാൻ തയ്യാർ!", thinking: "ആലോചിക്കുന്നു...", speaking: "സംസാരിക്കുന്നു...", listening: "ശ്രദ്ധിക്കുന്നു...",
+    paywallTitle: "VidyaGuru ഉപയോഗിച്ച് തുടരണോ?", paywallBody: "ഇന്നത്തെ സൗജന്യ ചോദ്യം ഉപയോഗിച്ചു. പരിധിയില്ലാത്ത സംഭാഷണത്തിന് പ്രീമിയം അപ്‌ഗ്രേഡ് ചെയ്യൂ!", upgradeToPremium: "പ്രീമിയത്തിലേക്ക് അപ്‌ഗ്രേഡ് ചെയ്യൂ",
+    seekhoSignIn: "Seekho ആക്‌സസ് ചെയ്യാൻ ലോഗിൻ ചെയ്യൂ", curriculumAligned: "പാഠ്യക്രമ-അടിസ്ഥാനിത പഠനം", subjects: "വിഷയങ്ങൾ", continueLearning: "പഠിക്കൽ തുടരൂ", resumeLearning: "നിർത്തിയ ഇടത്ത് നിന്ന് തുടരുക",
+    revisionDue: "റിവിഷൻ വേണം!", revisionReady: "ആശയങ്ങൾ അവലോകനത്തിന് തയ്യാർ", unlockCurriculum: "പൂർണ്ണ പാഠ്യക്രമം അൺലോക്ക് ചെയ്യൂ",
+    pendingReview: "അവലോകനം ബാക്കി", inReview: "അവലോകനത്തിൽ", approved: "അംഗീകരിച്ചു", rejected: "നിരസിച്ചു", limitReached: "പരിധി എത്തി", limitReachedDesc: "ഈ ബാറ്റിലിനായുള്ള അപ്‌ലോഡ് പരിധി കഴിഞ്ഞു.",
   },
 
   // ─────────────────────────── Marathi ──────────────────────────────
@@ -464,6 +687,15 @@ const translations: Translations = {
     prizePool: "पारितोषिक निधी", endingSoon: "लवकरच संपेल", viewResult: "निकाल पहा",
     joinNow: "आत्ता सामील व्हा", participate: "भाग घ्या", reserveSpot: "जागा राखून ठेवा",
     startsSoon: "लवकरच सुरू होईल", all: "सर्व", upcoming: "येणारे",
+    aiGuruSubtitle: "तुमचा वैयक्तिक शिक्षण सहाय्यक", askAnything: "काहीही विचारा", instantAnswers: "तत्काळ उत्तरे", studyHelp: "अभ्यासात मदत", startChatting: "चॅट सुरू करा →",
+    premiumFeature: "प्रीमियम वैशिष्ट्य", premiumUnlockMsg: "हे वैशिष्ट्य अनलॉक करण्यासाठी AI Guru Premium अपग्रेड करा.", maybeLater: "नंतर", upgrade: "अपग्रेड करा",
+    aiClassroom: "तुमचा वैयक्तिक AI वर्गखोली\nGemini द्वारे चालवले", freeLessonsLeft: "आजचे मोफत धडे बाकी", unlimitedAccess: "असीमित प्रीमियम ऍक्सेस सक्रिय",
+    lessonSetup: "धडा सेटअप", continueBtn: "पुढे जा →", fillRequiredFields: "आवश्यक माहिती भरा", fillRequiredFieldsDesc: "कृपया विषय निवडा आणि अध्यायाचे नाव टाका.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "तुमचे वैयक्तिक AI शिक्षक", readyToHelp: "मदत करण्यासाठी तयार!", thinking: "विचार करतोय...", speaking: "बोलतोय...", listening: "ऐकतोय...",
+    paywallTitle: "VidyaGuru सोबत चालू ठेवायचे?", paywallBody: "आजचा मोफत प्रश्न वापरला. असीमित संभाषणासाठी प्रीमियम अपग्रेड करा!", upgradeToPremium: "प्रीमियमवर अपग्रेड करा",
+    seekhoSignIn: "Seekho ऍक्सेस करण्यासाठी लॉगिन करा", curriculumAligned: "अभ्यासक्रम-आधारित शिक्षण", subjects: "विषय", continueLearning: "शिकणे चालू ठेवा", resumeLearning: "सोडलेल्या ठिकाणाहून सुरू करा",
+    revisionDue: "उजळणी करा!", revisionReady: "संकल्पना पुनरावलोकनासाठी तयार", unlockCurriculum: "पूर्ण अभ्यासक्रम अनलॉक करा",
+    pendingReview: "पुनरावलोकन प्रतीक्षेत", inReview: "पुनरावलोकनात", approved: "मंजूर", rejected: "नाकारले", limitReached: "मर्यादा पोहोचली", limitReachedDesc: "तुम्ही या बॅटलची अपलोड मर्यादा गाठली आहे.",
   },
 
   // ─────────────────────────── Gujarati ─────────────────────────────
@@ -509,6 +741,15 @@ const translations: Translations = {
     prizePool: "ઇનામ ભંડોળ", endingSoon: "ટૂંક સમયમાં સમાપ્ત", viewResult: "પરિણામ જુઓ",
     joinNow: "હવે જોડાઓ", participate: "ભાગ લો", reserveSpot: "સ્થાન અનામત કરો",
     startsSoon: "ટૂંક સમયમાં શરૂ", all: "બધા", upcoming: "આગામી",
+    aiGuruSubtitle: "તમારો વ્યક્તિગત શિક્ષણ સહાયક", askAnything: "ગમે તે પૂછો", instantAnswers: "તત્કાળ જવાબો", studyHelp: "અભ્યાસ સહાય", startChatting: "ચેટ શરૂ કરો →",
+    premiumFeature: "પ્રીમિયમ સુવિધા", premiumUnlockMsg: "આ સુવિધા અનલૉક કરવા AI Guru Premium અપગ્રેડ કરો.", maybeLater: "પછી", upgrade: "અપગ્રેડ",
+    aiClassroom: "તમારો વ્યક્તિગત AI ક્લાસ\nGemini દ્વારા સંચાલિત", freeLessonsLeft: "આજના મફત પાઠ બાકી", unlimitedAccess: "અમર્યાદિત પ્રીમિયમ ઍક્સેસ સક્રિય",
+    lessonSetup: "પાઠ સેટઅપ", continueBtn: "ચાલુ રાખો →", fillRequiredFields: "જરૂરી માહિતી ભરો", fillRequiredFieldsDesc: "કૃપા કરીને વિષય પસંદ કરો અને અધ્યાયનું નામ દાખલ કરો.",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "તમારા વ્યક્તિગત AI શિક્ષક", readyToHelp: "મદદ માટે તૈયાર!", thinking: "વિચારી રહ્યો છું...", speaking: "બોલી રહ્યો છું...", listening: "સાંભળી રહ્યો છું...",
+    paywallTitle: "VidyaGuru સાથે ચાલુ રાખો?", paywallBody: "આજનો મફત પ્રશ્ન વાપર્યો. અમર્યાદિત વાર્તાલાપ માટે પ્રીમિયમ અપગ્રેડ કરો!", upgradeToPremium: "પ્રીમિયમ પર અપગ્રેડ કરો",
+    seekhoSignIn: "Seekho ઍક્સેસ કરવા લૉગિન કરો", curriculumAligned: "અભ્યાસક્રમ-આધારિત શિક્ષણ", subjects: "વિષયો", continueLearning: "શીખવાનું ચાલુ રાખો", resumeLearning: "છોડ્યા ત્યાંથી ચાલુ કરો",
+    revisionDue: "પુનઃ અભ્યાસ કરો!", revisionReady: "ખ્યાલો સમીક્ષા માટે તૈયાર", unlockCurriculum: "સંપૂર્ણ અભ્યાસક્રમ અનલૉક કરો",
+    pendingReview: "સમીક્ષા બાકી", inReview: "સમીક્ષામાં", approved: "મંજૂર", rejected: "નામંજૂર", limitReached: "મર્યાદા પહોંચી", limitReachedDesc: "તમે આ બૅટલ માટે અપલોડ મર્યાદા પૂરી કરી દીધી.",
   },
 
   // ─────────────────────────── Punjabi ──────────────────────────────
@@ -554,6 +795,15 @@ const translations: Translations = {
     prizePool: "ਇਨਾਮ ਫੰਡ", endingSoon: "ਜਲਦੀ ਖਤਮ", viewResult: "ਨਤੀਜਾ ਦੇਖੋ",
     joinNow: "ਹੁਣੇ ਸ਼ਾਮਲ ਹੋਵੋ", participate: "ਭਾਗ ਲਵੋ", reserveSpot: "ਜਗ੍ਹਾ ਰਾਖਵੀਂ ਕਰੋ",
     startsSoon: "ਜਲਦੀ ਸ਼ੁਰੂ", all: "ਸਾਰੇ", upcoming: "ਆਉਣ ਵਾਲੇ",
+    aiGuruSubtitle: "ਤੁਹਾਡਾ ਨਿੱਜੀ ਸਿੱਖਣ ਸਹਾਇਕ", askAnything: "ਕੁਝ ਵੀ ਪੁੱਛੋ", instantAnswers: "ਤੁਰੰਤ ਜਵਾਬ", studyHelp: "ਪੜ੍ਹਾਈ ਵਿੱਚ ਮਦਦ", startChatting: "ਗੱਲਬਾਤ ਸ਼ੁਰੂ ਕਰੋ →",
+    premiumFeature: "ਪ੍ਰੀਮਿਅਮ ਸੁਵਿਧਾ", premiumUnlockMsg: "ਇਹ ਸੁਵਿਧਾ ਅਨਲਾਕ ਕਰਨ ਲਈ AI Guru Premium ਅਪਗ੍ਰੇਡ ਕਰੋ।", maybeLater: "ਬਾਅਦ ਵਿੱਚ", upgrade: "ਅਪਗ੍ਰੇਡ",
+    aiClassroom: "ਤੁਹਾਡੀ ਨਿੱਜੀ AI ਕਲਾਸਰੂਮ\nGemini ਦੁਆਰਾ ਸੰਚਾਲਿਤ", freeLessonsLeft: "ਅੱਜ ਮੁਫ਼ਤ ਪਾਠ ਬਾਕੀ", unlimitedAccess: "ਅਸੀਮਿਤ ਪ੍ਰੀਮਿਅਮ ਐਕਸੈੱਸ ਸਕਿਰਿਅ",
+    lessonSetup: "ਪਾਠ ਸੈੱਟਅੱਪ", continueBtn: "ਜਾਰੀ ਰੱਖੋ →", fillRequiredFields: "ਲੋੜੀਂਦੀ ਜਾਣਕਾਰੀ ਭਰੋ", fillRequiredFieldsDesc: "ਕਿਰਪਾ ਕਰਕੇ ਵਿਸ਼ਾ ਚੁਣੋ ਅਤੇ ਅਧਿਆਏ ਦਾ ਨਾਮ ਦਾਖਲ ਕਰੋ।",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "ਤੁਹਾਡੇ ਨਿੱਜੀ AI ਅਧਿਆਪਕ", readyToHelp: "ਮਦਦ ਲਈ ਤਿਆਰ!", thinking: "ਸੋਚ ਰਿਹਾ ਹਾਂ...", speaking: "ਬੋਲ ਰਿਹਾ ਹਾਂ...", listening: "ਸੁਣ ਰਿਹਾ ਹਾਂ...",
+    paywallTitle: "VidyaGuru ਨਾਲ ਜਾਰੀ ਰੱਖਣਾ ਹੈ?", paywallBody: "ਅੱਜ ਦਾ ਮੁਫ਼ਤ ਸਵਾਲ ਵਰਤਿਆ। ਅਸੀਮਿਤ ਗੱਲਬਾਤ ਲਈ ਪ੍ਰੀਮਿਅਮ ਅਪਗ੍ਰੇਡ ਕਰੋ!", upgradeToPremium: "ਪ੍ਰੀਮਿਅਮ ਤੇ ਅਪਗ੍ਰੇਡ ਕਰੋ",
+    seekhoSignIn: "Seekho ਐਕਸੈੱਸ ਕਰਨ ਲਈ ਲੌਗਇਨ ਕਰੋ", curriculumAligned: "ਪਾਠਕ੍ਰਮ-ਆਧਾਰਿਤ ਸਿੱਖਿਆ", subjects: "ਵਿਸ਼ੇ", continueLearning: "ਸਿੱਖਣਾ ਜਾਰੀ ਰੱਖੋ", resumeLearning: "ਜਿੱਥੇ ਛੱਡਿਆ ਸੀ ਉੱਥੋਂ ਸ਼ੁਰੂ ਕਰੋ",
+    revisionDue: "ਦੁਹਰਾਓ!", revisionReady: "ਸੰਕਲਪ ਸਮੀਖਿਆ ਲਈ ਤਿਆਰ", unlockCurriculum: "ਪੂਰਾ ਪਾਠਕ੍ਰਮ ਅਨਲਾਕ ਕਰੋ",
+    pendingReview: "ਸਮੀਖਿਆ ਬਾਕੀ", inReview: "ਸਮੀਖਿਆ ਵਿੱਚ", approved: "ਮਨਜ਼ੂਰ", rejected: "ਰੱਦ", limitReached: "ਸੀਮਾ ਪਹੁੰਚ ਗਈ", limitReachedDesc: "ਤੁਸੀਂ ਇਸ ਬੈਟਲ ਦੀ ਅਪਲੋਡ ਸੀਮਾ ਤੇ ਪਹੁੰਚ ਗਏ ਹੋ।",
   },
 
   // ─────────────────────────── Odia ─────────────────────────────────
@@ -599,6 +849,15 @@ const translations: Translations = {
     prizePool: "ପୁରସ୍କାର ନିଧି", endingSoon: "ଶୀଘ୍ର ଶେଷ", viewResult: "ଫଳ ଦେଖନ୍ତୁ",
     joinNow: "ଏବେ ଯୋଗ ଦିଅନ୍ତୁ", participate: "ଭାଗ ନିଅନ୍ତୁ", reserveSpot: "ସ୍ଥାନ ସଂରକ୍ଷଣ",
     startsSoon: "ଶୀଘ୍ର ଆରମ୍ଭ", all: "ସବୁ", upcoming: "ଆସୁଥିବା",
+    aiGuruSubtitle: "ଆପଣଙ୍କ ବ୍ୟକ୍ତିଗତ ଶିକ୍ଷଣ ସହାୟକ", askAnything: "ଯାହା ଇଚ୍ଛା ପଚାର", instantAnswers: "ତୁରନ୍ତ ଉତ୍ତର", studyHelp: "ପଢ଼ାରେ ସାହାଯ୍ୟ", startChatting: "ଚ୍ୟାଟ ଆରମ୍ଭ କରନ୍ତୁ →",
+    premiumFeature: "ପ୍ରିମିଅମ ବୈଶିଷ୍ଟ୍ୟ", premiumUnlockMsg: "ଏହି ବୈଶିଷ୍ଟ୍ୟ ଅନ୍‌ଲକ ପାଇଁ AI Guru Premium ଅପଗ୍ରେଡ କରନ୍ତୁ।", maybeLater: "ପରେ", upgrade: "ଅପଗ୍ରେଡ",
+    aiClassroom: "ଆପଣଙ୍କ ବ୍ୟକ୍ତିଗତ AI ଶ୍ରେଣୀ\nGemini ଦ୍ୱାରା ପରିଚାଳିତ", freeLessonsLeft: "ଆଜି ମୁଫ୍ ପାଠ ବାକି", unlimitedAccess: "ଅସୀମ ପ୍ରିମିଅମ ପ୍ରବେଶ ସକ୍ରିୟ",
+    lessonSetup: "ପାଠ ସେଟଅପ", continueBtn: "ଜାରି ରଖନ୍ତୁ →", fillRequiredFields: "ଆବଶ୍ୟକ ତଥ୍ୟ ପୂରଣ କରନ୍ତୁ", fillRequiredFieldsDesc: "ଦୟାକରି ବିଷୟ ଚୟନ କରନ୍ତୁ ଓ ଅଧ୍ୟାୟ ନାମ ଦିଅନ୍ତୁ।",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "ଆପଣଙ୍କ ବ୍ୟକ୍ତିଗତ AI ଶିକ୍ଷକ", readyToHelp: "ସାହାଯ୍ୟ ପାଇଁ ପ୍ରସ୍ତୁତ!", thinking: "ଚିନ୍ତା କରୁଛି...", speaking: "କଥା କହୁଛି...", listening: "ଶୁଣୁଛି...",
+    paywallTitle: "VidyaGuru ସହ ଜାରି ରଖନ୍ତୁ?", paywallBody: "ଆଜିର ମୁଫ ପ୍ରଶ୍ନ ଶେଷ। ଅସୀମ ବାର୍ତ୍ତା ପାଇଁ ପ୍ରିମିଅମ ଅପଗ୍ରେଡ କରନ୍ତୁ!", upgradeToPremium: "ପ୍ରିମିଅମକୁ ଅପଗ୍ରେଡ",
+    seekhoSignIn: "Seekho ପ୍ରବେଶ ପାଇଁ ଲଗଇନ", curriculumAligned: "ପାଠ୍ୟକ୍ରମ-ଆଧାରିତ ଶିକ୍ଷଣ", subjects: "ବିଷୟ", continueLearning: "ଶିଖିବା ଜାରି ରଖନ୍ତୁ", resumeLearning: "ଯେଉଁ ଠାରେ ଛାଡ଼ିଥିଲେ ସେଠୁ ଆରମ୍ଭ",
+    revisionDue: "ପୁନଃ ଅଧ୍ୟୟନ କରନ୍ତୁ!", revisionReady: "ଧାରଣା ସମୀକ୍ଷା ପାଇଁ ପ୍ରସ୍ତୁତ", unlockCurriculum: "ସମ୍ପୂର୍ଣ ପାଠ୍ୟକ୍ରମ ଅନ୍‌ଲକ",
+    pendingReview: "ସମୀକ୍ଷା ଅପେକ୍ଷା", inReview: "ସମୀକ୍ଷାଧୀନ", approved: "ଅନୁମୋଦିତ", rejected: "ପ୍ରତ୍ୟାଖ୍ୟାନ", limitReached: "ସୀମା ସ୍ପର୍ଶ", limitReachedDesc: "ଆପଣ ଏହି ଯୁଦ୍ଧ ପାଇଁ ଅପଲୋଡ ସୀମା ଛୁଇଁ ଗଲେ।",
   },
 
   // ─────────────────────────── Urdu ─────────────────────────────────
@@ -644,6 +903,15 @@ const translations: Translations = {
     prizePool: "انعامی رقم", endingSoon: "جلد ختم ہوگی", viewResult: "نتیجہ دیکھیں",
     joinNow: "ابھی شامل ہوں", participate: "حصہ لیں", reserveSpot: "جگہ محفوظ کریں",
     startsSoon: "جلد شروع", all: "تمام", upcoming: "آنے والے",
+    aiGuruSubtitle: "آپ کا ذاتی سیکھنے کا معاون", askAnything: "کچھ بھی پوچھیں", instantAnswers: "فوری جوابات", studyHelp: "تعلیمی مدد", startChatting: "چیٹ شروع کریں →",
+    premiumFeature: "پریمیئم فیچر", premiumUnlockMsg: "یہ فیچر کھولنے کے لیے AI Guru Premium اپگریڈ کریں۔", maybeLater: "بعد میں", upgrade: "اپگریڈ",
+    aiClassroom: "آپ کی ذاتی AI کلاس روم\nGemini کے ذریعے چلائی جاتی ہے", freeLessonsLeft: "آج کے مفت اسباق باقی", unlimitedAccess: "لامحدود پریمیئم رسائی فعال",
+    lessonSetup: "سبق کا اعداد و شمار", continueBtn: "جاری رکھیں →", fillRequiredFields: "ضروری فیلڈز بھریں", fillRequiredFieldsDesc: "براہ کرم موضوع منتخب کریں اور باب کا نام درج کریں۔",
+    vidyaGuruAI: "VidyaGuru AI", personalAiTeacher: "آپ کا ذاتی AI استاد", readyToHelp: "مدد کے لیے تیار!", thinking: "سوچ رہا ہوں...", speaking: "بول رہا ہوں...", listening: "سن رہا ہوں...",
+    paywallTitle: "VidyaGuru کے ساتھ جاری رکھیں؟", paywallBody: "آج کا مفت سوال استعمال ہو گیا۔ لامحدود گفتگو کے لیے پریمیئم اپگریڈ کریں!", upgradeToPremium: "پریمیئم پر اپگریڈ کریں",
+    seekhoSignIn: "Seekho تک رسائی کے لیے لاگ ان کریں", curriculumAligned: "نصاب پر مبنی تعلیم", subjects: "مضامین", continueLearning: "سیکھنا جاری رکھیں", resumeLearning: "جہاں چھوڑا تھا وہاں سے شروع کریں",
+    revisionDue: "مراجعت کریں!", revisionReady: "تصورات مراجعت کے لیے تیار", unlockCurriculum: "مکمل نصاب کھولیں",
+    pendingReview: "جائزہ باقی", inReview: "جائزے میں", approved: "منظور", rejected: "مسترد", limitReached: "حد تک پہنچ گئے", limitReachedDesc: "آپ اس مقابلے کی اپلوڈ حد تک پہنچ گئے ہیں۔",
   },
 
   // ─────────────────────────── Assamese ────────────────────────────
@@ -689,6 +957,15 @@ const translations: Translations = {
     prizePool: "পুৰস্কাৰ নিধি", endingSoon: "সোনকালে শেষ হ'ব", viewResult: "ফলাফল চাওক",
     joinNow: "এতিয়াই যোগ দিয়ক", participate: "অংশ লওক", reserveSpot: "ঠাই সংৰক্ষণ",
     startsSoon: "সোনকালে আৰম্ভ হ'ব", all: "সকলো", upcoming: "আহিবলগীয়া",
+    aiGuruSubtitle: "আপোনাৰ ব্যক্তিগত শিক্ষণ সহায়ক", askAnything: "যিকোনো কথা সুধিব", instantAnswers: "তৎক্ষণাৎ উত্তৰ", studyHelp: "পঢ়াত সহায়", startChatting: "চেট আৰম্ভ কৰক →",
+    premiumFeature: "প্ৰিমিয়াম ফিচাৰ", premiumUnlockMsg: "এই ফিচাৰটো আনলক কৰিবলৈ AI Guru Premium আপগ্ৰেড কৰক।", maybeLater: "পিছত", upgrade: "আপগ্ৰেড",
+    aiClassroom: "আপোনাৰ ব্যক্তিগত AI ক্লাছৰুম\nGemini দ্বাৰা পৰিচালিত", freeLessonsLeft: "আজি বিনামূলীয়া পাঠ বাকী", unlimitedAccess: "অসীমিত প্ৰিমিয়াম এক্সেছ সক্ৰিয়",
+    lessonSetup: "পাঠ ছেটআপ", continueBtn: "অব্যাহত ৰাখক →", fillRequiredFields: "প্ৰয়োজনীয় তথ্য পূৰণ কৰক", fillRequiredFieldsDesc: "অনুগ্ৰহ কৰি বিষয় বাছক আৰু অধ্যায়ৰ নাম দিয়ক।",
+    vidyaGuruAI: "বিদ্যাগুৰু AI", personalAiTeacher: "আপোনাৰ ব্যক্তিগত AI শিক্ষক", readyToHelp: "সহায় কৰিবলৈ সাজু!", thinking: "ভাবি আছো...", speaking: "কৈ আছো...", listening: "শুনি আছো...",
+    paywallTitle: "বিদ্যাগুৰুৰ সৈতে অব্যাহত ৰাখিবনে?", paywallBody: "আজিৰ বিনামূলীয়া প্ৰশ্ন শেষ। অসীমিত কথোপকথনৰ বাবে প্ৰিমিয়াম আপগ্ৰেড কৰক!", upgradeToPremium: "প্ৰিমিয়ামলৈ আপগ্ৰেড কৰক",
+    seekhoSignIn: "Seekho এক্সেছ কৰিবলৈ লগইন কৰক", curriculumAligned: "পাঠ্যক্ৰম-আধাৰিত শিক্ষণ", subjects: "বিষয়সমূহ", continueLearning: "শিকাটো অব্যাহত ৰাখক", resumeLearning: "য'ত এৰিছিল তাৰপৰা আৰম্ভ কৰক",
+    revisionDue: "পুনৰালোচনা কৰক!", revisionReady: "ধাৰণাসমূহ পুনৰালোচনাৰ বাবে সাজু", unlockCurriculum: "সম্পূৰ্ণ পাঠ্যক্ৰম আনলক কৰক",
+    pendingReview: "পৰ্যালোচনা বাকী", inReview: "পৰ্যালোচনাত", approved: "অনুমোদিত", rejected: "প্ৰত্যাখ্যাত", limitReached: "সীমা পাইছে", limitReachedDesc: "আপুনি এই বেটেলৰ আপলোড সীমাত পাইছে।",
   },
 
   // ─────────────────────────── Manipuri ─────────────────────────────
@@ -734,6 +1011,15 @@ const translations: Translations = {
     prizePool: "পুরস্কার তহবিল", endingSoon: "শীঘ্রই শেষ", viewResult: "ফলাফল দেখুন",
     joinNow: "এখনই যোগ দিন", participate: "অংশগ্রহণ করুন", reserveSpot: "জায়গা বুক করুন",
     startsSoon: "শীঘ্রই শুরু", all: "সব", upcoming: "আসন্ন",
+    aiGuruSubtitle: "তোমার ব্যক্তিগত শিক্ষণ সহায়ক", askAnything: "যা ইচ্ছা জিজ্ঞেস করো", instantAnswers: "তাৎক্ষণিক উত্তর", studyHelp: "পড়ায় সাহায্য", startChatting: "চ্যাট শুরু করো →",
+    premiumFeature: "প্রিমিয়াম ফিচার", premiumUnlockMsg: "এই ফিচার আনলক করতে AI Guru Premium আপগ্রেড করো।", maybeLater: "পরে", upgrade: "আপগ্রেড",
+    aiClassroom: "তোমার ব্যক্তিগত AI ক্লাসরুম\nGemini দ্বারা পরিচালিত", freeLessonsLeft: "আজকের বিনামূল্যে পাঠ বাকি", unlimitedAccess: "সীমাহীন প্রিমিয়াম অ্যাক্সেস সক্রিয়",
+    lessonSetup: "পাঠ সেটআপ", continueBtn: "চালিয়ে যাও →", fillRequiredFields: "প্রয়োজনীয় তথ্য পূরণ করো", fillRequiredFieldsDesc: "অনুগ্রহ করে বিষয় বেছে নাও এবং অধ্যায়ের নাম লেখো।",
+    vidyaGuruAI: "বিদ্যাগুরু AI", personalAiTeacher: "তোমার ব্যক্তিগত AI শিক্ষক", readyToHelp: "সাহায্যের জন্য প্রস্তুত!", thinking: "ভাবছি...", speaking: "বলছি...", listening: "শুনছি...",
+    paywallTitle: "বিদ্যাগুরুর সাথে চালিয়ে যাবে?", paywallBody: "আজকের বিনামূল্যে প্রশ্ন শেষ। সীমাহীন কথোপকথনের জন্য প্রিমিয়াম আপগ্রেড করো!", upgradeToPremium: "প্রিমিয়ামে আপগ্রেড করো",
+    seekhoSignIn: "Seekho অ্যাক্সেস করতে লগইন করো", curriculumAligned: "পাঠ্যক্রম-ভিত্তিক শিক্ষা", subjects: "বিষয়সমূহ", continueLearning: "শেখা চালিয়ে যাও", resumeLearning: "যেখানে ছেড়েছিলে সেখান থেকে শুরু করো",
+    revisionDue: "রিভিশন করো!", revisionReady: "ধারণাগুলো পুনরালোচনার জন্য প্রস্তুত", unlockCurriculum: "সম্পূর্ণ পাঠ্যক্রম আনলক করো",
+    pendingReview: "পর্যালোচনা বাকি", inReview: "পর্যালোচনায়", approved: "অনুমোদিত", rejected: "প্রত্যাখ্যাত", limitReached: "সীমা পৌঁছেছে", limitReachedDesc: "তুমি এই ব্যাটেলের আপলোড সীমায় পৌঁছে গেছ।",
   },
 
   // ─── Remaining 9 languages fall back to English ───────────────────

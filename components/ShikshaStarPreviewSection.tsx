@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { db } from "@/lib/firebase";
 import { LinearGradient } from "expo-linear-gradient";
@@ -53,6 +54,7 @@ function Pulse({ w, h, r = 10 }: { w: number; h: number; r?: number }) {
 // ─── Star card ────────────────────────────────────────────────
 function StarCard({ item }: { item: StarProfile }) {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const initial = item.studentName?.charAt(0)?.toUpperCase() ?? "S";
 
   return (
@@ -80,7 +82,7 @@ function StarCard({ item }: { item: StarProfile }) {
       <Text style={[S.name, { color: colors.text }]} numberOfLines={1}>{item.studentName}</Text>
 
       {/* Class */}
-      <Text style={[S.classText, { color: colors.textSecondary }]}>Class {item.className}</Text>
+      <Text style={[S.classText, { color: colors.textSecondary }]}>{t("class")} {item.className}</Text>
 
       {/* School */}
       <Text style={[S.schoolText, { color: colors.textSecondary }]} numberOfLines={1}>{item.schoolName}</Text>
@@ -116,6 +118,7 @@ function StarCard({ item }: { item: StarProfile }) {
 // ─── Main section ─────────────────────────────────────────────
 export default function ShikshaStarPreviewSection() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [stars,   setStars]   = useState<StarProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(false);
@@ -151,13 +154,13 @@ export default function ShikshaStarPreviewSection() {
       {/* Header */}
       <View style={S.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[S.sectionTitle, { color: colors.text }]}>⭐ ShikshaStar</Text>
+          <Text style={[S.sectionTitle, { color: colors.text }]}>{t("shikshaStarPreviewTitle")}</Text>
           <Text style={[S.sectionSub, { color: colors.textSecondary }]}>
-            Celebrating talented students of Vidya
+            {t("shikshaStarPreviewSub")}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.push("/(drawer)/(tabs)/vidyastar")}>
-          <Text style={S.viewAll}>View Stars →</Text>
+          <Text style={S.viewAll}>{t("viewStars")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -168,16 +171,16 @@ export default function ShikshaStarPreviewSection() {
       ) : error ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>⚠️</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>Could not load stars.</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("couldNotLoadStars")}</Text>
         </View>
       ) : stars.length === 0 ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>🌟</Text>
           <Text style={[S.emptyText, { color: colors.textSecondary }]}>
-            Your talent can be featured here soon!
+            {t("shikshaStarEmpty")}
           </Text>
           <TouchableOpacity style={[S.becomeBtn, { borderColor: "#f59e0b" }]}>
-            <Text style={[S.becomeBtnText, { color: "#f59e0b" }]}>Become a ShikshaStar</Text>
+            <Text style={[S.becomeBtnText, { color: "#f59e0b" }]}>{t("becomeShikshaStar")}</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -194,7 +197,7 @@ export default function ShikshaStarPreviewSection() {
           <TouchableOpacity style={[S.becomeBtnRow]}>
             <Text style={[S.becomeBtnRowText, { color: colors.textSecondary }]}>
               ✨ Think you deserve a star? —{" "}
-              <Text style={{ color: "#f59e0b", fontWeight: "700" }}>Become a ShikshaStar</Text>
+              <Text style={{ color: "#f59e0b", fontWeight: "700" }}>{t("becomeShikshaStar")}</Text>
             </Text>
           </TouchableOpacity>
         </>

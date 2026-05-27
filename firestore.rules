@@ -327,6 +327,72 @@ service cloud.firestore {
       allow write: if false; // Cloud Functions / admin only
     }
 
+    // ─── 📚 SEEKHO MODULE ─────────────────────────────────────────────────────
+
+    // Curriculum content — public read for authenticated users, admin write only
+    match /seekho_courses/{courseId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    match /seekho_lessons/{lessonId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    match /seekho_practice/{questionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    // Progress — owner read/write only
+    // Document ID format: "{userId}_{courseId}"
+    match /seekho_progress/{progressId} {
+      allow read, write: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      // Allow create when doc doesn't exist yet
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Subscription — owner read, Cloud Functions write only
+    match /seekho_subscriptions/{userId} {
+      allow read: if request.auth.uid == userId;
+      allow write: if false; // Cloud Functions only
+    }
+
+    // Revision queue — owner read, Cloud Functions write only (SM-2 runs server-side)
+    // Document ID format: "{userId}_{conceptTag}"
+    match /seekho_revision_queue/{docId} {
+      allow read: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow write: if false; // Cloud Functions only
+    }
+
+    // ─── 🧭 DISCOVER AI MODULE ────────────────────────────────────────────────
+
+    // Usage counters — Cloud Functions write, owner reads
+    match /discoverUsage/{uid} {
+      allow read: if request.auth.uid == uid;
+      allow write: if false;
+
+      match /daily/{date} {
+        allow read: if request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // Search history — owner read/write
+    match /discoverHistory/{uid} {
+      allow read, write: if request.auth.uid == uid;
+    }
+
+    // Query cache — authenticated read, Cloud Functions write only
+    match /discoverCache/{hash} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     // 🔒 DEFAULT DENY
     match /{document=**} {
       allow read, write: if false;

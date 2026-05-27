@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { db } from "@/lib/firebase";
 import { Ionicons } from "@expo/vector-icons";
@@ -134,6 +135,7 @@ function KBCard({ item }: { item: KBVideo }) {
 // ─── Main section ─────────────────────────────────────────────
 export default function KnowledgeHubSection() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [videos,    setVideos]    = useState<KBVideo[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState(false);
@@ -173,13 +175,13 @@ export default function KnowledgeHubSection() {
       {/* Header */}
       <View style={S.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[S.sectionTitle, { color: colors.text }]}>🌐 Knowledge Hub</Text>
+          <Text style={[S.sectionTitle, { color: colors.text }]}>{t("knowledgeHubTitle")}</Text>
           <Text style={[S.sectionSub, { color: colors.textSecondary }]}>
-            Videos for learning, growth and daily life
+            {t("knowledgeHubSub")}
           </Text>
         </View>
         <TouchableOpacity onPress={() => router.push("/knowledge-hub" as any)}>
-          <Text style={S.viewAll}>Watch More →</Text>
+          <Text style={S.viewAll}>{t("watchMore")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -216,13 +218,13 @@ export default function KnowledgeHubSection() {
       ) : error ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>⚠️</Text>
-          <Text style={[S.emptyText, { color: colors.textSecondary }]}>Could not load videos.</Text>
+          <Text style={[S.emptyText, { color: colors.textSecondary }]}>{t("couldNotLoadVideos")}</Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={S.empty}>
           <Text style={S.emptyIcon}>🎥</Text>
           <Text style={[S.emptyText, { color: colors.textSecondary }]}>
-            {activecat === "All" ? "More videos coming soon!" : `No "${activecat}" videos yet.`}
+            {activecat === "All" ? t("moreVideosSoon") : t("noVideosInCat", { cat: activecat })}
           </Text>
         </View>
       ) : (

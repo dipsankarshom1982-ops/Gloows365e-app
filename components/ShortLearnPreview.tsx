@@ -1,3 +1,4 @@
+﻿import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -19,6 +20,7 @@ import { collection, getDocs } from "firebase/firestore";
 
 export default function SkillShortPreview() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [reels, setReels] = useState<any[]>([]);
 
   // 🎥 FETCH NON-BATTLE LEARNING REELS
@@ -101,7 +103,7 @@ export default function SkillShortPreview() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colors.text }]}>� Short Learning</Text>
+      <Text style={[styles.title, { color: colors.text }]}>📖 {t("shortLearningTitle")}</Text>
 
       {reels.length > 0 ? (
         <FlatList
@@ -115,7 +117,7 @@ export default function SkillShortPreview() {
       ) : (
         <View style={styles.empty}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No learning videos yet
+            {t("noLearningVideos")}
           </Text>
         </View>
       )}

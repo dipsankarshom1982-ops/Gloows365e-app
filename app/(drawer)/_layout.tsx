@@ -11,6 +11,7 @@ import {
 
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage, useAppTranslation } from "@/context/LanguageContext";
+import { useStudentProfile } from "@/context/StudentProfileContext";
 import { INDIAN_LANGUAGES } from "@/app/language-settings";
 import { auth, db } from "@/lib/firebase";
 import { getLevelFromXP, XP_PER_LEVEL } from "@/lib/learnfun/constants";
@@ -21,9 +22,7 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
   collection,
-  doc,
   getCountFromServer,
-  onSnapshot,
   query,
   where,
 } from "firebase/firestore";
@@ -37,40 +36,18 @@ export default function DrawerLayout() {
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
 
-  const [studentProfile, setStudentProfile] = useState<any>(null);
-  const [indiaRank, setIndiaRank]           = useState<number | null>(null);
-  const [loading, setLoading]               = useState(true);
+  const { studentProfile, profileLoading: loading } = useStudentProfile();
+  const [indiaRank, setIndiaRank] = useState<number | null>(null);
 
-  // Real-time profile + rank
+  // Fetch leaderboard rank whenever learnScore changes
   useEffect(() => {
-    let unsubSnap: (() => void) | null = null;
-
-    const unsubAuth = auth.onAuthStateChanged((user) => {
-      if (unsubSnap) { unsubSnap(); unsubSnap = null; }
-      if (!user) { setLoading(false); return; }
-
-      unsubSnap = onSnapshot(
-        doc(db, "students", user.uid),
-        (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            setStudentProfile(data);
-            // Fetch rank against leaderboard collection
-            const score: number = data.learnScore ?? 0;
-            getCountFromServer(
-              query(collection(db, "leaderboard"), where("learnScore", ">", score))
-            )
-              .then((r) => setIndiaRank(r.data().count + 1))
-              .catch(() => setIndiaRank(null));
-          }
-          setLoading(false);
-        },
-        () => setLoading(false)
-      );
-    });
-
-    return () => { unsubAuth(); if (unsubSnap) unsubSnap(); };
-  }, []);
+    const score: number = studentProfile?.learnScore ?? 0;
+    getCountFromServer(
+      query(collection(db, "leaderboard"), where("learnScore", ">", score))
+    )
+      .then((r) => setIndiaRank(r.data().count + 1))
+      .catch(() => setIndiaRank(null));
+  }, [studentProfile?.learnScore]);
 
   // Derive LearnFun stats from correct field names
   const learnXP    = studentProfile?.LearnFunXP    ?? 0;
@@ -199,6 +176,12 @@ export default function DrawerLayout() {
                 onPress={() => router.push("/dashboard")} colors={colors} />
               <DrawerItem icon="school-outline" label={t("aiGuru")}
                 onPress={() => router.push("/ai-guru")} colors={colors} />
+              <DrawerItem icon="sparkles-outline" label="VidyaGuru AI"
+                onPress={() => router.push("/ai-guru/vidyaguru")} colors={colors} />
+              <DrawerItem icon="compass-outline" label="Discover AI"
+                onPress={() => router.push("/discover")} colors={colors} />
+              <DrawerItem icon="book-outline" label="LearnFun"
+                onPress={() => router.push("/(drawer)/(tabs)/learnFun")} colors={colors} />
 
               {/* Language selector */}
               <TouchableOpacity

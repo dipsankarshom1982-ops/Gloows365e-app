@@ -19,7 +19,7 @@ import {
   View,
 } from "react-native";
 
-import { auth, db } from "@/lib/firebase";
+import { auth, db, functions } from "@/lib/firebase";
 import {
   addDoc,
   collection,
@@ -28,16 +28,15 @@ import {
   getDoc,
   getDocs,
   increment,
-  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
-  startAfter,
   updateDoc,
   where,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 // ─── Comment presets ──────────────────────────────────────────
 const COMMENT_GROUPS = [
@@ -170,11 +169,11 @@ async function waitForManifest(
 export default function Reels() {
   const { colors }  = useTheme();
   const navigation  = useNavigation();
-  const params      = useLocalSearchParams<{ index?: string; postId?: string }>();
+  const params      = useLocalSearchParams<{ index?: string; postId?: string; filter?: string }>();
 
   const [approvedReels,   setApprovedReels]   = useState<Post[]>([]);
   const [ownPendingReels, setOwnPendingReels] = useState<Post[]>([]);
-  const [lastDoc,         setLastDoc]         = useState<any>(null);
+  const [reelsCursor,     setReelsCursor]     = useState<string | null>(null);
   const [loadingMore,     setLoadingMore]     = useState(false);
   const [currentIndex,    setCurrentIndex]    = useState(0);
   const [paused,          setPaused]          = useState(false);
@@ -196,6 +195,26 @@ export default function Reels() {
   })();
 
   // ── Load reels ────────────────────────────────────────────
+  const getReelsFeed = httpsCallable<
+    { classLevel?: string; cursor?: string; limit?: number },
+    { reels: any[]; cursor: string | null }
+  >(functions, "getReelsFeed");
+
+  const isSkillBattleFilter = params.filter === "skillbattle";
+
+  const loadSkillBattleReels = async (excludeId?: string): Promise<Post[]> => {
+    const q = query(
+      collection(db, "posts"),
+      where("isSkillBattle", "==", true),
+      where("status", "==", "approved")
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
+      .filter((p) => p.id !== excludeId)
+      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
+  };
+
   useEffect(() => {
     const loadReels = async () => {
       if (params.postId) {
@@ -214,45 +233,56 @@ export default function Reels() {
         }
 
         // Step 2: Load the rest of the feed in background
-        // Tapped post stays at index 0, feed appends after it
-        const q = query(
-          collection(db, "posts"),
-          where("postType", "==", "reel"),
-          where("status",   "==", "approved"),
-          orderBy("createdAt", "desc"),
-          limit(10)
-        );
-        const feedSnap = await getDocs(q);
-        const feedPosts: Post[] = feedSnap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
-          .filter((p) => p.id !== params.postId); // exclude tapped post (already at 0)
-        setApprovedReels((prev) => {
-          const tapped = prev[0]; // keep tapped post at index 0
-          return tapped ? [tapped, ...feedPosts] : feedPosts;
-        });
-        setLastDoc(feedSnap.docs[feedSnap.docs.length - 1] ?? null);
+        if (isSkillBattleFilter) {
+          try {
+            const rest = await loadSkillBattleReels(params.postId as string);
+            setApprovedReels((prev) => {
+              const tapped = prev[0];
+              return tapped ? [tapped, ...rest] : rest;
+            });
+          } catch (e) {
+            console.log("load skill battle reels (postId path):", e);
+          }
+        } else {
+          try {
+            const { data } = await getReelsFeed({});
+            const feedPosts: Post[] = (data.reels as Post[]).filter((p) => p.id !== params.postId);
+            setApprovedReels((prev) => {
+              const tapped = prev[0];
+              return tapped ? [tapped, ...feedPosts] : feedPosts;
+            });
+            setReelsCursor(data.cursor);
+          } catch (e) {
+            console.log("load feed (postId path):", e);
+          }
+        }
         return;
       }
 
-      // Normal feed — no postId
-      const q = query(
-        collection(db, "posts"),
-        where("postType", "==", "reel"),
-        where("status",   "==", "approved"),
-        orderBy("createdAt", "desc"),
-        limit(10)
-      );
-      const unsub = onSnapshot(q, (snap) => {
-        setApprovedReels(
-          snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
-        );
-        setLastDoc(snap.docs[snap.docs.length - 1] ?? null);
-      });
-      return () => unsub();
+      if (isSkillBattleFilter) {
+        // View All — load all skill battle reels
+        try {
+          const reels = await loadSkillBattleReels();
+          setApprovedReels(reels);
+          setReady(true);
+        } catch (e) {
+          console.log("load skill battle filter reels:", e);
+        }
+        return;
+      }
+
+      // Normal feed — no filter, no postId
+      try {
+        const { data } = await getReelsFeed({});
+        setApprovedReels(data.reels as Post[]);
+        setReelsCursor(data.cursor);
+      } catch (e) {
+        console.log("load reels feed:", e);
+      }
     };
 
     loadReels();
-  }, [params.postId]);
+  }, [params.postId, params.filter]);
 
   // ── Own pending / in-review reels ──────────────────────────
   useEffect(() => {
@@ -266,6 +296,9 @@ export default function Reels() {
           snap.docs
             .filter((d) => {
               const data = d.data();
+              if (isSkillBattleFilter) {
+                return data.isSkillBattle === true && data.status !== "approved";
+              }
               return data.postType === "reel" && data.status !== "approved";
             })
             .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
@@ -274,7 +307,7 @@ export default function Reels() {
       }, () => setOwnPendingReels([]));
     });
     return () => { unsubAuth(); if (unsubQuery) unsubQuery(); };
-  }, []);
+  }, [isSkillBattleFilter]);
 
   // ── Scroll to index on first load ──────────────────────────
   useEffect(() => {
@@ -304,23 +337,12 @@ export default function Reels() {
 
   // ── Load more ──────────────────────────────────────────────
   const loadMore = async () => {
-    if (!lastDoc || loadingMore) return;
+    if (isSkillBattleFilter || !reelsCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const q = query(
-        collection(db, "posts"),
-        where("postType", "==", "reel"),
-        where("status",   "==", "approved"),
-        orderBy("createdAt", "desc"),
-        startAfter(lastDoc),
-        limit(5)
-      );
-      const snap = await getDocs(q);
-      setApprovedReels((prev) => [
-        ...prev,
-        ...snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) })),
-      ]);
-      setLastDoc(snap.docs[snap.docs.length - 1] ?? null);
+      const { data } = await getReelsFeed({ cursor: reelsCursor, limit: 5 });
+      setApprovedReels((prev) => [...prev, ...(data.reels as Post[])]);
+      setReelsCursor(data.cursor);
     } catch (e) { console.log("loadMore:", e); }
     finally { setLoadingMore(false); }
   };
@@ -749,11 +771,10 @@ function VideoItem({ item, isActive, paused, onPauseToggle, onLike, onShare, onV
     <>
       <Pressable
         style={{ height }}
-        onPress={cfState === "ready" ? onPauseToggle : undefined}
         onLongPress={cfState === "ready" ? handleLikePress : undefined}
       >
-        {/* VideoView always rendered — player starts with null source */}
-        <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" />
+        {/* VideoView with native platform controls */}
+        <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls />
 
         {/* CF processing overlay */}
         {renderProcessingOverlay()}

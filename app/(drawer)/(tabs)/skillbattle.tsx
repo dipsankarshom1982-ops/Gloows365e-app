@@ -419,7 +419,7 @@ export default function SkillBattleScreen() {
             <View style={[styles.statChip, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <Ionicons name="school-outline" size={13} color={colors.textSecondary} />
               <Text style={[styles.statChipText, { color: colors.textSecondary }]}>
-                Class 5–12
+                Class 6–12
               </Text>
             </View>
           </View>
@@ -570,7 +570,7 @@ export default function SkillBattleScreen() {
             <View style={[styles.ineligibleBanner, { backgroundColor: "rgba(255,107,157,0.1)", borderColor: "rgba(255,107,157,0.3)" }]}>
               <Ionicons name="lock-closed-outline" size={13} color="#ff6b9d" />
               <Text style={styles.ineligibleText}>
-                Class {student.class} not eligible · Requires Class 5–12
+                Class {student.class} not eligible · Requires Class 6–12
               </Text>
             </View>
           ) : null}

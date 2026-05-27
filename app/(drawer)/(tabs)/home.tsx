@@ -1,4 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -25,25 +26,27 @@ import KnowledgeHubSection      from "@/components/KnowledgeHubSection";
 import SeekhoPreviewSection     from "@/components/SeekhoPreviewSection";
 import VidyaStarPreviewSection from "@/components/VidyaStarPreviewSection";
 import SkillBattlePreviewSection from "@/components/SkillBattlePreviewSection";
+import DiscoverPreviewSection  from "@/components/DiscoverPreviewSection";
 
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { functions } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
 
 export default function Home() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const [posts, setPosts] = useState<any[]>([]);
 
-  // 🔥 FETCH POSTS - Only fetch photo and video type posts
   const fetchPosts = useCallback(async () => {
     try {
-      const snap = await getDocs(collection(db, "posts"));
-      const data = snap.docs
-        .map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
-        .filter((post: any) => post.postType === "photo" || post.postType === "video");
-      setPosts(data);
+      const getHomeFeed = httpsCallable<
+        { classLevel?: string },
+        { banners: unknown[]; posts: any[] }
+      >(functions, "getHomeFeed");
+      const { data } = await getHomeFeed({});
+      const filtered = data.posts.filter(
+        (p: any) => p.postType === "photo" || p.postType === "video"
+      );
+      setPosts(filtered);
     } catch (error) {
       console.log("Feed error:", error);
       setPosts([]);
@@ -67,6 +70,7 @@ export default function Home() {
     feed.push({ type: "home_ads" });
     feed.push({ type: "vidya_star" });
     feed.push({ type: "seekho_preview" });
+    feed.push({ type: "discover_preview" });
     feed.push({ type: "knowledge_hub" });
 
     // Main feed loop
@@ -114,6 +118,7 @@ export default function Home() {
       <Header />
       <FlatList
         data={feedData}
+        extraData={colors}
         renderItem={({ item }) => (
           <View>
             {item.type === "aiguru" ? (
@@ -146,14 +151,14 @@ export default function Home() {
                   <View style={styles.aiMain}>
                     <Text style={styles.aiEmoji}>🤖</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.aiTitle}>AI Guru</Text>
-                      <Text style={styles.aiSubtitle}>Your personal learning assistant</Text>
+                      <Text style={styles.aiTitle}>{t("aiGuru")}</Text>
+                      <Text style={styles.aiSubtitle}>{t("aiGuruSubtitle")}</Text>
                     </View>
                   </View>
 
                   {/* Feature chips */}
                   <View style={styles.aiChipsRow}>
-                    {["Ask Anything", "Instant Answers", "Study Help"].map((f) => (
+                    {[t("askAnything"), t("instantAnswers"), t("studyHelp")].map((f) => (
                       <View key={f} style={styles.aiChip}>
                         <Text style={styles.aiChipText}>{f}</Text>
                       </View>
@@ -167,7 +172,7 @@ export default function Home() {
                     end={{ x: 1, y: 0 }}
                     style={styles.aiCta}
                   >
-                    <Text style={styles.aiCtaText}>Start Chatting →</Text>
+                    <Text style={styles.aiCtaText}>{t("startChatting")}</Text>
                   </LinearGradient>
                 </LinearGradient>
               </TouchableOpacity>
@@ -189,6 +194,8 @@ export default function Home() {
               <VidyaStarPreviewSection />
             ) : item.type === "seekho_preview" ? (
               <SeekhoPreviewSection />
+            ) : item.type === "discover_preview" ? (
+              <DiscoverPreviewSection />
             ) : item.type === "knowledge_hub" ? (
               <KnowledgeHubSection />
            // ) : item.type === "explore" ? (
