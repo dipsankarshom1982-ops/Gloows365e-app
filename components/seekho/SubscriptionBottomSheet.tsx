@@ -1,6 +1,7 @@
 import { useTheme } from "@/context/ThemeContext";
-import { PLAN_CONFIG, RAZORPAY_KEY_ID } from "@/lib/seekho/constants";
+import { RAZORPAY_KEY_ID } from "@/lib/seekho/constants";
 import { useStudentProfile } from "@/context/StudentProfileContext";
+import { useAppConfig } from "@/context/AppConfigContext";
 import {
   Alert,
   Modal,
@@ -39,7 +40,6 @@ interface Props {
   onSubscribed?: () => void;
 }
 
-type Plan = "plus" | "pro";
 type Cycle = "monthly" | "annual";
 
 export default function SubscriptionBottomSheet({
@@ -50,12 +50,15 @@ export default function SubscriptionBottomSheet({
 }: Props) {
   const { colors } = useTheme();
   const { user } = useStudentProfile();
-  const [selectedPlan, setSelectedPlan] = useState<Plan>("plus");
+  const { plans } = useAppConfig();
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("plus");
   const [cycle, setCycle] = useState<Cycle>("monthly");
   const [loading, setLoading] = useState(false);
 
-  const plan = PLAN_CONFIG[selectedPlan];
-  const amount = cycle === "monthly" ? plan.monthlyPrice : plan.annualPrice;
+  // Use plans from Firestore; exclude free tier from the paywall sheet
+  const paidPlans = plans.filter((p) => p.id !== "free");
+  const plan = paidPlans.find((p) => p.id === selectedPlanId) ?? paidPlans[0];
+  const amount = plan ? (cycle === "monthly" ? plan.monthlyPrice : plan.annualPrice) : 0;
 
   const handleSubscribe = async () => {
     if (!user) {
@@ -76,17 +79,18 @@ export default function SubscriptionBottomSheet({
       return;
     }
 
+    if (!plan) return;
     setLoading(true);
     try {
       const fns = getFunctions();
       const createSubscription = httpsCallable<
-        { plan: Plan; selectedClass: number; billingCycle: Cycle; amountPaise: number },
+        { plan: string; selectedClass: number; billingCycle: Cycle; amountPaise: number },
         { razorpayOrderId: string; amount: number }
       >(fns, "seekhoCreateSubscription");
 
       // Create order via Cloud Function (returns orderId)
       const orderResult = await createSubscription({
-        plan: selectedPlan,
+        plan: selectedPlanId,
         selectedClass: defaultClass,
         billingCycle: cycle,
         amountPaise: amount * 100,
@@ -99,7 +103,7 @@ export default function SubscriptionBottomSheet({
         order_id: razorpayOrderId,
         amount: amount * 100,
         currency: "INR",
-        name: "NextVidya",
+        name: "GLOOWS365E",
         description: `${plan.name} — ${cycle === "monthly" ? "Monthly" : "Annual"}`,
         prefill: { email: user.email ?? "" },
         theme: { color: "#6366f1" },
@@ -111,7 +115,7 @@ export default function SubscriptionBottomSheet({
           razorpayPaymentId: string;
           razorpayOrderId: string;
           razorpaySignature: string;
-          plan: Plan;
+          plan: string;
           selectedClass: number;
         },
         { success: boolean }
@@ -121,7 +125,7 @@ export default function SubscriptionBottomSheet({
         razorpayPaymentId: result.razorpay_payment_id,
         razorpayOrderId: result.razorpay_order_id,
         razorpaySignature: result.razorpay_signature,
-        plan: selectedPlan,
+        plan: selectedPlanId,
         selectedClass: defaultClass,
       });
 
@@ -169,14 +173,13 @@ export default function SubscriptionBottomSheet({
           </View>
 
           {/* Plan cards */}
-          {(["plus", "pro"] as Plan[]).map((p) => {
-            const cfg = PLAN_CONFIG[p];
-            const isSelected = selectedPlan === p;
+          {paidPlans.map((cfg) => {
+            const isSelected = selectedPlanId === cfg.id;
             const price = cycle === "monthly" ? cfg.monthlyPrice : cfg.annualMonthly;
             return (
               <TouchableOpacity
-                key={p}
-                onPress={() => setSelectedPlan(p)}
+                key={cfg.id}
+                onPress={() => setSelectedPlanId(cfg.id)}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -189,6 +192,11 @@ export default function SubscriptionBottomSheet({
                     {isSelected && (
                       <View style={S.checkBadge}>
                         <Ionicons name="checkmark" size={12} color="#fff" />
+                      </View>
+                    )}
+                    {cfg.highlight && !isSelected && (
+                      <View style={S.popularBadge}>
+                        <Text style={S.popularBadgeText}>Popular</Text>
                       </View>
                     )}
                     <View style={S.planPriceWrap}>
@@ -290,6 +298,13 @@ const S = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  popularBadge: {
+    backgroundColor: "#f59e0b",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  popularBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   planPriceWrap: { alignItems: "flex-end" },
   planPrice: { color: "#fff", fontSize: 20, fontWeight: "900" },
   planPriceSub: { color: "rgba(255,255,255,0.6)", fontSize: 10 },

@@ -3,6 +3,8 @@ import { useAppTranslation } from "@/context/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { useAdFeed } from "@/hooks/useAdFeed";
+import { useAdFrequency } from "@/hooks/useAdFrequency";
 import {
   FlatList,
   StyleSheet,
@@ -12,7 +14,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AdsCard from "@/components/AdsCard";
+import FeedAdCard       from "@/components/ads/FeedAdCard";
+import ScholarshipAdCard from "@/components/ads/ScholarshipAdCard";
 import PostCard from "@/components/FeedPostCard";
 import Header from "@/components/header";
 import Stories from "@/components/Story";
@@ -35,6 +38,11 @@ export default function Home() {
   const { colors } = useTheme();
   const { t } = useAppTranslation();
   const [posts, setPosts] = useState<any[]>([]);
+
+  // Ad system
+  const { currentAd: feedAd, nextAd }       = useAdFeed({ module: "home", adType: "feed" });
+  const { currentAd: scholarshipAd }         = useAdFeed({ module: "home", adType: "scholarship" });
+  const { canShowAd, recordAdShown }         = useAdFrequency();
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -70,6 +78,7 @@ export default function Home() {
     feed.push({ type: "home_ads" });
     feed.push({ type: "vidya_star" });
     feed.push({ type: "seekho_preview" });
+    feed.push({ type: "scholarship_ad" });
     feed.push({ type: "discover_preview" });
     feed.push({ type: "knowledge_hub" });
 
@@ -179,7 +188,14 @@ export default function Home() {
             ) : item.type === "post" ? (
               <PostCard data={item.data} />
             ) : item.type === "ad" ? (
-              <AdsCard />
+              feedAd && canShowAd()
+                ? <FeedAdCard
+                    ad={feedAd}
+                    module="home"
+                    key={feedAd.id}
+                    style={{ marginVertical: 4 }}
+                  />
+                : null
             ) : item.type === "skillshorts" ? (
               <SkillShortPreview />
             ) : item.type === "stories" ? (
@@ -194,6 +210,10 @@ export default function Home() {
               <VidyaStarPreviewSection />
             ) : item.type === "seekho_preview" ? (
               <SeekhoPreviewSection />
+            ) : item.type === "scholarship_ad" ? (
+              scholarshipAd
+                ? <ScholarshipAdCard ad={scholarshipAd} module="home" />
+                : null
             ) : item.type === "discover_preview" ? (
               <DiscoverPreviewSection />
             ) : item.type === "knowledge_hub" ? (

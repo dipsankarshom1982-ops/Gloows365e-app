@@ -57,9 +57,9 @@ export default function AboutScreen() {
         {/* App Identity */}
         <View style={styles.hero}>
           <View style={[styles.logoBox, { backgroundColor: `${colors.accent}15`, borderColor: `${colors.accent}30` }]}>
-            <Text style={styles.logoText}>NV</Text>
+            <Text style={styles.logoText}>GL</Text>
           </View>
-          <Text style={[styles.appName, { color: colors.text }]}>NextVidya</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>GLOOWS365E</Text>
           <Text style={[styles.tagline, { color: colors.accent }]}>
             Learn. Compete. Grow.
           </Text>
@@ -72,7 +72,7 @@ export default function AboutScreen() {
         <View style={[styles.missionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>🎯 Our Mission</Text>
           <Text style={[styles.missionText, { color: colors.textSecondary }]}>
-            NextVidya is a gamified learning platform built for students from Class 4 to 12.
+            GLOOWS365E is a gamified learning platform built for students from Class 4 to 12.
             We combine structured courses, AI-powered guidance, and competitive quizzes to make
             education engaging, accessible, and effective — in every Indian language.
           </Text>
@@ -128,7 +128,7 @@ export default function AboutScreen() {
         {/* Legal */}
         <View style={styles.legalRow}>
           <Text style={[styles.legalText, { color: colors.textSecondary }]}>
-            © 2026 NextVidya. All rights reserved.
+            © 2026 GLOOWS365E. All rights reserved.
           </Text>
           <TouchableOpacity onPress={() => router.push("/privacy" as any)}>
             <Text style={[styles.legalLink, { color: colors.accent }]}>Privacy Policy</Text>

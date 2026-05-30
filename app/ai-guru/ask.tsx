@@ -14,8 +14,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { askAiGuruQuestion } from "@/services/askAiGuruApi";
 
 const FREE_DAILY_ASK = 5;
@@ -32,18 +34,11 @@ const SUBJECT_CHIPS = [
 
 type ResultState = "idle" | "loading" | "found" | "limit" | "error";
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 12) return "Good morning";
-  if (h >= 12 && h < 17) return "Good afternoon";
-  if (h >= 17 && h < 21) return "Good evening";
-  return "Hello";
-}
-
 export default function AskAiGuruScreen() {
   const insets = useSafeAreaInsets();
   const { studentProfile } = useStudentProfile();
   const { colors, isDarkMode } = useTheme();
+  const { t } = useAppTranslation();
 
   const firstName    = studentProfile?.name?.split(" ")[0] ?? "there";
   const studentClass = String(studentProfile?.class ?? "10");
@@ -63,6 +58,14 @@ export default function AskAiGuruScreen() {
   const [errMsg,    setErrMsg]    = useState("");
   const [remaining, setRemaining] = useState(FREE_DAILY_ASK);
   const inputRef = useRef<TextInput>(null);
+
+  // Time-based greeting using translations
+  const hour = new Date().getHours();
+  const greeting =
+    hour >= 5  && hour < 12 ? t("goodMorning")    :
+    hour >= 12 && hour < 17 ? t("goodAfternoon")  :
+    hour >= 17 && hour < 21 ? t("goodEvening")    :
+    t("helloGreet");
 
   async function handleAsk() {
     const trimmed = query.trim();
@@ -84,7 +87,7 @@ export default function AskAiGuruScreen() {
         setResult("limit");
         setRemaining(0);
       } else {
-        setErrMsg(err?.message ?? "Something went wrong. Please try again.");
+        setErrMsg(err?.message ?? t("somethingWentWrong"));
         setResult("error");
       }
     }
@@ -101,6 +104,11 @@ export default function AskAiGuruScreen() {
 
   const canSend = query.trim().length > 0 && result !== "loading";
 
+  const quotaLabel =
+    remaining === 1
+      ? t("freeQuestionsRemaining", { count: remaining }) ?? `${remaining} free question remaining today · Resets at midnight IST`
+      : t("freeQuestionsRemainingPlural", { count: remaining }) ?? `${remaining} free questions remaining today · Resets at midnight IST`;
+
   return (
     <KeyboardAvoidingView
       style={[S.root, { backgroundColor: isDarkMode ? "#0a0a1a" : colors.background }]}
@@ -112,18 +120,20 @@ export default function AskAiGuruScreen() {
       )}
 
       {/* ── Header ── */}
-      <View style={[S.header, { paddingTop: insets.top + 8 }]}>
+      <Animated.View entering={FadeIn.duration(350)} style={[S.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={[S.backBtn, { backgroundColor: backBtnBg }]}>
           <Ionicons name="chevron-back" size={22} color={textSec} />
         </TouchableOpacity>
-        <Text style={[S.headerTitle, { color: textMain }]}>Ask AI Guru</Text>
+
+        <Text style={[S.headerTitle, { color: textMain }]}>{t("askAiGuruTitle") ?? "Ask AI Guru"}</Text>
+
         <View style={[S.quotaBadge, { backgroundColor: surfaceBg, borderColor: remaining > 0 ? borderCol : "rgba(239,68,68,0.4)" }]}>
           <View style={[S.quotaDot, { backgroundColor: remaining > 0 ? "#10b981" : "#ef4444" }]} />
           <Text style={[S.quotaText, { color: remaining > 0 ? "#10b981" : "#ef4444" }]}>
-            {remaining}/{FREE_DAILY_ASK} left
+            {remaining}/{FREE_DAILY_ASK} {t("leftLabel") ?? "left"}
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
       {/* ── Main content ── */}
       <ScrollView
@@ -135,15 +145,17 @@ export default function AskAiGuruScreen() {
 
         {/* IDLE: greeting + subject chips */}
         {result === "idle" && (
-          <View style={S.greetingBlock}>
-            <Text style={[S.greetingLabel, { color: textSec }]}>{getGreeting()},</Text>
+          <Animated.View entering={FadeInDown.duration(400).delay(100)} style={S.greetingBlock}>
+            <Text style={[S.greetingLabel, { color: textSec }]}>{greeting},</Text>
             <Text style={[S.greetingName, { color: textMain }]}>{firstName} 👋</Text>
             <Text style={[S.greetingSub, { color: textDim }]}>
-              What would you like to know today?
+              {t("whatToLearnToday") ?? "What would you like to know today?"}
             </Text>
 
             {/* Subject chips */}
-            <Text style={[S.chipsSectionLabel, { color: textDim }]}>Browse by subject</Text>
+            <Text style={[S.chipsSectionLabel, { color: textDim }]}>
+              {t("browseBySubject") ?? "Browse by subject"}
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -164,29 +176,29 @@ export default function AskAiGuruScreen() {
             {/* Daily quota note */}
             <View style={[S.quotaNote, { backgroundColor: surfaceBg, borderColor: borderCol }]}>
               <Ionicons name="sparkles-outline" size={15} color="#6366f1" />
-              <Text style={[S.quotaNoteText, { color: textDim }]}>
-                {remaining} free question{remaining !== 1 ? "s" : ""} remaining today · Resets at midnight IST
-              </Text>
+              <Text style={[S.quotaNoteText, { color: textDim }]}>{quotaLabel}</Text>
             </View>
-          </View>
+          </Animated.View>
         )}
 
         {/* LOADING */}
         {result === "loading" && (
-          <View style={S.centerBlock}>
+          <Animated.View entering={FadeIn.duration(300)} style={S.centerBlock}>
             <LinearGradient colors={["#312e81", "#4f46e5"]} style={S.thinkingOrb}>
               <ActivityIndicator color="#fff" size="large" />
             </LinearGradient>
-            <Text style={[S.thinkingTitle, { color: textMain }]}>Thinking...</Text>
+            <Text style={[S.thinkingTitle, { color: textMain }]}>
+              {t("thinkingLabel") ?? "Thinking..."}
+            </Text>
             <Text style={[S.thinkingQ, { color: textDim }]} numberOfLines={2}>
               "{askedQ}"
             </Text>
-          </View>
+          </Animated.View>
         )}
 
         {/* ANSWER */}
         {result === "found" && (
-          <View style={S.answerBlock}>
+          <Animated.View entering={FadeInDown.duration(400)} style={S.answerBlock}>
             {/* User question bubble */}
             <View style={S.userRow}>
               <View style={[S.userBubble, { backgroundColor: isDarkMode ? "#312e81" : "#ede9fe" }]}>
@@ -198,63 +210,62 @@ export default function AskAiGuruScreen() {
 
             {/* AI answer card */}
             <View style={[S.answerCard, { backgroundColor: surfaceBg, borderColor: borderCol }]}>
-              {/* Card header */}
               <View style={S.answerCardHeader}>
                 <LinearGradient colors={["#4f46e5", "#7c3aed"]} style={S.aiAvatar}>
                   <Text style={S.aiAvatarText}>AI</Text>
                 </LinearGradient>
-                <Text style={[S.aiLabel, { color: textSec }]}>AI Guru</Text>
+                <Text style={[S.aiLabel, { color: textSec }]}>{t("askAiGuruTitle") ?? "AI Guru"}</Text>
               </View>
 
-              {/* Answer text */}
               <Text style={[S.answerText, { color: textMain }]}>{answer}</Text>
 
-              {/* Divider + upsell */}
               <View style={[S.divider, { backgroundColor: borderCol }]} />
-              <Text style={[S.upsellLabel, { color: textDim }]}>Want to go deeper?</Text>
+              <Text style={[S.upsellLabel, { color: textDim }]}>
+                {t("wantToGoDeeper") ?? "Want to go deeper?"}
+              </Text>
               <View style={S.upsellRow}>
                 <TouchableOpacity
                   style={[S.upsellBtn, { backgroundColor: isDarkMode ? "rgba(99,102,241,0.15)" : "#ede9fe", borderColor: "#6366f1" }]}
                   onPress={() => router.push("/ai-guru/setup")}
                   activeOpacity={0.8}
                 >
-                  <Text style={S.upsellBtnText}>✨ Generate Lesson</Text>
+                  <Text style={S.upsellBtnText}>{t("generateLessonAction") ?? "✨ Generate Lesson"}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[S.upsellBtn, { backgroundColor: isDarkMode ? "rgba(99,102,241,0.15)" : "#ede9fe", borderColor: "#6366f1" }]}
                   onPress={() => router.push("/ai-guru/vidyaguru")}
                   activeOpacity={0.8}
                 >
-                  <Text style={S.upsellBtnText}>🤖 Chat with AI</Text>
+                  <Text style={S.upsellBtnText}>{t("chatWithAIAction") ?? "🤖 Chat with AI"}</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Ask another */}
             <TouchableOpacity onPress={reset} style={S.resetRow}>
               <Ionicons name="refresh-outline" size={15} color="#6366f1" />
-              <Text style={S.resetText}>Ask another question</Text>
+              <Text style={S.resetText}>{t("askAnotherQuestion") ?? "Ask another question"}</Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         {/* LIMIT REACHED */}
         {result === "limit" && (
-          <View style={S.centerBlock}>
+          <Animated.View entering={FadeIn.duration(300)} style={S.centerBlock}>
             <Text style={S.limitEmoji}>⏰</Text>
             <Text style={[S.limitTitle, { color: textMain }]}>
-              Daily limit reached
+              {t("dailyLimitTitle") ?? "Daily limit reached"}
             </Text>
             <Text style={[S.limitBody, { color: textSec }]}>
-              You've used all {FREE_DAILY_ASK} free questions for today. Come back tomorrow or upgrade to Premium.
+              {t("dailyLimitMessage", { count: FREE_DAILY_ASK }) ??
+                `You've used all ${FREE_DAILY_ASK} free questions for today. Upgrade to Premium for unlimited questions.`}
             </Text>
             <TouchableOpacity
               style={S.limitPrimaryWrap}
               activeOpacity={0.85}
-              onPress={() => router.push("/ai-guru/setup")}
+              onPress={() => router.push("/ai-guru/subscription" as any)}
             >
               <LinearGradient colors={["#312e81", "#4f46e5"]} style={S.limitPrimaryBtn}>
-                <Text style={S.limitPrimaryText}>✨ Generate Full Lesson</Text>
+                <Text style={S.limitPrimaryText}>✨ Upgrade to Premium</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
@@ -262,25 +273,31 @@ export default function AskAiGuruScreen() {
               activeOpacity={0.85}
               onPress={() => router.push("/ai-guru/vidyaguru")}
             >
-              <Text style={[S.limitSecondaryText, { color: textSec }]}>🤖 Chat with VidyaGuru instead</Text>
+              <Text style={[S.limitSecondaryText, { color: textSec }]}>
+                {t("chatWithVidyaGuruAction") ?? "🤖 Chat with VidyaGuru instead"}
+              </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         {/* ERROR */}
         {result === "error" && (
-          <View style={S.centerBlock}>
+          <Animated.View entering={FadeIn.duration(300)} style={S.centerBlock}>
             <Ionicons name="warning-outline" size={42} color="#f59e0b" />
-            <Text style={[S.limitTitle, { color: textMain }]}>Something went wrong</Text>
+            <Text style={[S.limitTitle, { color: textMain }]}>
+              {t("somethingWentWrong") ?? "Something went wrong"}
+            </Text>
             <Text style={[S.limitBody, { color: textSec }]}>{errMsg}</Text>
             <TouchableOpacity
               style={[S.retryBtn, { borderColor: borderCol }]}
               onPress={reset}
               activeOpacity={0.8}
             >
-              <Text style={[S.retryText, { color: colors.accent }]}>Try again</Text>
+              <Text style={[S.retryText, { color: colors.accent }]}>
+                {t("tryAgainLabel") ?? "Try again"}
+              </Text>
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
 
         <View style={{ height: 16 }} />
@@ -296,7 +313,11 @@ export default function AskAiGuruScreen() {
           <TextInput
             ref={inputRef}
             style={[S.input, { color: textMain }]}
-            placeholder={result === "found" ? "Ask a follow-up question..." : "Ask anything about your syllabus..."}
+            placeholder={
+              result === "found"
+                ? t("askFollowUpPlaceholder") ?? "Ask a follow-up question..."
+                : t("askSyllabusPlaceholder") ?? "Ask anything about your syllabus..."
+            }
             placeholderTextColor={textDim}
             value={query}
             onChangeText={setQuery}
@@ -328,7 +349,6 @@ export default function AskAiGuruScreen() {
 const S = StyleSheet.create({
   root: { flex: 1 },
 
-  // Header
   header:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, gap: 10 },
   backBtn:    { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
   headerTitle:{ flex: 1, fontSize: 18, fontWeight: "900" },
@@ -336,11 +356,9 @@ const S = StyleSheet.create({
   quotaDot:   { width: 7, height: 7, borderRadius: 4 },
   quotaText:  { fontSize: 11, fontWeight: "800" },
 
-  // Scroll
   scroll:        { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 8, flexGrow: 1 },
 
-  // Greeting / idle
   greetingBlock:    { paddingTop: 24 },
   greetingLabel:    { fontSize: 18, fontWeight: "500", marginBottom: 2 },
   greetingName:     { fontSize: 36, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 },
@@ -352,13 +370,11 @@ const S = StyleSheet.create({
   quotaNote:        { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 14, borderWidth: 1, padding: 12 },
   quotaNoteText:    { flex: 1, fontSize: 12, lineHeight: 18 },
 
-  // Loading
   centerBlock:   { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 64, gap: 16 },
   thinkingOrb:   { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", marginBottom: 4 },
   thinkingTitle: { fontSize: 22, fontWeight: "800" },
   thinkingQ:     { fontSize: 13, textAlign: "center", lineHeight: 20, maxWidth: 280, fontStyle: "italic" },
 
-  // Answer
   answerBlock:   { paddingTop: 8, gap: 14 },
   userRow:       { alignItems: "flex-end" },
   userBubble:    { maxWidth: "80%", borderRadius: 20, borderBottomRightRadius: 4, paddingHorizontal: 16, paddingVertical: 12 },
@@ -379,7 +395,6 @@ const S = StyleSheet.create({
   resetRow:  { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", paddingVertical: 6 },
   resetText: { color: "#6366f1", fontSize: 14, fontWeight: "600" },
 
-  // Limit
   limitEmoji:       { fontSize: 52 },
   limitTitle:       { fontSize: 19, fontWeight: "800", textAlign: "center", maxWidth: 280 },
   limitBody:        { fontSize: 13, textAlign: "center", lineHeight: 20, maxWidth: 280 },
@@ -389,11 +404,9 @@ const S = StyleSheet.create({
   limitSecondaryBtn:{ width: "100%", borderRadius: 16, borderWidth: 1, paddingVertical: 14, alignItems: "center" },
   limitSecondaryText:{ fontSize: 14, fontWeight: "600" },
 
-  // Error
   retryBtn:  { borderRadius: 12, borderWidth: 1, paddingHorizontal: 28, paddingVertical: 12 },
   retryText: { fontSize: 14, fontWeight: "700" },
 
-  // Input bar
   inputBar:    { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   inputWrap:   { flexDirection: "row", alignItems: "flex-end", borderRadius: 26, borderWidth: 1, paddingLeft: 16, paddingRight: 6, paddingVertical: 6, gap: 8 },
   input:       { flex: 1, fontSize: 15, lineHeight: 22, maxHeight: 120, paddingVertical: 6 },

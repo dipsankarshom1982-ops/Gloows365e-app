@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   StyleSheet,
   Text,
   View,
@@ -101,10 +102,11 @@ export default function SplashScreen() {
               alignItems: "center",
             }}
           >
-            <Text style={styles.emoji}>🎓</Text>
-            <Text style={styles.brand}>
-              Vidya<Text style={styles.gold}>AI</Text>
-            </Text>
+            <Image
+              source={require("../assets/images/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </Animated.View>
 
           {/* TAGLINE */}
@@ -137,22 +139,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  emoji: {
-    fontSize: 72,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-
-  brand: {
-    fontSize: 48,
-    fontWeight: "900",
-    color: "#fff",
-    textAlign: "center",
-    letterSpacing: 2,
-  },
-
-  gold: {
-    color: "#FFD700",
+  logo: {
+    width: 240,
+    height: 240,
+    marginBottom: 8,
   },
 
   tagline: {

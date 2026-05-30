@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoDailyRevisionReminder = exports.seekhoGetDailyStudyPlan = exports.seekhoCreateSubscription = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
+exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.generateContestLesson = exports.getUserSubscriptionHistory = exports.createComboPlan = exports.createCoupon = exports.approveContent = exports.removeAdmin = exports.createAdmin = exports.aggregateAdAnalytics = exports.claimAdReward = exports.recordAdEvent = exports.getAds = exports.aiGuruCreateSubscription = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoDailyRevisionReminder = exports.seekhoGetDailyStudyPlan = exports.seekhoCreateSubscription = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const functionsV1 = require("firebase-functions/v1");
@@ -41,6 +41,26 @@ Object.defineProperty(exports, "getPersonalizedDashboard", { enumerable: true, g
 // ── Ask AI Guru (Sarvam AI) ─────────────────────────────────────────────────
 var askAiGuru_1 = require("./askAiGuru");
 Object.defineProperty(exports, "askAiGuruQuestion", { enumerable: true, get: function () { return askAiGuru_1.askAiGuruQuestion; } });
+// ── AI Guru Subscription (Razorpay) ────────────────────────────────────────────
+var aiGuruSubscription_1 = require("./aiGuruSubscription");
+Object.defineProperty(exports, "aiGuruCreateSubscription", { enumerable: true, get: function () { return aiGuruSubscription_1.aiGuruCreateSubscription; } });
+// ── Unified Ads System ─────────────────────────────────────────────────────────
+var ads_1 = require("./ads");
+Object.defineProperty(exports, "getAds", { enumerable: true, get: function () { return ads_1.getAds; } });
+Object.defineProperty(exports, "recordAdEvent", { enumerable: true, get: function () { return ads_1.recordAdEvent; } });
+Object.defineProperty(exports, "claimAdReward", { enumerable: true, get: function () { return ads_1.claimAdReward; } });
+Object.defineProperty(exports, "aggregateAdAnalytics", { enumerable: true, get: function () { return ads_1.aggregateAdAnalytics; } });
+// ── Admin Management ───────────────────────────────────────────────────────────
+var adminManagement_1 = require("./adminManagement");
+Object.defineProperty(exports, "createAdmin", { enumerable: true, get: function () { return adminManagement_1.createAdmin; } });
+Object.defineProperty(exports, "removeAdmin", { enumerable: true, get: function () { return adminManagement_1.removeAdmin; } });
+Object.defineProperty(exports, "approveContent", { enumerable: true, get: function () { return adminManagement_1.approveContent; } });
+Object.defineProperty(exports, "createCoupon", { enumerable: true, get: function () { return adminManagement_1.createCoupon; } });
+Object.defineProperty(exports, "createComboPlan", { enumerable: true, get: function () { return adminManagement_1.createComboPlan; } });
+Object.defineProperty(exports, "getUserSubscriptionHistory", { enumerable: true, get: function () { return adminManagement_1.getUserSubscriptionHistory; } });
+// ── Contest Lesson Generation ──────────────────────────────────────────────────
+var contestLesson_1 = require("./contestLesson");
+Object.defineProperty(exports, "generateContestLesson", { enumerable: true, get: function () { return contestLesson_1.generateContestLesson; } });
 // ───────────────────────────────────────────────────────────
 // FUNCTION 1: updateSkillboard
 // Triggers on any post write — updates skillboard + ranks

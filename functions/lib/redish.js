@@ -9,10 +9,9 @@ let _client = null;
 // Lazy init — safe for modules that import but don't always call Redis
 function getRedis() {
     if (!_client) {
-        _client = new redis_1.Redis({
-            url: process.env.REDIS_URL,
-            token: process.env.REDIS_TOKEN,
-        });
+        const url = (process.env.REDIS_URL ?? "").replace(/^["'\s]+|["'\s]+$/g, "");
+        const token = (process.env.REDIS_TOKEN ?? "").replace(/^["'\s]+|["'\s]+$/g, "");
+        _client = new redis_1.Redis({ url, token });
     }
     return _client;
 }
@@ -45,6 +44,9 @@ exports.TTL = {
     dashboard: 14400, // 4 hours
     // Ask AI Guru
     askGuruAnswer: 3600, // 1 hr — cache answer per question hash
+    // Ads system
+    ads: 300, // 5 min — per-module ad list
+    adEvents: 60, // 1 min — dedup window for impression/click events
 };
 // ─── Redis key factory ────────────────────────────────────────────────────────
 exports.RK = {
@@ -76,5 +78,10 @@ exports.RK = {
     // Ask AI Guru
     askGuruChat: (uid, date) => `askguru:chat:${uid}:${date}`,
     askGuruAnswer: (hash) => `askguru:ans:${hash}`,
+    // Ads system
+    ads: (module, cls) => `ads:${module}:${cls}`,
+    adEvent: (uid, adId, event) => `adev:${uid}:${adId}:${event}`,
+    adFreq: (uid, date) => `adfreq:${uid}:${date}`,
+    adReward: (uid, adId) => `adreward:${uid}:${adId}`,
 };
 //# sourceMappingURL=redish.js.map

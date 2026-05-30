@@ -99,7 +99,7 @@ export default function SeekhoSubscriptionScreen() {
         order_id: orderRes.data.razorpayOrderId,
         amount: amount * 100,
         currency: "INR",
-        name: "NextVidya",
+        name: "GLOOWS365E",
         description: `${plan.name} · ${cycle === "monthly" ? "Monthly" : "Annual"}`,
         prefill: { email: user.email ?? "" },
         theme: { color: "#6366f1" },

@@ -85,27 +85,37 @@ exports.askAiGuruQuestion = (0, https_1.onRequest)({
         return;
     }
     try {
-        const redis = (0, redish_1.getRedis)();
-        // Cache per question + class + board (1 hr)
-        const cacheHash = (0, crypto_1.createHash)("sha256")
-            .update(`${String(question).trim().toLowerCase()}:${classLevel}:${board}`)
-            .digest("hex")
-            .slice(0, 16);
-        const cacheKey = redish_1.RK.askGuruAnswer(cacheHash);
-        const cached = await redis.get(cacheKey);
+        const questionStr = String(question).trim();
+        // Try Redis cache — if Redis is broken, skip it and go straight to Gemini
+        let cached = null;
+        let cacheKey = "";
+        let redis;
+        try {
+            redis = (0, redish_1.getRedis)();
+            const cacheHash = (0, crypto_1.createHash)("sha256")
+                .update(`${questionStr.toLowerCase()}:${classLevel}:${board}`)
+                .digest("hex")
+                .slice(0, 16);
+            cacheKey = redish_1.RK.askGuruAnswer(cacheHash);
+            cached = await redis.get(cacheKey);
+        }
+        catch (redisErr) {
+            console.warn("[AskAiGuru] Redis unavailable, proceeding without cache:", redisErr?.message);
+        }
         if (cached) {
             await (0, usageCheck_1.incrementAskGuruUsage)(uid, db);
             const answer = typeof cached === "string" ? cached : JSON.parse(cached);
             res.json({ answer });
             return;
         }
-        const prompt = buildPrompt(String(question).trim(), classLevel, board);
+        const prompt = buildPrompt(questionStr, classLevel, board);
         const raw = await (0, gemini_1.callGeminiText)(prompt);
         const answer = raw.replace(/^Answer:\s*/i, "").trim();
-        await Promise.all([
-            redis.set(cacheKey, answer, { ex: redish_1.TTL.askGuruAnswer }),
-            (0, usageCheck_1.incrementAskGuruUsage)(uid, db),
-        ]);
+        // Best-effort cache write — never block the response on Redis
+        if (redis && cacheKey) {
+            redis.set(cacheKey, answer, { ex: redish_1.TTL.askGuruAnswer }).catch(() => { });
+        }
+        await (0, usageCheck_1.incrementAskGuruUsage)(uid, db);
         res.json({ answer });
     }
     catch (err) {

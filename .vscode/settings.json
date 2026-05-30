@@ -3,5 +3,25 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.expo/**": true,
+    "**/.firebase/**": true,
+    "**/android/**": true,
+    "**/dist/**": true,
+    "**/functions/lib/**": true,
+    "**/admin-web/node_modules/**": true,
+    "**/vidya-backend/**": true
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.expo": true,
+    "**/.firebase": true,
+    "**/android": true,
+    "**/dist": true,
+    "**/functions/lib": true
   }
 }

@@ -368,7 +368,7 @@ export default function ProfileSettingsScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert("⚠️ Delete Account", "This permanently deletes your NextVidya profile and cannot be undone.", [
+    Alert.alert("⚠️ Delete Account", "This permanently deletes your GLOOWS365E profile and cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
@@ -704,7 +704,7 @@ export default function ProfileSettingsScreen() {
           <View style={[styles.dangerZone, { borderColor: "#FF4D4D30", backgroundColor: "#FF4D4D08" }]}>
             <Text style={[styles.dangerTitle, { color: "#FF4D4D" }]}>⚠️ Danger Zone</Text>
             <Text style={[styles.dangerHint, { color: colors.textSecondary }]}>
-              Deleting your account removes all your NextVidya data permanently.
+              Deleting your account removes all your GLOOWS365E data permanently.
             </Text>
             <TouchableOpacity style={[styles.dangerRow, { opacity: deleting ? 0.6 : 1 }]}
               onPress={handleDelete} disabled={deleting}>

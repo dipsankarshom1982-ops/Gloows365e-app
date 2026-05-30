@@ -1,6 +1,7 @@
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { StudentProfileProvider } from "@/context/StudentProfileContext";
+import { AppConfigProvider } from "@/context/AppConfigContext";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import { StatusBar } from "react-native";
@@ -41,9 +42,11 @@ export default function RootLayout() {
     <ThemeProvider>
       <ThemeStatusBar />
       <LanguageProvider>
-        <StudentProfileProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-        </StudentProfileProvider>
+        <AppConfigProvider>
+          <StudentProfileProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+          </StudentProfileProvider>
+        </AppConfigProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

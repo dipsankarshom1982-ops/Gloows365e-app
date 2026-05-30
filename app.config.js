@@ -2,12 +2,12 @@ import "dotenv/config";
 
 export default {
   expo: {
-    name:        "NextVidya",
-    slug:        "nextvidya",
+    name:        "GLOOWS365E",
+    slug:        "gloows365e",
     version:     "1.0.0",
     orientation: "portrait",
-    icon:        "./assets/images/icon.png",
-    scheme:      "nextvidya",
+    icon:        "./assets/images/icon1.png",
+    scheme:      "gloows365e",
     userInterfaceStyle: "automatic",
     newArchEnabled:     true,
 
@@ -24,7 +24,7 @@ export default {
       },
       edgeToEdgeEnabled:             true,
       predictiveBackGestureEnabled:  false,
-      package:                       "com.anonymous.nextvidya",
+      package:                       "com.anonymous.gloows365e",
     },
 
     web: {
@@ -37,7 +37,7 @@ export default {
       [
         "expo-notifications",
         {
-          icon: "./assets/images/icon.png",
+          icon: "./assets/images/icon1.png",
           color: "#6366F1",
           androidMode: "default",
         },
@@ -45,12 +45,12 @@ export default {
       [
         "expo-splash-screen",
         {
-          image:           "./assets/images/splash-icon.png",
-          imageWidth:      200,
+          image:           "./assets/images/logo.png",
+          imageWidth:      250,
           resizeMode:      "contain",
-          backgroundColor: "#ffffff",
+          backgroundColor: "#0f172a",
           dark: {
-            backgroundColor: "#000000",
+            backgroundColor: "#0f172a",
           },
         },
       ],

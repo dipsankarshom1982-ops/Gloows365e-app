@@ -1,9 +1,9 @@
-import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Image,
   StatusBar,
   StyleSheet,
   Text,
@@ -59,15 +59,12 @@ export default function WelcomeScreen() {
 
       {/* Floating Logo */}
       <Animated.View style={floatStyle}>
-        <BlurView intensity={80} tint="light" style={styles.logoCard}>
-          <Text style={styles.logoIcon}>🎓</Text>
-        </BlurView>
+        <Image
+          source={require("../../assets/images/logo.png")}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </Animated.View>
-
-      {/* Title */}
-      <Text style={styles.title}>
-        Vidya<Text style={styles.gold}>AI</Text>
-      </Text>
 
       {/* 🔥 Student Hook */}
       <Text style={styles.subtitle}>
@@ -146,30 +143,10 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
 
-  logoCard: {
-    width: 120,
-    height: 120,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    marginBottom: 20,
-    overflow: "hidden",
-  },
-
-  logoIcon: {
-    fontSize: 42,
-  },
-
-  title: {
-    fontSize: 42,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-
-  gold: {
-    color: "#FFD700",
+  logoImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 10,
   },
 
   subtitle: {

@@ -25,7 +25,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/ThemeContext";
-import { useAppTranslation } from "@/context/LanguageContext";
+import { useAppTranslation, useLanguage } from "@/context/LanguageContext";
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import GuruAvatar from "@/components/vidyaguru/GuruAvatar";
 import VoiceWaveform from "@/components/vidyaguru/VoiceWaveform";
@@ -39,6 +39,7 @@ const GREETING =
 export default function VidyaGuruScreen() {
   const { colors, isDarkMode } = useTheme();
   const { t } = useAppTranslation();
+  const { languageName } = useLanguage();
   const insets = useSafeAreaInsets();
   const { studentProfile } = useStudentProfile();
   const studentName = studentProfile?.name?.split(" ")[0] ?? "Student";
@@ -56,17 +57,17 @@ export default function VidyaGuruScreen() {
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
-  // Show greeting on mount
+  // Show greeting on mount — greeting updates when language changes
   useEffect(() => {
     const greetMsg: GuruMessage = {
       id: "greeting",
       role: "guru",
-      text: `Hello ${studentName}! ${GREETING}`,
+      text: `${t("helloGreet") ?? "Hello"} ${studentName}! ${GREETING}`,
       createdAt: Date.now(),
     };
     setMessages([greetMsg]);
     messagesRef.current = [greetMsg];
-  }, []);
+  }, [languageName]);
 
   const sendMessage = useCallback(
     async (text: string, audioBase64?: string, audioMimeType?: string) => {
@@ -75,7 +76,7 @@ export default function VidyaGuruScreen() {
       const studentMsg: GuruMessage = {
         id: `s_${Date.now()}`,
         role: "student",
-        text: audioBase64 ? "🎤 Voice message" : text.trim(),
+        text: audioBase64 ? (t("voiceMessage") ?? "🎤 Voice message") : text.trim(),
         createdAt: Date.now(),
       };
 
@@ -99,7 +100,7 @@ export default function VidyaGuruScreen() {
           conversationHistory,
           studentName,
           classLevel: String(classLevel),
-          language: "auto",
+          language: languageName,
         });
 
         if (resp.transcribedText) {
@@ -290,12 +291,12 @@ export default function VidyaGuruScreen() {
             },
           ]}
         >
-          {/* Auto-detect language badge */}
+          {/* Selected language badge */}
           <View style={S.langRow}>
-            <View style={[S.langBadge, { backgroundColor: surfaceBg, borderColor: borderCol }]}>
+            <View style={[S.langBadge, { backgroundColor: isDarkMode ? "rgba(99,102,241,0.15)" : "#ede9fe", borderColor: "#6366f1" }]}>
               <Ionicons name="globe-outline" size={12} color="#6366f1" />
-              <Text style={[S.langBadgeText, { color: colors.textSecondary }]}>
-                Auto-detect language
+              <Text style={[S.langBadgeText, { color: "#6366f1" }]}>
+                {t("respondingIn", { lang: languageName }) ?? `Responding in ${languageName}`}
               </Text>
             </View>
           </View>
@@ -316,7 +317,7 @@ export default function VidyaGuruScreen() {
                     color: inputColor,
                   },
                 ]}
-                placeholder={`Ask ${studentName} something...`}
+                placeholder={t("askSomethingPlaceholder") ?? `Ask something...`}
                 placeholderTextColor={placeholderColor}
                 value={inputText}
                 onChangeText={setInputText}

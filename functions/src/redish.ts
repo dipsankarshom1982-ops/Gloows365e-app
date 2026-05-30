@@ -5,10 +5,9 @@ let _client: Redis | null = null;
 // Lazy init — safe for modules that import but don't always call Redis
 export function getRedis(): Redis {
   if (!_client) {
-    _client = new Redis({
-      url: process.env.REDIS_URL!,
-      token: process.env.REDIS_TOKEN!,
-    });
+    const url   = (process.env.REDIS_URL   ?? "").replace(/^["'\s]+|["'\s]+$/g, "");
+    const token = (process.env.REDIS_TOKEN ?? "").replace(/^["'\s]+|["'\s]+$/g, "");
+    _client = new Redis({ url, token });
   }
   return _client;
 }
@@ -50,6 +49,10 @@ export const TTL = {
 
   // Ask AI Guru
   askGuruAnswer: 3600, // 1 hr — cache answer per question hash
+
+  // Ads system
+  ads:      300,   // 5 min — per-module ad list
+  adEvents: 60,    // 1 min — dedup window for impression/click events
 } as const;
 
 // ─── Redis key factory ────────────────────────────────────────────────────────
@@ -92,4 +95,10 @@ export const RK = {
   // Ask AI Guru
   askGuruChat:      (uid: string, date: string) => `askguru:chat:${uid}:${date}`,
   askGuruAnswer:    (hash: string)              => `askguru:ans:${hash}`,
+
+  // Ads system
+  ads:       (module: string, cls: string)   => `ads:${module}:${cls}`,
+  adEvent:   (uid: string, adId: string, event: string) => `adev:${uid}:${adId}:${event}`,
+  adFreq:    (uid: string, date: string)     => `adfreq:${uid}:${date}`,
+  adReward:  (uid: string, adId: string)     => `adreward:${uid}:${adId}`,
 };

@@ -161,57 +161,107 @@ export const seekhoUpdateRevisionQueue = functionsV1
     return { updated: count };
   });
 
-// ─── 3. createSeekhoSubscription ─────────────────────────────────────────────
+// ─── 3. seekhoCreateSubscription ─────────────────────────────────────────────
+// Two-phase callable:
+//   Phase 1 — no razorpayPaymentId → creates Razorpay order, returns razorpayOrderId
+//   Phase 2 — has razorpayPaymentId → verifies HMAC + writes subscription to Firestore
+
+type SeekhoOrderRequest = {
+  plan: "plus" | "pro";
+  selectedClass?: number;
+  billingCycle?: "monthly" | "annual";
+  amountPaise: number;
+};
+
+type SeekhoVerifyRequest = {
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  razorpaySignature: string;
+  plan: "plus" | "pro";
+  selectedClass?: number;
+};
 
 export const seekhoCreateSubscription = functionsV1
   .runWith({
     timeoutSeconds: 60,
     memory: "128MB",
-    secrets: ["RAZORPAY_KEY_SECRET"],
+    secrets: ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"],
   })
   .https.onCall(async (
-    data: {
-      razorpayPaymentId: string;
-      razorpayOrderId: string;
-      razorpaySignature: string;
-      plan: "plus" | "pro";
-      selectedClass?: number;
-    },
+    data: SeekhoOrderRequest | SeekhoVerifyRequest,
     context
   ) => {
     if (!context.auth) throw new functionsV1.https.HttpsError("unauthenticated", "Login required");
 
-    const userId = context.auth.uid;
-    const { razorpayPaymentId, razorpayOrderId, razorpaySignature, plan, selectedClass } = data;
+    const userId    = context.auth.uid;
+    const keyId     = process.env["RAZORPAY_KEY_ID"]     ?? "";
+    const keySecret = process.env["RAZORPAY_KEY_SECRET"] ?? "";
 
-    const keySecret  = process.env["RAZORPAY_KEY_SECRET"] ?? "";
-    const expectedSig = crypto
-      .createHmac("sha256", keySecret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
+    // ── Phase 2: Verify payment ───────────────────────────────────────────────
+    if ("razorpayPaymentId" in data) {
+      const { razorpayPaymentId, razorpayOrderId, razorpaySignature, plan, selectedClass } = data;
 
-    if (expectedSig !== razorpaySignature) {
-      throw new functionsV1.https.HttpsError("permission-denied", "Payment verification failed");
+      const expectedSig = crypto
+        .createHmac("sha256", keySecret)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest("hex");
+
+      if (expectedSig !== razorpaySignature) {
+        throw new functionsV1.https.HttpsError("permission-denied", "Payment verification failed");
+      }
+
+      const classAccess: number[] =
+        plan === "pro"
+          ? [6, 7, 8, 9, 10, 11, 12]
+          : selectedClass ? [selectedClass] : [];
+
+      const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 3600 * 1000);
+
+      await db.doc(`seekho_subscriptions/${userId}`).set({
+        userId, plan, classAccess, expiresAt,
+        razorpayPaymentId,
+        razorpayOrderId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      getRedis().del(RK.seekhoSub(userId)).catch(() => {});
+      console.log(`✅ Seekho subscription verified: user=${userId} plan=${plan}`);
+      return { success: true, plan, classAccess };
     }
 
-    const classAccess: number[] =
-      plan === "pro"
-        ? [6, 7, 8, 9, 10, 11, 12]
-        : selectedClass ? [selectedClass] : [];
+    // ── Phase 1: Create Razorpay order ───────────────────────────────────────
+    const { amountPaise, plan, selectedClass, billingCycle = "monthly" } = data;
 
-    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 30 * 24 * 3600 * 1000);
+    if (!keyId || !keySecret) {
+      throw new functionsV1.https.HttpsError(
+        "failed-precondition",
+        "Razorpay keys not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET secrets."
+      );
+    }
 
-    await db.doc(`seekho_subscriptions/${userId}`).set({
-      userId, plan, classAccess, expiresAt,
-      razorpaySubscriptionId: razorpayPaymentId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    try {
+      const response = await axios.post(
+        "https://api.razorpay.com/v1/orders",
+        {
+          amount:   amountPaise,
+          currency: "INR",
+          receipt:  `seekho_${plan}_${userId}_${Date.now()}`,
+          notes:    { plan, selectedClass: selectedClass ?? "all", billingCycle, userId },
+        },
+        {
+          auth:    { username: keyId, password: keySecret },
+          timeout: 10_000,
+        }
+      );
 
-    // Invalidate cached subscription status
-    getRedis().del(RK.seekhoSub(userId)).catch(() => {});
-
-    console.log(`✅ Seekho subscription created: user=${userId} plan=${plan}`);
-    return { success: true, plan, classAccess };
+      const razorpayOrderId: string = response.data.id;
+      console.log(`✅ Seekho Razorpay order created: ${razorpayOrderId} plan=${plan}`);
+      return { razorpayOrderId };
+    } catch (err: any) {
+      console.error("Razorpay order creation failed:", err?.response?.data ?? err?.message);
+      throw new functionsV1.https.HttpsError("internal", "Failed to create payment order");
+    }
   });
 
 // ─── 4. getDailyStudyPlan ─────────────────────────────────────────────────────

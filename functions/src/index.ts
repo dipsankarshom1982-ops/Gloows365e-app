@@ -49,6 +49,18 @@ export { getPersonalizedDashboard } from "./personalDashboard";
 // ── Ask AI Guru (Sarvam AI) ─────────────────────────────────────────────────
 export { askAiGuruQuestion } from "./askAiGuru";
 
+// ── AI Guru Subscription (Razorpay) ────────────────────────────────────────────
+export { aiGuruCreateSubscription } from "./aiGuruSubscription";
+
+// ── Unified Ads System ─────────────────────────────────────────────────────────
+export { getAds, recordAdEvent, claimAdReward, aggregateAdAnalytics } from "./ads";
+
+// ── Admin Management ───────────────────────────────────────────────────────────
+export { createAdmin, removeAdmin, approveContent, createCoupon, createComboPlan, getUserSubscriptionHistory } from "./adminManagement";
+
+// ── Contest Lesson Generation ──────────────────────────────────────────────────
+export { generateContestLesson } from "./contestLesson";
+
 // ───────────────────────────────────────────────────────────
 // TYPES
 // ───────────────────────────────────────────────────────────

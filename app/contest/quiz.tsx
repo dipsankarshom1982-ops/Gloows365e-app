@@ -1,17 +1,9 @@
 import { auth, db } from "@/lib/firebase";
+import { submitContestQuiz, QuizAnswer } from "@/services/submitContestQuiz";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  where,
-} from "firebase/firestore";
-
+import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,19 +18,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const SECONDS_PER_Q = 30;
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
-type Question = {
-  id: string;
-  prompt: string;
+interface Question {
+  question: string;
   options: string[];
-  correctOptionIndex: number;
+  correctAnswerIndex: number;
   difficulty?: string;
-};
-
-type Answer = {
-  questionId: string;
-  selectedIndex: number | null;
-  correct: boolean;
-};
+  concept?: string;
+}
 
 export default function ContestQuizScreen() {
   const { contestId } = useLocalSearchParams<{ contestId: string }>();
@@ -46,42 +32,46 @@ export default function ContestQuizScreen() {
   const userId = auth.currentUser?.uid;
 
   const [questions, setQuestions]   = useState<Question[]>([]);
-  const [quizId, setQuizId]         = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers]       = useState<Answer[]>([]);
+  const [answers, setAnswers]       = useState<QuizAnswer[]>([]);
   const [selected, setSelected]     = useState<number | null>(null);
   const [locked, setLocked]         = useState(false);
   const [timeLeft, setTimeLeft]     = useState(SECONDS_PER_Q);
   const [submitting, setSubmitting] = useState(false);
 
-  const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progressAnim = useRef(new Animated.Value(1)).current;
+  const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const questionStart = useRef<number>(Date.now());
+  const progressAnim  = useRef(new Animated.Value(1)).current;
 
-  // Fetch quiz doc (by contestId), then fetch its questions subcollection
+  // Load lessonJson.quiz; redirect if already completed
   useEffect(() => {
-    if (!contestId) return;
+    if (!contestId || !userId) return;
     (async () => {
-      const quizSnap = await getDocs(
-        query(collection(db, "quizzes"), where("contestId", "==", contestId))
-      );
-      if (!quizSnap.empty) {
-        const quizDoc = quizSnap.docs[0];
-        setQuizId(quizDoc.id);
+      const [contestSnap, participantSnap] = await Promise.all([
+        getDoc(doc(db, "contests", contestId as string)),
+        getDoc(doc(db, "contests", contestId as string, "participant", userId)),
+      ]);
 
-        // Questions live in quizzes/{quizId}/questions subcollection
-        const qSnap = await getDocs(collection(db, "quizzes", quizDoc.id, "questions"));
-        const qs = qSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Question));
-        setQuestions(qs);
+      // Block re-taking: if already completed, go straight to result
+      if (participantSnap.exists() && participantSnap.data()?.completed) {
+        router.replace({ pathname: "/contest/result", params: { contestId } });
+        return;
+      }
+
+      if (contestSnap.exists()) {
+        const quiz: Question[] = contestSnap.data()?.lessonJson?.quiz ?? [];
+        setQuestions(quiz);
       }
       setLoading(false);
     })();
-  }, [contestId]);
+  }, [contestId, userId]);
 
   // Timer per question
   useEffect(() => {
     if (loading || locked || questions.length === 0) return;
 
+    questionStart.current = Date.now();
     setTimeLeft(SECONDS_PER_Q);
     Animated.timing(progressAnim, { toValue: 1, duration: 0, useNativeDriver: false }).start();
     Animated.timing(progressAnim, {
@@ -94,7 +84,7 @@ export default function ContestQuizScreen() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          handleAdvance(null); // auto-advance with no answer
+          handleAdvance(null);
           return 0;
         }
         return t - 1;
@@ -109,18 +99,20 @@ export default function ContestQuizScreen() {
     if (timerRef.current) clearInterval(timerRef.current);
     setSelected(idx);
     setLocked(true);
-
-    // auto-advance after showing correct/wrong for 1.2s
     setTimeout(() => handleAdvance(idx), 1200);
   };
 
   const handleAdvance = (selectedIdx: number | null) => {
     const q = questions[currentIdx];
-    const correct = selectedIdx !== null && selectedIdx === q.correctOptionIndex;
+    const correct = selectedIdx !== null && selectedIdx === q.correctAnswerIndex;
+    const timeTakenSeconds = Math.min(
+      SECONDS_PER_Q,
+      Math.round((Date.now() - questionStart.current) / 1000)
+    );
 
-    const newAnswers = [
+    const newAnswers: QuizAnswer[] = [
       ...answers,
-      { questionId: q.id ?? String(currentIdx), selectedIndex: selectedIdx, correct },
+      { questionIndex: currentIdx, selectedIndex: selectedIdx, correct, timeTakenSeconds },
     ];
     setAnswers(newAnswers);
 
@@ -133,35 +125,26 @@ export default function ContestQuizScreen() {
     }
   };
 
-  const finishQuiz = async (finalAnswers: Answer[]) => {
+  const finishQuiz = async (finalAnswers: QuizAnswer[]) => {
     if (!userId || !contestId) return;
     setSubmitting(true);
-
-    const score = finalAnswers.filter((a) => a.correct).length;
-    const total = questions.length;
-    const pct   = total > 0 ? Math.round((score / total) * 100) : 0;
-
     try {
-      // Write attempt
-      await addDoc(collection(db, "attempts"), {
+      const { score, rank } = await submitContestQuiz(
+        contestId as string,
         userId,
-        contestId,
-        quizId,
-        answers: finalAnswers,
-        score,
-        total,
-        pct,
-        completedAt: new Date(),
+        finalAnswers
+      );
+      router.replace({
+        pathname: "/contest/result",
+        params: { contestId, score: String(score), total: String(questions.length), rank: String(rank) },
       });
-
-      // Update participant record in subcollection
-      const participantRef = doc(db, "contests", contestId as string, "participant", userId);
-      await setDoc(participantRef, { score, pct, completed: true }, { merge: true });
     } catch (e) {
-      console.log("Quiz submit error:", e);
+      console.error("Quiz submit error:", e);
+      router.replace({
+        pathname: "/contest/result",
+        params: { contestId, score: "0", total: String(questions.length) },
+      });
     }
-
-    router.replace({ pathname: "/contest/result", params: { contestId, score: String(score), total: String(total) } });
   };
 
   if (loading) {
@@ -178,7 +161,7 @@ export default function ContestQuizScreen() {
       <SafeAreaView style={S.center}>
         <Ionicons name="help-circle-outline" size={64} color="#374151" />
         <Text style={S.emptyTitle}>No Quiz Available</Text>
-        <Text style={S.emptySub}>The quiz for this contest hasn't been added yet.</Text>
+        <Text style={S.emptySub}>The quiz for this contest hasn't been generated yet.</Text>
         <TouchableOpacity style={S.backBtn} onPress={() => router.back()}>
           <Text style={S.backBtnText}>Go Back</Text>
         </TouchableOpacity>
@@ -210,7 +193,6 @@ export default function ContestQuizScreen() {
           </View>
         </View>
 
-        {/* Progress bar */}
         <View style={S.progressBg}>
           <Animated.View
             style={[
@@ -228,11 +210,7 @@ export default function ContestQuizScreen() {
           {questions.map((_, i) => (
             <View
               key={i}
-              style={[
-                S.dot,
-                i < currentIdx && S.dotDone,
-                i === currentIdx && S.dotActive,
-              ]}
+              style={[S.dot, i < currentIdx && S.dotDone, i === currentIdx && S.dotActive]}
             />
           ))}
         </View>
@@ -240,31 +218,26 @@ export default function ContestQuizScreen() {
 
       {/* Question */}
       <View style={S.questionCard}>
-        {q.difficulty && (
+        {!!q.difficulty && (
           <View style={[S.diffBadge, diffColor(q.difficulty)]}>
             <Text style={S.diffText}>{q.difficulty.toUpperCase()}</Text>
           </View>
         )}
-        <Text style={S.questionText}>{q.prompt}</Text>
+        <Text style={S.questionText}>{q.question}</Text>
+        {!!q.concept && <Text style={S.conceptHint}>Topic: {q.concept}</Text>}
       </View>
 
       {/* Options */}
       <View style={S.options}>
         {q.options.map((opt, i) => {
           const isSelected = selected === i;
-          const isCorrect  = locked && i === q.correctOptionIndex;
+          const isCorrect  = locked && i === q.correctAnswerIndex;
           const isWrong    = locked && isSelected && !isCorrect;
-
           return (
             <TouchableOpacity
               key={i}
               activeOpacity={locked ? 1 : 0.8}
-              style={[
-                S.optBtn,
-                isCorrect && S.optCorrect,
-                isWrong   && S.optWrong,
-                isSelected && !locked && S.optSelected,
-              ]}
+              style={[S.optBtn, isCorrect && S.optCorrect, isWrong && S.optWrong, isSelected && !locked && S.optSelected]}
               onPress={() => handleSelect(i)}
             >
               <View style={[S.optLabel, isCorrect && S.optLabelCorrect, isWrong && S.optLabelWrong]}>
@@ -289,9 +262,9 @@ export default function ContestQuizScreen() {
 }
 
 function diffColor(d: string) {
-  if (d === "easy")   return { backgroundColor: "#064e3b" };
-  if (d === "hard")   return { backgroundColor: "#450a0a" };
-  return { backgroundColor: "#1e3a5f" }; // medium
+  if (d === "easy") return { backgroundColor: "#064e3b" };
+  if (d === "hard") return { backgroundColor: "#450a0a" };
+  return { backgroundColor: "#1e3a5f" };
 }
 
 const S = StyleSheet.create({
@@ -317,22 +290,14 @@ const S = StyleSheet.create({
   dotDone:       { backgroundColor: "#10b981" },
   dotActive:     { backgroundColor: "#6366f1", width: 20 },
 
-  questionCard:  { margin: 16, backgroundColor: "#1e293b", borderRadius: 20, padding: 20, gap: 12 },
+  questionCard:  { margin: 16, backgroundColor: "#1e293b", borderRadius: 20, padding: 20, gap: 8 },
   diffBadge:     { alignSelf: "flex-start", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   diffText:      { color: "#a5b4fc", fontSize: 10, fontWeight: "800", letterSpacing: 1 },
   questionText:  { color: "#f1f5f9", fontSize: 18, fontWeight: "700", lineHeight: 28 },
+  conceptHint:   { color: "#475569", fontSize: 12, fontStyle: "italic" },
 
   options:       { paddingHorizontal: 16, gap: 10 },
-  optBtn:        {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1e293b",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#334155",
-    gap: 12,
-  },
+  optBtn:        { flexDirection: "row", alignItems: "center", backgroundColor: "#1e293b", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#334155", gap: 12 },
   optSelected:   { borderColor: "#6366f1" },
   optCorrect:    { borderColor: "#10b981", backgroundColor: "#052e16" },
   optWrong:      { borderColor: "#ef4444", backgroundColor: "#450a0a" },
@@ -343,6 +308,6 @@ const S = StyleSheet.create({
   optText:       { flex: 1, color: "#cbd5e1", fontSize: 15, lineHeight: 22 },
   optTextBold:   { fontWeight: "700" },
 
-  scoreTracker:  { position: "absolute", bottom: 16, left: 16, right: 16, backgroundColor: "#1e293b", borderRadius: 12, padding: 12, alignItems: "center" },
+  scoreTracker:     { position: "absolute", bottom: 16, left: 16, right: 16, backgroundColor: "#1e293b", borderRadius: 12, padding: 12, alignItems: "center" },
   scoreTrackerText: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
 });

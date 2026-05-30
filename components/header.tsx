@@ -29,7 +29,7 @@ type Props = {
 };
 
 export default function Header({
-  title = "NextVidya",
+  title = "GLOOWS365E",
   hideMenu = false,
   hideTitle = false,
 }: Props) {

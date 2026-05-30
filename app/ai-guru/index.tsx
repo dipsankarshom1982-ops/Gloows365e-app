@@ -1,146 +1,260 @@
-import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { auth } from "@/lib/firebase";
-import { getRemainingLessons, isSubscribed } from "@/services/aiGuruFirestore";
+import { isSubscribed } from "@/services/aiGuruFirestore";
 import AiGuruAvatar from "@/components/aiGuru/AiGuruAvatar";
-import { FREE_DAILY_LESSONS } from "@/lib/aiGuru/constants";
 import { useAppTranslation } from "@/context/LanguageContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
+import ScholarshipAdCard from "@/components/ads/ScholarshipAdCard";
+import { useAdFeed } from "@/hooks/useAdFeed";
+import { useStudentProfile } from "@/context/StudentProfileContext";
 
-type MenuCard = {
-  title: string;
-  subtitle: string;
+type MenuCardDef = {
+  titleKey: string;
+  subtitleKey: string;
   emoji: string;
-  gradient: [string, string];
+  gradient: [string, string, string];
   route: string;
   premium: boolean;
+  accentColor: string;
 };
 
-const MENU_CARDS: MenuCard[] = [
-  { title: "AI Dashboard",   subtitle: "Your personalised AI learning hub",       emoji: "🧠", gradient: ["#1e1b4b", "#4f46e5"], route: "/ai-guru/dashboard",  premium: false },
-  { title: "Discover AI",    subtitle: "Explore careers, colleges & scholarships", emoji: "🧭", gradient: ["#0f2027", "#2c5364"], route: "/discover",            premium: false },
-  { title: "VidyaGuru AI",   subtitle: "Chat with your personal AI teacher",       emoji: "🧑‍🏫", gradient: ["#1e1b4b", "#6366f1"], route: "/ai-guru/vidyaguru",  premium: false },
-  { title: "Generate Lesson",subtitle: "AI creates a full lesson for you",         emoji: "✨", gradient: ["#312e81", "#4f46e5"], route: "/ai-guru/setup",      premium: false },
-  { title: "My AI Lessons",  subtitle: "Resume or review past lessons",            emoji: "📚", gradient: ["#064e3b", "#059669"], route: "/ai-guru/my-lessons", premium: false },
-  { title: "Revision Reels", subtitle: "Short video revision sessions",            emoji: "🎬", gradient: ["#1e3a5f", "#0284c7"], route: "/ai-guru/my-lessons", premium: true  },
-  { title: "Practice Tests", subtitle: "Exam-style practice with analysis",        emoji: "📝", gradient: ["#450a0a", "#dc2626"], route: "/ai-guru/my-lessons", premium: true  },
-  { title: "Ask AI Guru",    subtitle: "Ask any doubt, get instant answer",        emoji: "🤖", gradient: ["#1a1a2e", "#6366f1"], route: "/ai-guru/ask",        premium: false },
+const MENU_CARD_DEFS: MenuCardDef[] = [
+  { titleKey: "menuAiDashboard",    subtitleKey: "menuAiDashboardSub",    emoji: "🧠", gradient: ["#1e1b4b", "#312e81", "#4f46e5"], route: "/ai-guru/dashboard",  premium: false, accentColor: "#818cf8" },
+  { titleKey: "menuVidyaGuruCard",  subtitleKey: "menuVidyaGuruCardSub",  emoji: "🧑‍🏫", gradient: ["#1a0533", "#4c1d95", "#7c3aed"], route: "/ai-guru/vidyaguru",  premium: false, accentColor: "#c4b5fd" },
+  { titleKey: "menuGenerateLesson", subtitleKey: "menuGenerateLessonSub", emoji: "✨", gradient: ["#0f172a", "#1e3a5f", "#0284c7"], route: "/ai-guru/setup",      premium: false, accentColor: "#38bdf8" },
+  { titleKey: "menuMyLessons",      subtitleKey: "menuMyLessonsSub",      emoji: "📚", gradient: ["#052e16", "#064e3b", "#059669"], route: "/ai-guru/my-lessons", premium: false, accentColor: "#34d399" },
+  { titleKey: "menuRevisionReels",  subtitleKey: "menuRevisionReelsSub",  emoji: "🎬", gradient: ["#1c1917", "#44403c", "#78716c"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#d6d3d1" },
+  { titleKey: "menuPracticeTests",  subtitleKey: "menuPracticeTestsSub",  emoji: "📝", gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#f87171" },
+  { titleKey: "menuAskAiGuruCard",  subtitleKey: "menuAskAiGuruCardSub",  emoji: "🤖", gradient: ["#0f0f1e", "#1a1a3e", "#6366f1"], route: "/ai-guru/ask",        premium: false, accentColor: "#a5b4fc" },
+  { titleKey: "menuDiscoverAI",     subtitleKey: "menuDiscoverAISub",     emoji: "🧭", gradient: ["#0c1a2e", "#0f2d4a", "#0369a1"], route: "/discover",            premium: false, accentColor: "#7dd3fc" },
 ];
+
+// Animated pulse ring around avatar
+function PulseRing({ size }: { size: number }) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.6);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(1.25, { duration: 1600 }),
+        withTiming(1, { duration: 1600 }),
+      ),
+      -1,
+      false,
+    );
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 1600 }),
+        withTiming(0.6, { duration: 1600 }),
+      ),
+      -1,
+      false,
+    );
+  }, []);
+
+  const ring = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        ring,
+        {
+          position: "absolute",
+          width: size + 24,
+          height: size + 24,
+          borderRadius: (size + 24) / 2,
+          borderWidth: 2,
+          borderColor: "#6366f1",
+        },
+      ]}
+    />
+  );
+}
 
 export default function AiGuruHomeScreen() {
   const { t } = useAppTranslation();
+  const { languageName } = useLanguage();
   const { colors, isDarkMode } = useTheme();
+  const { studentProfile } = useStudentProfile();
+  const classLevel = String(studentProfile?.class ?? "all");
 
-  const [remaining, setRemaining] = useState<number>(FREE_DAILY_LESSONS);
   const [subscribed, setSubscribed] = useState(false);
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // theme-derived shortcuts (same pattern as vidyaguru.tsx)
-  const surfaceBg  = isDarkMode ? "#1e293b" : colors.card;
-  const borderCol  = isDarkMode ? "#334155" : colors.border;
-  const textMain   = isDarkMode ? "#f1f5f9" : colors.text;
-  const textSec    = isDarkMode ? "#64748b" : colors.textSecondary;
-  const backBtnBg  = isDarkMode ? "rgba(255,255,255,0.08)" : colors.card;
+  // Scholarship ad — only shown to non-premium users
+  const { currentAd: scholarshipAd } = useAdFeed({
+    module: "aiGuru", classLevel, adType: "scholarship",
+  });
 
-  useEffect(() => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
-    Promise.all([getRemainingLessons(uid), isSubscribed(uid)]).then(([rem, sub]) => {
-      setRemaining(rem);
-      setSubscribed(sub);
-      setLoading(false);
-    });
-  }, []);
+  const surfaceBg = isDarkMode ? "#1e293b" : colors.card;
+  const borderCol = isDarkMode ? "#334155" : colors.border;
+  const textMain  = isDarkMode ? "#f1f5f9" : colors.text;
+  const textSec   = isDarkMode ? "#64748b" : colors.textSecondary;
+  const backBtnBg = isDarkMode ? "rgba(255,255,255,0.08)" : colors.card;
 
-  const handleCardPress = (card: MenuCard) => {
-    if (card.premium && !subscribed) {
+  // useFocusEffect so subscription status re-checks when returning from the subscription screen
+  useFocusEffect(
+    useCallback(() => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+      isSubscribed(uid).then((sub) => {
+        setSubscribed(sub);
+        setLoading(false);
+      });
+    }, [])
+  );
+
+  const handleCardPress = (def: MenuCardDef) => {
+    if (def.premium && !subscribed) {
       Alert.alert(
         t("premiumFeature"),
         t("premiumUnlockMsg"),
-        [{ text: t("maybeLater"), style: "cancel" }, { text: t("upgrade"), onPress: () => {} }]
+        [{ text: t("maybeLater"), style: "cancel" }, { text: t("upgrade"), onPress: () => router.push("/ai-guru/subscription" as any) }],
       );
       return;
     }
-    router.push(card.route as any);
+    router.push(def.route as any);
   };
 
   return (
-    <View style={[S.bg, { backgroundColor: isDarkMode ? "#0a0a1a" : colors.background }]}>
+    <View style={[S.bg, { backgroundColor: isDarkMode ? "#060612" : colors.background }]}>
+      <LinearGradient
+        colors={isDarkMode ? ["#060612", "#0d0d24", "#060612"] : ["#f0f4ff", "#e8eeff", "#f0f4ff"]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      {/* Decorative orbs */}
       {isDarkMode && (
-        <LinearGradient colors={["#0a0a1a", "#0f172a"]} style={StyleSheet.absoluteFillObject} />
+        <>
+          <View style={[S.orb, { top: -60, left: -60, backgroundColor: "rgba(99,102,241,0.12)", width: 220, height: 220 }]} />
+          <View style={[S.orb, { top: 120, right: -80, backgroundColor: "rgba(124,58,237,0.10)", width: 180, height: 180 }]} />
+        </>
       )}
+
       <ScrollView contentContainerStyle={S.scroll} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={S.header}>
-          <TouchableOpacity
+        <Animated.View entering={FadeIn.duration(400)} style={S.header}>
+          <Pressable
             onPress={() => router.back()}
             style={[S.backBtn, { backgroundColor: backBtnBg }]}
           >
             <Ionicons name="chevron-back" size={22} color={colors.textSecondary} />
-          </TouchableOpacity>
-          {subscribed && (
-            <View style={S.premiumBadge}>
-              <Ionicons name="star" size={12} color="#fbbf24" />
-              <Text style={S.premiumText}>PREMIUM</Text>
-            </View>
-          )}
-        </View>
+          </Pressable>
 
-        {/* Avatar + welcome */}
-        <View style={S.heroSection}>
-          <AiGuruAvatar size={80} />
+          <View style={S.headerRight}>
+            {/* Language indicator */}
+            <View style={[S.langBadge, { backgroundColor: isDarkMode ? "rgba(99,102,241,0.15)" : "#ede9fe", borderColor: "#6366f1" }]}>
+              <Ionicons name="globe-outline" size={12} color="#6366f1" />
+              <Text style={S.langBadgeText}>{languageName}</Text>
+            </View>
+            {subscribed && (
+              <View style={S.premiumBadge}>
+                <Ionicons name="star" size={12} color="#fbbf24" />
+                <Text style={S.premiumText}>PREMIUM</Text>
+              </View>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Hero */}
+        <Animated.View entering={FadeInDown.duration(500).delay(100)} style={S.heroSection}>
+          <View style={S.avatarWrap}>
+            <PulseRing size={88} />
+            <AiGuruAvatar size={88} />
+          </View>
+
           <Text style={[S.heroTitle, { color: textMain }]}>{t("aiGuru")}</Text>
+
+          <View style={S.taglineRow}>
+            <LinearGradient
+              colors={["#6366f1", "#8b5cf6", "#ec4899"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={S.taglinePill}
+            >
+              <Ionicons name="sparkles" size={12} color="#fff" />
+              <Text style={S.taglineText}>{t("aiGuruTagline") ?? "India's Most Useful AI Guru"}</Text>
+            </LinearGradient>
+          </View>
+
           <Text style={[S.heroSubtitle, { color: textSec }]}>{t("aiClassroom")}</Text>
-        </View>
+        </Animated.View>
 
-        {/* Usage counter (free users) */}
-        {!loading && !subscribed && (
-          <View style={[S.usageCard, { backgroundColor: surfaceBg, borderColor: borderCol }]}>
-            <View style={S.usageLeft}>
-              <Text style={S.usageNum}>{remaining}</Text>
-              <Text style={[S.usageLabel, { color: textSec }]}>{t("freeLessonsLeft")}</Text>
-            </View>
-            <View style={S.usageDots}>
-              {Array.from({ length: FREE_DAILY_LESSONS }).map((_, i) => (
-                <View key={i} style={[S.usageDot, { backgroundColor: borderCol }, i < remaining && S.usageDotActive]} />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {subscribed && !loading && (
-          <View style={[S.usageCard, { backgroundColor: surfaceBg, borderColor: "#fbbf24" }]}>
-            <Ionicons name="star" size={18} color="#fbbf24" />
-            <Text style={S.unlimitedText}>{t("unlimitedAccess")}</Text>
-          </View>
+        {/* Scholarship ad — only for non-premium users */}
+        {!subscribed && !loading && scholarshipAd && (
+          <Animated.View entering={FadeInDown.duration(400).delay(220)}>
+            <ScholarshipAdCard
+              ad={scholarshipAd}
+              module="aiGuru"
+              classLevel={classLevel}
+              style={{ marginHorizontal: 0, marginBottom: 4 }}
+            />
+          </Animated.View>
         )}
 
         {/* Menu grid */}
         <View style={S.grid}>
-          {MENU_CARDS.map((card) => (
-            <TouchableOpacity
-              key={card.title}
+          {MENU_CARD_DEFS.map((def, idx) => (
+            <Animated.View
+              key={def.titleKey}
+              entering={FadeInDown.duration(400).delay(280 + idx * 60)}
               style={S.cardWrap}
-              activeOpacity={0.85}
-              onPress={() => handleCardPress(card)}
             >
-              <LinearGradient colors={card.gradient} style={S.card}>
-                {card.premium && !subscribed && (
-                  <View style={S.lockBadge}>
-                    <Ionicons name="lock-closed" size={10} color="#fff" />
-                    <Text style={S.lockText}>PRO</Text>
-                  </View>
-                )}
-                <Text style={S.cardEmoji}>{card.emoji}</Text>
-                <Text style={S.cardTitle}>{card.title}</Text>
-                <Text style={S.cardSubtitle}>{card.subtitle}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <Pressable
+                onPress={() => handleCardPress(def)}
+                android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+                style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
+              >
+                <LinearGradient colors={def.gradient} style={S.card}>
+                  {/* Lock badge for premium */}
+                  {def.premium && !subscribed && (
+                    <View style={S.lockBadge}>
+                      <Ionicons name="lock-closed" size={9} color="#fff" />
+                      <Text style={S.lockText}>PRO</Text>
+                    </View>
+                  )}
+
+                  {/* Accent glow */}
+                  <View style={[S.cardGlow, { backgroundColor: def.accentColor + "18" }]} />
+
+                  <Text style={S.cardEmoji}>{def.emoji}</Text>
+                  <Text style={S.cardTitle}>{t(def.titleKey as any) ?? def.titleKey}</Text>
+                  <Text style={S.cardSubtitle} numberOfLines={2}>
+                    {t(def.subtitleKey as any) ?? def.subtitleKey}
+                  </Text>
+
+                  {/* Bottom accent line */}
+                  <View style={[S.cardAccentLine, { backgroundColor: def.accentColor + "60" }]} />
+                </LinearGradient>
+              </Pressable>
+            </Animated.View>
           ))}
         </View>
+
+        {/* Powered by badge */}
+        <Animated.View entering={FadeInUp.duration(400).delay(900)} style={S.poweredRow}>
+          <Ionicons name="flash" size={11} color={textSec} />
+          <Text style={[S.poweredText, { color: textSec }]}>Powered by Gemini AI</Text>
+        </Animated.View>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -150,28 +264,36 @@ export default function AiGuruHomeScreen() {
 
 const S = StyleSheet.create({
   bg:           { flex: 1 },
-  scroll:       { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 56 },
+  orb:          { position: "absolute", borderRadius: 999 },
+  scroll:       { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 52 },
+
   header:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 8 },
   backBtn:      { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  headerRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
+  langBadge:    { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
+  langBadgeText:{ color: "#6366f1", fontSize: 11, fontWeight: "700" },
   premiumBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(251,191,36,0.15)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: "#fbbf24" },
   premiumText:  { color: "#fbbf24", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
-  heroSection:  { alignItems: "center", paddingVertical: 24, gap: 10 },
-  heroTitle:    { fontSize: 30, fontWeight: "900", letterSpacing: -0.5 },
-  heroSubtitle: { fontSize: 14, textAlign: "center", lineHeight: 22 },
-  usageCard:    { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, gap: 12 },
-  usageLeft:    { flexDirection: "row", alignItems: "baseline", gap: 6 },
-  usageNum:     { color: "#6366f1", fontSize: 28, fontWeight: "900" },
-  usageLabel:   { fontSize: 13 },
-  usageDots:    { flexDirection: "row", gap: 6 },
-  usageDot:     { width: 16, height: 16, borderRadius: 8 },
-  usageDotActive:{ backgroundColor: "#6366f1" },
-  unlimitedText: { color: "#fbbf24", fontSize: 14, fontWeight: "700", flex: 1 },
-  grid:         { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+
+  heroSection:  { alignItems: "center", paddingVertical: 28, gap: 12 },
+  avatarWrap:   { alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  heroTitle:    { fontSize: 32, fontWeight: "900", letterSpacing: -0.5 },
+  taglineRow:   { alignItems: "center" },
+  taglinePill:  { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20 },
+  taglineText:  { color: "#fff", fontSize: 12, fontWeight: "800", letterSpacing: 0.3 },
+  heroSubtitle: { fontSize: 13, textAlign: "center", lineHeight: 20, opacity: 0.8, maxWidth: 260 },
+
+  grid:         { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 20 },
   cardWrap:     { width: "47.5%" },
-  card:         { borderRadius: 20, padding: 18, gap: 8, minHeight: 140, justifyContent: "flex-end" },
-  lockBadge:    { position: "absolute", top: 12, right: 12, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  card:         { borderRadius: 20, padding: 18, minHeight: 148, justifyContent: "flex-end", overflow: "hidden", gap: 6 },
+  cardGlow:     { position: "absolute", top: 0, left: 0, right: 0, height: 60, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  lockBadge:    { position: "absolute", top: 11, right: 11, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   lockText:     { color: "#fff", fontSize: 9, fontWeight: "900" },
-  cardEmoji:    { fontSize: 32 },
-  cardTitle:    { color: "#f1f5f9", fontSize: 16, fontWeight: "900" },
-  cardSubtitle: { color: "rgba(255,255,255,0.55)", fontSize: 12, lineHeight: 16 },
+  cardEmoji:    { fontSize: 34 },
+  cardTitle:    { color: "#f1f5f9", fontSize: 15, fontWeight: "900", lineHeight: 20 },
+  cardSubtitle: { color: "rgba(255,255,255,0.5)", fontSize: 11, lineHeight: 15 },
+  cardAccentLine:{ height: 3, borderRadius: 2, marginTop: 4 },
+
+  poweredRow:   { flexDirection: "row", alignItems: "center", gap: 5, justifyContent: "center", paddingVertical: 4 },
+  poweredText:  { fontSize: 11 },
 });

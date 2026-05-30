@@ -92,16 +92,24 @@ export const askAiGuruQuestion = onRequest(
     }
 
     try {
-      const redis = getRedis();
+      const questionStr = String(question).trim();
 
-      // Cache per question + class + board (1 hr)
-      const cacheHash = createHash("sha256")
-        .update(`${String(question).trim().toLowerCase()}:${classLevel}:${board}`)
-        .digest("hex")
-        .slice(0, 16);
-      const cacheKey = RK.askGuruAnswer(cacheHash);
+      // Try Redis cache — if Redis is broken, skip it and go straight to Gemini
+      let cached: string | null = null;
+      let cacheKey = "";
+      let redis;
+      try {
+        redis = getRedis();
+        const cacheHash = createHash("sha256")
+          .update(`${questionStr.toLowerCase()}:${classLevel}:${board}`)
+          .digest("hex")
+          .slice(0, 16);
+        cacheKey = RK.askGuruAnswer(cacheHash);
+        cached = await redis.get<string>(cacheKey);
+      } catch (redisErr: any) {
+        console.warn("[AskAiGuru] Redis unavailable, proceeding without cache:", redisErr?.message);
+      }
 
-      const cached = await redis.get<string>(cacheKey);
       if (cached) {
         await incrementAskGuruUsage(uid, db);
         const answer = typeof cached === "string" ? cached : JSON.parse(cached as any);
@@ -109,14 +117,15 @@ export const askAiGuruQuestion = onRequest(
         return;
       }
 
-      const prompt = buildPrompt(String(question).trim(), classLevel, board);
+      const prompt = buildPrompt(questionStr, classLevel, board);
       const raw    = await callGeminiText(prompt);
       const answer = raw.replace(/^Answer:\s*/i, "").trim();
 
-      await Promise.all([
-        redis.set(cacheKey, answer, { ex: TTL.askGuruAnswer }),
-        incrementAskGuruUsage(uid, db),
-      ]);
+      // Best-effort cache write — never block the response on Redis
+      if (redis && cacheKey) {
+        redis.set(cacheKey, answer, { ex: TTL.askGuruAnswer }).catch(() => {});
+      }
+      await incrementAskGuruUsage(uid, db);
 
       res.json({ answer });
     } catch (err: any) {

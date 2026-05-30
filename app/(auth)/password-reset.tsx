@@ -157,7 +157,7 @@ export default function PasswordReset() {
                   {/* Helper */}
                   {!error && (
                     <Text style={styles.helper}>
-                      We'll only send a link if this email is registered with NextVidya.
+                      We'll only send a link if this email is registered with GLOOWS365E.
                     </Text>
                   )}
                 </View>

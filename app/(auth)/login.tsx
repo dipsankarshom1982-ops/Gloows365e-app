@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -82,8 +83,11 @@ export default function LoginScreen() {
         <LinearGradient colors={["#020617", "#1E1B4B", "#312E81"]} style={S.container}>
           <StatusBar barStyle="light-content" />
 
-          <Text style={S.logo}>🎓</Text>
-          <Text style={S.brand}>Vidya<Text style={S.gold}>AI</Text></Text>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={S.logo}
+            resizeMode="contain"
+          />
           <Text style={S.title}>Welcome Back 👋</Text>
           <Text style={S.subtitle}>Continue your learning journey</Text>
 
@@ -186,10 +190,8 @@ export default function LoginScreen() {
 
 const S = StyleSheet.create({
   container:    { flex: 1, padding: 20, justifyContent: "center" },
-  logo:         { fontSize: 60, textAlign: "center", marginBottom: 10, marginTop: 20 },
-  brand:        { fontSize: 36, fontWeight: "900", color: "#fff", textAlign: "center", letterSpacing: 1 },
-  gold:         { color: "#FFD700", fontSize: 36 },
-  title:        { fontSize: 24, color: "#fff", textAlign: "center", marginTop: 15, fontWeight: "800" },
+  logo:         { width: 120, height: 120, alignSelf: "center", marginBottom: 4, marginTop: 20 },
+  title:        { fontSize: 24, color: "#fff", textAlign: "center", marginTop: 10, fontWeight: "800" },
   subtitle:     { textAlign: "center", color: "#c7d2fe", marginBottom: 24, fontSize: 14, marginTop: 8 },
 
   googleBtn:    { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#fff", borderRadius: 14, paddingVertical: 14, gap: 10, marginBottom: 16 },

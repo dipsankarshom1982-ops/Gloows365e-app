@@ -15,13 +15,12 @@ const { getReactNativePersistence } = require("firebase/auth");
 
 // 🔥 Config
 export const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-
-  authDomain: "gloows-03b6sz.firebaseapp.com",
-  projectId: "gloows-03b6sz",
-  storageBucket: "gloows-03b6sz.firebasestorage.app",
-  messagingSenderId: "1039247674814",
-  appId: "1:1039247674814:web:071d5c2982065f6712bdef"
+  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
 // ✅ Initialize app

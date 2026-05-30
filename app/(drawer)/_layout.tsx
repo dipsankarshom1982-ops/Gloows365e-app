@@ -176,6 +176,27 @@ export default function DrawerLayout() {
                 onPress={() => router.push("/dashboard")} colors={colors} />
               <DrawerItem icon="school-outline" label={t("aiGuru")}
                 onPress={() => router.push("/ai-guru")} colors={colors} />
+              {/* AI Guru Premium upgrade — gradient button like SkillBoardItem */}
+              <TouchableOpacity
+                onPress={() => router.push("/ai-guru/subscription" as any)}
+                activeOpacity={0.85}
+                style={styles.aiGuruPremiumWrapper}
+              >
+                <LinearGradient
+                  colors={["#1e1b4b", "#4f46e5", "#6366f1"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.aiGuruPremiumGradient}
+                >
+                  <View style={styles.aiGuruPremiumLeft}>
+                    <Ionicons name="sparkles" size={18} color="#fbbf24" />
+                    <Text style={styles.aiGuruPremiumLabel}>AI Guru Premium</Text>
+                  </View>
+                  <View style={styles.aiGuruPremiumBadge}>
+                    <Text style={styles.aiGuruPremiumBadgeText}>⭐ UPGRADE</Text>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
               <DrawerItem icon="sparkles-outline" label="VidyaGuru AI"
                 onPress={() => router.push("/ai-guru/vidyaguru")} colors={colors} />
               <DrawerItem icon="compass-outline" label="Discover AI"
@@ -460,6 +481,47 @@ const styles = StyleSheet.create({
   },
   skillBoardBadgeText: {
     color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  aiGuruPremiumWrapper: {
+    marginVertical: 6,
+    borderRadius: 14,
+    overflow: "hidden",
+    shadowColor: "#6366f1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  aiGuruPremiumGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  aiGuruPremiumLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  aiGuruPremiumLabel: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  aiGuruPremiumBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  aiGuruPremiumBadgeText: {
+    color: "#fbbf24",
     fontSize: 11,
     fontWeight: "800",
   },

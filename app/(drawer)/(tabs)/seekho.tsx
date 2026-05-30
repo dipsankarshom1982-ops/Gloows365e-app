@@ -1,6 +1,7 @@
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useAppTranslation } from "@/context/LanguageContext";
+import { useAppConfig } from "@/context/AppConfigContext";
 import {
   SEEKHO_SUBJECTS,
   SUBJECT_META,
@@ -28,6 +29,10 @@ export default function SeekhoHomeScreen() {
   const { user, authLoading } = useStudentProfile();
   const { selectedClass, selectedBoard, courseProgress, revisionQueue } = useSeekhoStore();
   const { isFreeUser, loading: seekhoLoading, showSubscriptionSheet } = useSeekhoAccess();
+  const { plans } = useAppConfig();
+
+  const lowestPaidPlan = plans.filter((p) => p.id !== "free").sort((a, b) => a.monthlyPrice - b.monthlyPrice)[0];
+  const startingPrice = lowestPaidPlan ? `Starting ₹${lowestPaidPlan.monthlyPrice}/month · Cancel anytime` : "Starting ₹149/month · Cancel anytime";
 
   // Continue learning — find most recently accessed incomplete chapter
   const recentProgress = Object.values(courseProgress)
@@ -177,9 +182,7 @@ export default function SeekhoHomeScreen() {
               <Text style={S.upgradeEmoji}>🚀</Text>
               <View style={S.upgradeText}>
                 <Text style={S.upgradeTitle}>{t("unlockCurriculum")}</Text>
-                <Text style={S.upgradeSub}>
-                  Starting ₹149/month · Cancel anytime
-                </Text>
+                <Text style={S.upgradeSub}>{startingPrice}</Text>
               </View>
               <View style={S.upgradeCta}>
                 <Text style={S.upgradeCtaText}>{t("upgrade")}</Text>

@@ -183,6 +183,68 @@ export type TranslationSet = {
   discoverTitle?: string;
   discoverSubtitle?: string;
   discoverCta?: string;
+  // ── AI Guru home menu cards ───────────────────────────────────────
+  aiGuruTagline?: string;
+  menuAiDashboard?: string;
+  menuAiDashboardSub?: string;
+  menuDiscoverAI?: string;
+  menuDiscoverAISub?: string;
+  menuVidyaGuruCard?: string;
+  menuVidyaGuruCardSub?: string;
+  menuGenerateLesson?: string;
+  menuGenerateLessonSub?: string;
+  menuMyLessons?: string;
+  menuMyLessonsSub?: string;
+  menuRevisionReels?: string;
+  menuRevisionReelsSub?: string;
+  menuPracticeTests?: string;
+  menuPracticeTestsSub?: string;
+  menuAskAiGuruCard?: string;
+  menuAskAiGuruCardSub?: string;
+  // ── Ask AI Guru screen ────────────────────────────────────────────
+  goodMorning?: string;
+  goodAfternoon?: string;
+  goodEvening?: string;
+  helloGreet?: string;
+  whatToLearnToday?: string;
+  browseBySubject?: string;
+  freeQuestionsRemaining?: string;
+  freeQuestionsRemainingPlural?: string;
+  askFollowUpPlaceholder?: string;
+  askSyllabusPlaceholder?: string;
+  thinkingLabel?: string;
+  wantToGoDeeper?: string;
+  generateLessonAction?: string;
+  chatWithAIAction?: string;
+  chatWithVidyaGuruAction?: string;
+  askAnotherQuestion?: string;
+  dailyLimitTitle?: string;
+  dailyLimitMessage?: string;
+  generateFullLessonAction?: string;
+  somethingWentWrong?: string;
+  tryAgainLabel?: string;
+  leftLabel?: string;
+  askAiGuruTitle?: string;
+  // ── VidyaGuru screen ─────────────────────────────────────────────
+  respondingIn?: string;
+  voiceMessage?: string;
+  askSomethingPlaceholder?: string;
+  // ── Settings screen ───────────────────────────────────────────────
+  themeDescDark?: string;
+  themeDescLight?: string;
+  notificationsDesc?: string;
+  changePassword?: string;
+  changePasswordDesc?: string;
+  privacyDesc?: string;
+  aboutDesc?: string;
+  currentTheme?: string;
+  themeDark?: string;
+  themeLight?: string;
+  goBack?: string;
+  // ── Language settings screen ──────────────────────────────────────
+  noLanguagesMatch?: string;
+  languageInfoText?: string;
+  backToSettings?: string;
 };
 
 type Translations = Record<string, TranslationSet>;
@@ -248,11 +310,49 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 Knowledge Hub", knowledgeHubSub: "Videos for learning, growth and daily life", watchMore: "Watch More →",
     couldNotLoadVideos: "Could not load videos.", moreVideosSoon: "More videos coming soon!", noVideosInCat: "No \"{{cat}}\" videos yet.",
     shortLearningTitle: "Short Learning", noLearningVideos: "No learning videos yet",
-    skillBattleShortsTitle: "🔥 Skill Battle Shorts", noSkillBattleVideos: "No skill battle videos yet", battleBadge: "⚡ Battle",
+    skillBattleShortsTitle: "🔥 Shorts", noSkillBattleVideos: "No skill battle videos yet", battleBadge: "⚡ Battle",
     shikshaStarPreviewTitle: "⭐ ShikshaStar", shikshaStarPreviewSub: "Celebrating talented students of Vidya", viewStars: "View Stars →",
     couldNotLoadStars: "Could not load stars.", shikshaStarEmpty: "Your talent can be featured here soon!", becomeShikshaStar: "Become a ShikshaStar",
     discoverPreviewTitle: "🧭 Discover AI", discoverPreviewSub: "AI-powered career, college & scholarship discovery",
     discoverTitle: "Vidya Discover AI", discoverSubtitle: "Find your perfect career, college & scholarships", discoverCta: "Explore Your Future →",
+    aiGuruTagline: "India's Most Useful AI Guru",
+    menuAiDashboard: "AI Dashboard", menuAiDashboardSub: "Your personalised AI learning hub",
+    menuDiscoverAI: "Discover AI", menuDiscoverAISub: "Explore careers, colleges & scholarships",
+    menuVidyaGuruCard: "VidyaGuru AI", menuVidyaGuruCardSub: "Chat with your personal AI teacher",
+    menuGenerateLesson: "Generate Lesson", menuGenerateLessonSub: "AI creates a full lesson for you",
+    menuMyLessons: "My AI Lessons", menuMyLessonsSub: "Resume or review past lessons",
+    menuRevisionReels: "Revision Reels", menuRevisionReelsSub: "Short video revision sessions",
+    menuPracticeTests: "Practice Tests", menuPracticeTestsSub: "Exam-style practice with analysis",
+    menuAskAiGuruCard: "Ask AI Guru", menuAskAiGuruCardSub: "Ask any doubt, get instant answer",
+    goodMorning: "Good morning", goodAfternoon: "Good afternoon", goodEvening: "Good evening", helloGreet: "Hello",
+    whatToLearnToday: "What would you like to know today?",
+    browseBySubject: "Browse by subject",
+    freeQuestionsRemaining: "{{count}} free question remaining today · Resets at midnight IST",
+    freeQuestionsRemainingPlural: "{{count}} free questions remaining today · Resets at midnight IST",
+    askFollowUpPlaceholder: "Ask a follow-up question...",
+    askSyllabusPlaceholder: "Ask anything about your syllabus...",
+    thinkingLabel: "Thinking...",
+    wantToGoDeeper: "Want to go deeper?",
+    generateLessonAction: "✨ Generate Lesson", chatWithAIAction: "🤖 Chat with AI",
+    chatWithVidyaGuruAction: "🤖 Chat with VidyaGuru instead",
+    askAnotherQuestion: "Ask another question",
+    dailyLimitTitle: "Daily limit reached",
+    dailyLimitMessage: "You've used all {{count}} free questions for today. Come back tomorrow or upgrade to Premium.",
+    generateFullLessonAction: "✨ Generate Full Lesson",
+    somethingWentWrong: "Something went wrong", tryAgainLabel: "Try again",
+    leftLabel: "left", askAiGuruTitle: "Ask AI Guru",
+    respondingIn: "Responding in {{lang}}", voiceMessage: "🎤 Voice message",
+    askSomethingPlaceholder: "Ask something...",
+    themeDescDark: "Turn off for Light mode", themeDescLight: "Turn on for Dark mode",
+    notificationsDesc: "Receive push notifications",
+    changePassword: "Change Password", changePasswordDesc: "Update your account password",
+    privacyDesc: "Manage your privacy settings",
+    aboutDesc: "Learn more about GLOOWS365E",
+    currentTheme: "Current Theme:", themeDark: "🌙 Dark", themeLight: "☀️ Light",
+    goBack: "Go Back",
+    noLanguagesMatch: "No languages match your search.",
+    languageInfoText: "These are the 22 languages listed in the 8th Schedule of the Constitution of India. Your selected language will be used to personalise lessons and content across the app.",
+    backToSettings: "Back to Settings",
   },
 
   // ─────────────────────────── Hindi ────────────────────────────────
@@ -315,11 +415,49 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 नॉलेज हब", knowledgeHubSub: "सीखने, विकास और दैनिक जीवन के लिए वीडियो", watchMore: "और देखें →",
     couldNotLoadVideos: "वीडियो लोड नहीं हो सके।", moreVideosSoon: "और वीडियो जल्द आएंगे!", noVideosInCat: "\"{{cat}}\" में अभी कोई वीडियो नहीं।",
     shortLearningTitle: "शॉर्ट लर्निंग", noLearningVideos: "अभी कोई लर्निंग वीडियो नहीं",
-    skillBattleShortsTitle: "🔥 स्किल बैटल शॉर्ट्स", noSkillBattleVideos: "अभी कोई स्किल बैटल वीडियो नहीं", battleBadge: "⚡ बैटल",
+    skillBattleShortsTitle: "🔥 शॉर्ट्स", noSkillBattleVideos: "अभी कोई स्किल बैटल वीडियो नहीं", battleBadge: "⚡ बैटल",
     shikshaStarPreviewTitle: "⭐ शिक्षास्टार", shikshaStarPreviewSub: "विद्या के प्रतिभाशाली छात्रों का जश्न", viewStars: "स्टार देखें →",
     couldNotLoadStars: "स्टार लोड नहीं हो सके।", shikshaStarEmpty: "आपकी प्रतिभा यहाँ जल्द दिखाई जा सकती है!", becomeShikshaStar: "शिक्षास्टार बनें",
     discoverPreviewTitle: "🧭 डिस्कवर AI", discoverPreviewSub: "AI-संचालित करियर, कॉलेज और छात्रवृत्ति खोज",
     discoverTitle: "विद्या डिस्कवर AI", discoverSubtitle: "अपना सही करियर, कॉलेज और छात्रवृत्ति खोजें", discoverCta: "अपना भविष्य एक्सप्लोर करें →",
+    aiGuruTagline: "भारत का सबसे उपयोगी AI गुरु",
+    menuAiDashboard: "AI डैशबोर्ड", menuAiDashboardSub: "आपका व्यक्तिगत AI लर्निंग हब",
+    menuDiscoverAI: "डिस्कवर AI", menuDiscoverAISub: "करियर, कॉलेज और छात्रवृत्ति खोजें",
+    menuVidyaGuruCard: "विद्यागुरु AI", menuVidyaGuruCardSub: "अपने AI शिक्षक से बात करें",
+    menuGenerateLesson: "पाठ बनाएं", menuGenerateLessonSub: "AI आपके लिए पूरा पाठ बनाता है",
+    menuMyLessons: "मेरे AI पाठ", menuMyLessonsSub: "पिछले पाठ देखें या दोबारा पढ़ें",
+    menuRevisionReels: "रिवीजन रील्स", menuRevisionReelsSub: "शॉर्ट वीडियो रिवीजन सेशन",
+    menuPracticeTests: "प्रैक्टिस टेस्ट", menuPracticeTestsSub: "विश्लेषण के साथ परीक्षा-शैली अभ्यास",
+    menuAskAiGuruCard: "AI गुरु से पूछें", menuAskAiGuruCardSub: "कोई भी सवाल पूछें, तुरंत जवाब पाएं",
+    goodMorning: "सुप्रभात", goodAfternoon: "नमस्ते", goodEvening: "शुभ संध्या", helloGreet: "नमस्ते",
+    whatToLearnToday: "आज आप क्या सीखना चाहते हैं?",
+    browseBySubject: "विषय के अनुसार ब्राउज़ करें",
+    freeQuestionsRemaining: "{{count}} मुफ़्त प्रश्न शेष आज · मध्यरात्रि IST पर रीसेट",
+    freeQuestionsRemainingPlural: "{{count}} मुफ़्त प्रश्न शेष आज · मध्यरात्रि IST पर रीसेट",
+    askFollowUpPlaceholder: "अनुवर्ती प्रश्न पूछें...",
+    askSyllabusPlaceholder: "पाठ्यक्रम के बारे में कुछ भी पूछें...",
+    thinkingLabel: "सोच रहा हूँ...",
+    wantToGoDeeper: "और गहराई से सीखना चाहते हैं?",
+    generateLessonAction: "✨ पाठ बनाएं", chatWithAIAction: "🤖 AI से बात करें",
+    chatWithVidyaGuruAction: "🤖 विद्यागुरु से बात करें",
+    askAnotherQuestion: "एक और प्रश्न पूछें",
+    dailyLimitTitle: "दैनिक सीमा समाप्त",
+    dailyLimitMessage: "आपने आज के सभी {{count}} मुफ़्त प्रश्न उपयोग कर लिए। कल वापस आएं या प्रीमियम अपग्रेड करें।",
+    generateFullLessonAction: "✨ पूरा पाठ बनाएं",
+    somethingWentWrong: "कुछ गड़बड़ हुई", tryAgainLabel: "फिर से कोशिश करें",
+    leftLabel: "शेष", askAiGuruTitle: "AI गुरु से पूछें",
+    respondingIn: "{{lang}} में जवाब दे रहा हूँ", voiceMessage: "🎤 वॉइस मेसेज",
+    askSomethingPlaceholder: "कुछ पूछें...",
+    themeDescDark: "लाइट मोड के लिए बंद करें", themeDescLight: "डार्क मोड के लिए चालू करें",
+    notificationsDesc: "पुश नोटिफिकेशन प्राप्त करें",
+    changePassword: "पासवर्ड बदलें", changePasswordDesc: "अपना अकाउंट पासवर्ड अपडेट करें",
+    privacyDesc: "अपनी गोपनीयता सेटिंग्स प्रबंधित करें",
+    aboutDesc: "GLOOWS365E के बारे में जानें",
+    currentTheme: "वर्तमान थीम:", themeDark: "🌙 डार्क", themeLight: "☀️ लाइट",
+    goBack: "वापस जाएं",
+    noLanguagesMatch: "कोई भाषा नहीं मिली।",
+    languageInfoText: "ये भारत के संविधान की 8वीं अनुसूची में सूचीबद्ध 22 भाषाएँ हैं। आपकी चुनी हुई भाषा पूरे ऐप में पाठ और सामग्री को व्यक्तिगत बनाने के लिए उपयोग की जाएगी।",
+    backToSettings: "सेटिंग्स पर वापस",
   },
 
   // ─────────────────────────── Bengali ──────────────────────────────
@@ -382,11 +520,49 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 নলেজ হাব", knowledgeHubSub: "শেখার, বিকাশের ও দৈনন্দিন জীবনের ভিডিও", watchMore: "আরও দেখুন →",
     couldNotLoadVideos: "ভিডিও লোড করা যায়নি।", moreVideosSoon: "আরও ভিডিও শীঘ্রই আসছে!", noVideosInCat: "\"{{cat}}\" এর কোনো ভিডিও নেই এখনো।",
     shortLearningTitle: "শর্ট লার্নিং", noLearningVideos: "এখনো কোনো লার্নিং ভিডিও নেই",
-    skillBattleShortsTitle: "🔥 স্কিল ব্যাটেল শর্টস", noSkillBattleVideos: "এখনো কোনো স্কিল ব্যাটেল ভিডিও নেই", battleBadge: "⚡ ব্যাটেল",
+    skillBattleShortsTitle: "🔥 শর্টস", noSkillBattleVideos: "এখনো কোনো স্কিল ব্যাটেল ভিডিও নেই", battleBadge: "⚡ ব্যাটেল",
     shikshaStarPreviewTitle: "⭐ শিক্ষাস্টার", shikshaStarPreviewSub: "বিদ্যার প্রতিভাবান শিক্ষার্থীদের উদযাপন", viewStars: "স্টার দেখুন →",
     couldNotLoadStars: "স্টার লোড করা যায়নি।", shikshaStarEmpty: "আপনার প্রতিভা এখানে শীঘ্রই প্রদর্শিত হতে পারে!", becomeShikshaStar: "শিক্ষাস্টার হন",
     discoverPreviewTitle: "🧭 ডিসকভার AI", discoverPreviewSub: "AI-চালিত ক্যারিয়ার, কলেজ ও বৃত্তি আবিষ্কার",
     discoverTitle: "বিদ্যা ডিসকভার AI", discoverSubtitle: "আপনার সেরা ক্যারিয়ার, কলেজ ও বৃত্তি খুঁজুন", discoverCta: "আপনার ভবিষ্যৎ এক্সপ্লোর করুন →",
+    aiGuruTagline: "ভারতের সবচেয়ে উপকারী AI গুরু",
+    menuAiDashboard: "AI ড্যাশবোর্ড", menuAiDashboardSub: "আপনার ব্যক্তিগত AI লার্নিং হাব",
+    menuDiscoverAI: "ডিসকভার AI", menuDiscoverAISub: "ক্যারিয়ার, কলেজ ও বৃত্তি আবিষ্কার করুন",
+    menuVidyaGuruCard: "বিদ্যাগুরু AI", menuVidyaGuruCardSub: "আপনার AI শিক্ষকের সাথে কথা বলুন",
+    menuGenerateLesson: "পাঠ তৈরি করুন", menuGenerateLessonSub: "AI আপনার জন্য সম্পূর্ণ পাঠ তৈরি করে",
+    menuMyLessons: "আমার AI পাঠ", menuMyLessonsSub: "পূর্ববর্তী পাঠ পর্যালোচনা করুন",
+    menuRevisionReels: "রিভিশন রিলস", menuRevisionReelsSub: "সংক্ষিপ্ত ভিডিও রিভিশন সেশন",
+    menuPracticeTests: "প্র্যাকটিস টেস্ট", menuPracticeTestsSub: "বিশ্লেষণ সহ পরীক্ষা-শৈলী অনুশীলন",
+    menuAskAiGuruCard: "AI গুরুকে জিজ্ঞেস করুন", menuAskAiGuruCardSub: "যেকোনো সন্দেহ জিজ্ঞেস করুন, তাৎক্ষণিক উত্তর পান",
+    goodMorning: "সুপ্রভাত", goodAfternoon: "নমস্কার", goodEvening: "শুভ সন্ধ্যা", helloGreet: "হ্যালো",
+    whatToLearnToday: "আজ আপনি কী জানতে চান?",
+    browseBySubject: "বিষয় অনুযায়ী ব্রাউজ করুন",
+    freeQuestionsRemaining: "{{count}} বিনামূল্যে প্রশ্ন বাকি আজ · IST মধ্যরাতে রিসেট",
+    freeQuestionsRemainingPlural: "{{count}} বিনামূল্যে প্রশ্ন বাকি আজ · IST মধ্যরাতে রিসেট",
+    askFollowUpPlaceholder: "অনুসরণমূলক প্রশ্ন করুন...",
+    askSyllabusPlaceholder: "পাঠ্যক্রম সম্পর্কে যেকোনো কিছু জিজ্ঞেস করুন...",
+    thinkingLabel: "ভাবছি...",
+    wantToGoDeeper: "আরও গভীরে যেতে চান?",
+    generateLessonAction: "✨ পাঠ তৈরি করুন", chatWithAIAction: "🤖 AI-এর সাথে কথা বলুন",
+    chatWithVidyaGuruAction: "🤖 বিদ্যাগুরুর সাথে কথা বলুন",
+    askAnotherQuestion: "আরেকটি প্রশ্ন করুন",
+    dailyLimitTitle: "দৈনিক সীমা শেষ",
+    dailyLimitMessage: "আজকের সব {{count}} বিনামূল্যে প্রশ্ন ব্যবহার হয়ে গেছে। কাল ফিরে আসুন বা প্রিমিয়াম আপগ্রেড করুন।",
+    generateFullLessonAction: "✨ সম্পূর্ণ পাঠ তৈরি করুন",
+    somethingWentWrong: "কিছু ভুল হয়েছে", tryAgainLabel: "আবার চেষ্টা করুন",
+    leftLabel: "বাকি", askAiGuruTitle: "AI গুরুকে জিজ্ঞেস করুন",
+    respondingIn: "{{lang}}-এ উত্তর দিচ্ছি", voiceMessage: "🎤 ভয়েস বার্তা",
+    askSomethingPlaceholder: "কিছু জিজ্ঞেস করুন...",
+    themeDescDark: "লাইট মোডের জন্য বন্ধ করুন", themeDescLight: "ডার্ক মোডের জন্য চালু করুন",
+    notificationsDesc: "পুশ নোটিফিকেশন পান",
+    changePassword: "পাসওয়ার্ড পরিবর্তন করুন", changePasswordDesc: "আপনার অ্যাকাউন্ট পাসওয়ার্ড আপডেট করুন",
+    privacyDesc: "আপনার গোপনীয়তা সেটিংস পরিচালনা করুন",
+    aboutDesc: "GLOOWS365E সম্পর্কে জানুন",
+    currentTheme: "বর্তমান থিম:", themeDark: "🌙 ডার্ক", themeLight: "☀️ লাইট",
+    goBack: "ফিরে যান",
+    noLanguagesMatch: "কোনো ভাষা পাওয়া যায়নি।",
+    languageInfoText: "এগুলি ভারতের সংবিধানের ৮ম তফসিলে তালিকাভুক্ত ২২টি ভাষা। আপনার নির্বাচিত ভাষা সমগ্র অ্যাপে পাঠ এবং বিষয়বস্তু ব্যক্তিগতকৃত করতে ব্যবহৃত হবে।",
+    backToSettings: "সেটিংসে ফিরুন",
   },
 
   // ─────────────────────────── Tamil ────────────────────────────────
@@ -449,7 +625,7 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 அறிவு மையம்", knowledgeHubSub: "கற்றல், வளர்ச்சி மற்றும் அன்றாட வாழ்க்கைக்கான வீடியோக்கள்", watchMore: "மேலும் பார் →",
     couldNotLoadVideos: "வீடியோக்களை ஏற்ற முடியவில்லை.", moreVideosSoon: "மேலும் வீடியோக்கள் விரைவில்!", noVideosInCat: "\"{{cat}}\" வீடியோக்கள் இல்லை இன்னும்.",
     shortLearningTitle: "குறுகிய கற்றல்", noLearningVideos: "இன்னும் கற்றல் வீடியோக்கள் இல்லை",
-    skillBattleShortsTitle: "🔥 திறன் போர் ஷார்ட்ஸ்", noSkillBattleVideos: "இன்னும் திறன் போர் வீடியோக்கள் இல்லை", battleBadge: "⚡ போர்",
+    skillBattleShortsTitle: "🔥 ஷார்ட்ஸ்", noSkillBattleVideos: "இன்னும் திறன் போர் வீடியோக்கள் இல்லை", battleBadge: "⚡ போர்",
     shikshaStarPreviewTitle: "⭐ சிக்ஷாஸ்டார்", shikshaStarPreviewSub: "விதியாவின் திறமையான மாணவர்களை கொண்டாடுகிறோம்", viewStars: "நட்சத்திரங்களை பார் →",
     couldNotLoadStars: "நட்சத்திரங்களை ஏற்ற முடியவில்லை.", shikshaStarEmpty: "உங்கள் திறமை விரைவில் இங்கே சேர்க்கப்படலாம்!", becomeShikshaStar: "சிக்ஷாஸ்டார் ஆகுங்கள்",
     discoverPreviewTitle: "🧭 டிஸ்கவர் AI", discoverPreviewSub: "AI-ஆல் இயக்கப்படும் தொழில், கல்லூரி மற்றும் உதவித்தொகை கண்டுபிடிப்பு",
@@ -516,7 +692,7 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 నాలెడ్జ్ హబ్", knowledgeHubSub: "నేర్చుకోవడానికి, వికాసానికి మరియు రోజువారీ జీవితానికి వీడియోలు", watchMore: "మరిన్ని చూడండి →",
     couldNotLoadVideos: "వీడియోలు లోడ్ కాలేదు.", moreVideosSoon: "మరిన్ని వీడియోలు త్వరలో!", noVideosInCat: "\"{{cat}}\" వీడియోలు ఇంకా లేవు.",
     shortLearningTitle: "షార్ట్ లర్నింగ్", noLearningVideos: "ఇంకా నేర్చుకునే వీడియోలు లేవు",
-    skillBattleShortsTitle: "🔥 స్కిల్ బ్యాటిల్ షార్ట్స్", noSkillBattleVideos: "ఇంకా స్కిల్ బ్యాటిల్ వీడియోలు లేవు", battleBadge: "⚡ బ్యాటిల్",
+    skillBattleShortsTitle: "🔥 షార్ట్స్", noSkillBattleVideos: "ఇంకా స్కిల్ బ్యాటిల్ వీడియోలు లేవు", battleBadge: "⚡ బ్యాటిల్",
     shikshaStarPreviewTitle: "⭐ శిక్షాస్టార్", shikshaStarPreviewSub: "విద్యా ప్రతిభావంతులైన విద్యార్థులను వేడుక చేసుకుంటున్నాం", viewStars: "స్టార్‌లను చూడండి →",
     couldNotLoadStars: "స్టార్‌లు లోడ్ కాలేదు.", shikshaStarEmpty: "మీ ప్రతిభ త్వరలో ఇక్కడ ప్రదర్శించబడవచ్చు!", becomeShikshaStar: "శిక్షాస్టార్ అవ్వండి",
     discoverPreviewTitle: "🧭 డిస్కవర్ AI", discoverPreviewSub: "AI-ఆధారిత కెరీర్, కళాశాల & స్కాలర్‌షిప్ ఆవిష్కరణ",
@@ -583,7 +759,7 @@ const translations: Translations = {
     knowledgeHubTitle: "🌐 ನಾಲೆಡ್ಜ್ ಹಬ್", knowledgeHubSub: "ಕಲಿಕೆ, ಬೆಳವಣಿಗೆ ಮತ್ತು ದೈನಂದಿನ ಜೀವನಕ್ಕೆ ವೀಡಿಯೋಗಳು", watchMore: "ಇನ್ನಷ್ಟು ನೋಡಿ →",
     couldNotLoadVideos: "ವೀಡಿಯೋಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", moreVideosSoon: "ಇನ್ನಷ್ಟು ವೀಡಿಯೋಗಳು ಶೀಘ್ರದಲ್ಲೇ!", noVideosInCat: "\"{{cat}}\" ವೀಡಿಯೋಗಳು ಇನ್ನೂ ಇಲ್ಲ.",
     shortLearningTitle: "ಶಾರ್ಟ್ ಲರ್ನಿಂಗ್", noLearningVideos: "ಇನ್ನೂ ಯಾವುದೇ ಕಲಿಕೆ ವೀಡಿಯೋಗಳಿಲ್ಲ",
-    skillBattleShortsTitle: "🔥 ಸ್ಕಿಲ್ ಬ್ಯಾಟಲ್ ಶಾರ್ಟ್ಸ್", noSkillBattleVideos: "ಇನ್ನೂ ಯಾವುದೇ ಸ್ಕಿಲ್ ಬ್ಯಾಟಲ್ ವೀಡಿಯೋಗಳಿಲ್ಲ", battleBadge: "⚡ ಬ್ಯಾಟಲ್",
+    skillBattleShortsTitle: "🔥 ಶಾರ್ಟ್ಸ್", noSkillBattleVideos: "ಇನ್ನೂ ಯಾವುದೇ ಸ್ಕಿಲ್ ಬ್ಯಾಟಲ್ ವೀಡಿಯೋಗಳಿಲ್ಲ", battleBadge: "⚡ ಬ್ಯಾಟಲ್",
     shikshaStarPreviewTitle: "⭐ ಶಿಕ್ಷಾಸ್ಟಾರ್", shikshaStarPreviewSub: "ವಿದ್ಯಾದ ಪ್ರತಿಭಾಶಾಲಿ ವಿದ್ಯಾರ್ಥಿಗಳನ್ನು ಆಚರಿಸುತ್ತಿದ್ದೇವೆ", viewStars: "ಸ್ಟಾರ್‌ಗಳ ನೋಡಿ →",
     couldNotLoadStars: "ಸ್ಟಾರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.", shikshaStarEmpty: "ನಿಮ್ಮ ಪ್ರತಿಭೆ ಶೀಘ್ರದಲ್ಲೇ ಇಲ್ಲಿ ತೋರಿಸಬಹುದು!", becomeShikshaStar: "ಶಿಕ್ಷಾಸ್ಟಾರ್ ಆಗಿ",
     discoverPreviewTitle: "🧭 ಡಿಸ್ಕವರ್ AI", discoverPreviewSub: "AI-ಚಾಲಿತ ವೃತ್ತಿ, ಕಾಲೇಜು & ವಿದ್ಯಾರ್ಥಿವೇತನ ಸಂಶೋಧನೆ",
