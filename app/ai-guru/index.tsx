@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import ScholarshipAdCard from "@/components/ads/ScholarshipAdCard";
+import AiGuruAvatar from "@/components/aiGuru/AiGuruAvatar";
+import { useAppTranslation, useLanguage } from "@/context/LanguageContext";
+import { useStudentProfile } from "@/context/StudentProfileContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useAdFeed } from "@/hooks/useAdFeed";
+import { auth } from "@/lib/firebase";
+import { isSubscribed } from "@/services/aiGuruFirestore";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, {
   FadeIn,
   FadeInDown,
@@ -13,15 +21,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
-import { auth } from "@/lib/firebase";
-import { isSubscribed } from "@/services/aiGuruFirestore";
-import AiGuruAvatar from "@/components/aiGuru/AiGuruAvatar";
-import { useAppTranslation } from "@/context/LanguageContext";
-import { useLanguage } from "@/context/LanguageContext";
-import { useTheme } from "@/context/ThemeContext";
-import ScholarshipAdCard from "@/components/ads/ScholarshipAdCard";
-import { useAdFeed } from "@/hooks/useAdFeed";
-import { useStudentProfile } from "@/context/StudentProfileContext";
 
 type MenuCardDef = {
   titleKey: string;
@@ -124,14 +123,6 @@ export default function AiGuruHomeScreen() {
   );
 
   const handleCardPress = (def: MenuCardDef) => {
-    if (def.premium && !subscribed) {
-      Alert.alert(
-        t("premiumFeature"),
-        t("premiumUnlockMsg"),
-        [{ text: t("maybeLater"), style: "cancel" }, { text: t("upgrade"), onPress: () => router.push("/ai-guru/subscription" as any) }],
-      );
-      return;
-    }
     router.push(def.route as any);
   };
 
@@ -166,12 +157,7 @@ export default function AiGuruHomeScreen() {
               <Ionicons name="globe-outline" size={12} color="#6366f1" />
               <Text style={S.langBadgeText}>{languageName}</Text>
             </View>
-            {subscribed && (
-              <View style={S.premiumBadge}>
-                <Ionicons name="star" size={12} color="#fbbf24" />
-                <Text style={S.premiumText}>PREMIUM</Text>
-              </View>
-            )}
+
           </View>
         </Animated.View>
 
@@ -225,14 +211,6 @@ export default function AiGuruHomeScreen() {
                 style={({ pressed }) => [{ opacity: pressed ? 0.88 : 1 }]}
               >
                 <LinearGradient colors={def.gradient} style={S.card}>
-                  {/* Lock badge for premium */}
-                  {def.premium && !subscribed && (
-                    <View style={S.lockBadge}>
-                      <Ionicons name="lock-closed" size={9} color="#fff" />
-                      <Text style={S.lockText}>PRO</Text>
-                    </View>
-                  )}
-
                   {/* Accent glow */}
                   <View style={[S.cardGlow, { backgroundColor: def.accentColor + "18" }]} />
 
@@ -272,8 +250,6 @@ const S = StyleSheet.create({
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
   langBadge:    { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
   langBadgeText:{ color: "#6366f1", fontSize: 11, fontWeight: "700" },
-  premiumBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(251,191,36,0.15)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: "#fbbf24" },
-  premiumText:  { color: "#fbbf24", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
 
   heroSection:  { alignItems: "center", paddingVertical: 28, gap: 12 },
   avatarWrap:   { alignItems: "center", justifyContent: "center", marginBottom: 4 },
@@ -287,8 +263,6 @@ const S = StyleSheet.create({
   cardWrap:     { width: "47.5%" },
   card:         { borderRadius: 20, padding: 18, minHeight: 148, justifyContent: "flex-end", overflow: "hidden", gap: 6 },
   cardGlow:     { position: "absolute", top: 0, left: 0, right: 0, height: 60, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  lockBadge:    { position: "absolute", top: 11, right: 11, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  lockText:     { color: "#fff", fontSize: 9, fontWeight: "900" },
   cardEmoji:    { fontSize: 34 },
   cardTitle:    { color: "#f1f5f9", fontSize: 15, fontWeight: "900", lineHeight: 20 },
   cardSubtitle: { color: "rgba(255,255,255,0.5)", fontSize: 11, lineHeight: 15 },

@@ -1,17 +1,16 @@
-import Header from "@/components/header";
-import { useTheme } from "@/context/ThemeContext";
-import { useAppTranslation } from "@/context/LanguageContext";
-import { auth, db, firebaseConfig, storage } from "@/lib/firebase";
 import { INDIAN_LANGUAGES } from "@/app/language-settings";
+import Header from "@/components/header";
+import { useAppTranslation } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
+import { auth, db, firebaseConfig, storage } from "@/lib/firebase";
 import { Ionicons } from "@expo/vector-icons";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { getApps, initializeApp } from "firebase/app";
-import { ConfirmationResult, deleteUser, getAuth, inMemoryPersistence, initializeAuth, signInWithPhoneNumber, User } from "firebase/auth";
+import { ConfirmationResult, deleteUser, getAuth, initializeAuth, inMemoryPersistence, signInWithPhoneNumber, User } from "firebase/auth";
 import { deleteDoc, doc, DocumentData, getDoc, updateDoc } from "firebase/firestore";
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -165,7 +164,8 @@ export default function ProfileSettingsScreen() {
   const [sendingOtp,        setSendingOtp]        = useState(false);
   const [verifyingOtp,      setVerifyingOtp]      = useState(false);
   const [confirmationResult,setConfirmationResult]= useState<ConfirmationResult | null>(null);
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  // expo-firebase-recaptcha removed — not compatible with Firebase SDK v12
+  const recaptchaVerifier = { current: null };
 
   const originalPhone = original?.phone ?? "";
   const phoneDirty    = phone.trim() !== originalPhone.trim();
@@ -243,7 +243,8 @@ export default function ProfileSettingsScreen() {
     setSendingOtp(true);
     try {
       const phoneAuth = getPhoneVerifyAuth();
-      const result = await signInWithPhoneNumber(phoneAuth, "+91" + digits, recaptchaVerifier.current!);
+      // expo-firebase-recaptcha removed — RN phone auth does not need DOM recaptcha
+      const result = await signInWithPhoneNumber(phoneAuth, "+91" + digits, undefined as any);
       setConfirmationResult(result);
       setOtpSent(true);
     } catch (e: any) {
@@ -413,12 +414,6 @@ export default function ProfileSettingsScreen() {
   // ─── Main UI ─────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Recaptcha modal — required by expo-firebase-recaptcha */}
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification={false}
-      />
 
       <Header hideMenu={true} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>

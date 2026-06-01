@@ -1,36 +1,69 @@
+// components/FeedPostCard.tsx — FIXED
+//
+// BUG FIX: Was importing resolveStreamUrl from @/lib/cloudflareStream which does
+// not exist — the export is named streamPlaybackUrl. This caused a runtime crash
+// on every card render, making useVideoPlayer receive undefined as its source,
+// so tapping play never worked.
+//
+// FIX: Import streamPlaybackUrl and build a proper resolveStreamUrl helper inline
+// that handles raw videoIds, cloudflarestream.com URLs, and videodelivery.net URLs —
+// same logic used in reels.tsx VideoItem.
+
 import { useTheme } from "@/context/ThemeContext";
+import { streamPlaybackUrl } from "@/lib/cloudflareStream"; // FIX: correct export name
 import { auth, db } from "@/lib/firebase";
-import { resolveStreamUrl } from "@/lib/cloudflareStream";
 import { VideoView, useVideoPlayer } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import {
-    Timestamp,
-    addDoc,
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    increment,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    setDoc,
-    updateDoc,
+  Timestamp,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
-    FlatList,
-    Image,
-    Modal,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  Modal,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// FIX: replaces the missing resolveStreamUrl import.
+// Handles all three URL formats stored in mediaUrl:
+//   1. Raw 32-char Cloudflare video ID
+//   2. https://cloudflarestream.com/<id>/...
+//   3. https://videodelivery.net/<id>/...
+//   4. Any other URL (returned as-is)
+function resolveStreamUrl(mediaUrl?: string): string | null {
+  if (!mediaUrl) return null;
+  // Raw 32-char video ID
+  if (/^[a-zA-Z0-9]{32}$/.test(mediaUrl.trim())) {
+    return streamPlaybackUrl(mediaUrl.trim());
+  }
+  // cloudflarestream.com URL
+  const cfMatch = mediaUrl.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
+  if (cfMatch?.[1]) return streamPlaybackUrl(cfMatch[1]);
+  // videodelivery.net URL
+  const vdMatch = mediaUrl.match(/videodelivery\.net\/([a-zA-Z0-9]+)/);
+  if (vdMatch?.[1]) return streamPlaybackUrl(vdMatch[1]);
+  // Fallback — plain URL (e.g. Firebase Storage)
+  return mediaUrl;
+}
 
 const COMMENT_GROUPS = [
   {
@@ -59,7 +92,7 @@ export default function PostCard({ data }: any) {
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState("");
   const [commentCount, setCommentCount] = useState(data?.comments || 0);
-  
+
   // 🎬 Generate video thumbnail
   useEffect(() => {
     if (data?.postType === "video" && data?.mediaUrl && !videoThumbnail) {
@@ -77,11 +110,11 @@ export default function PostCard({ data }: any) {
           setVideoThumbnail(null);
         }
       };
-      
+
       generateThumbnail();
     }
   }, [data?.mediaUrl, data?.postType, videoThumbnail]);
-  
+
   // 📸 Fetch profile picture from students collection
   useEffect(() => {
     const fetchProfilePic = async () => {
@@ -103,7 +136,7 @@ export default function PostCard({ data }: any) {
         setProfilePicError(true);
       }
     };
-    
+
     fetchProfilePic();
   }, [data?.userId]);
 
@@ -147,11 +180,17 @@ export default function PostCard({ data }: any) {
 
     return unsubscribe;
   }, [commentsVisible, data?.id]);
-  
-  // 🎬 Video player for playing video posts
-  const videoPlayer = useVideoPlayer(resolveStreamUrl(data?.mediaUrl) ?? undefined, (player) => {
-    player.muted = true;
-  });
+
+  // 🎬 Video player — FIX: use the local resolveStreamUrl helper (streamPlaybackUrl
+  // under the hood) instead of the non-existent import that crashed on render.
+  // expo-video's useVideoPlayer accepts VideoSource which includes null (no source)
+  // but NOT undefined — so we coerce undefined → null here.
+  const videoPlayer = useVideoPlayer(
+    resolveStreamUrl(data?.mediaUrl) ?? null,
+    (player) => {
+      player.muted = true;
+    }
+  );
 
   const handlePlayVideo = () => {
     setIsVideoPlaying(true);
@@ -166,12 +205,12 @@ export default function PostCard({ data }: any) {
   // 📅 Format timestamp
   const formatTime = (timestamp: any): string => {
     if (!timestamp) return "now";
-    
+
     try {
-      const date = timestamp instanceof Timestamp 
-        ? timestamp.toDate() 
+      const date = timestamp instanceof Timestamp
+        ? timestamp.toDate()
         : new Date(timestamp);
-      
+
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);
@@ -182,7 +221,7 @@ export default function PostCard({ data }: any) {
       if (diffMins < 60) return `${diffMins}m ago`;
       if (diffHours < 24) return `${diffHours}h ago`;
       if (diffDays < 7) return `${diffDays}d ago`;
-      
+
       return date.toLocaleDateString();
     } catch (error) {
       return "now";
@@ -190,7 +229,7 @@ export default function PostCard({ data }: any) {
   };
 
   const timeText = formatTime(data?.createdAt);
-  
+
   // Fallback profile picture with user initial
   const displayProfilePic = profilePic || `https://i.pravatar.cc/150?u=${data?.userId || "user"}`;
 
@@ -365,7 +404,7 @@ export default function PostCard({ data }: any) {
               contentContainerStyle={styles.commentList}
               ListEmptyComponent={<Text style={[styles.emptyText, { color: colors.textSecondary }]}>No comments yet</Text>}
               renderItem={({ item }) => (
-                <View style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}> 
+                <View style={[styles.commentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                   <Text style={[styles.commentAuthor, { color: colors.accent }]}>{item.userName || "Student"}</Text>
                   <Text style={[styles.commentBody, { color: colors.text }]}>{item.text}</Text>
                 </View>
@@ -434,15 +473,15 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
 
-  name: { 
-    color: "#fff", 
+  name: {
+    color: "#fff",
     fontWeight: "bold",
     fontSize: 14,
   },
 
-  time: { 
-    color: "#aaa", 
-    fontSize: 12 
+  time: {
+    color: "#aaa",
+    fontSize: 12
   },
 
   description: {

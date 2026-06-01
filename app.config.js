@@ -37,8 +37,8 @@ export default {
       [
         "expo-notifications",
         {
-          icon: "./assets/images/icon1.png",
-          color: "#6366F1",
+          icon:        "./assets/images/icon1.png",
+          color:       "#6366F1",
           androidMode: "default",
         },
       ],
@@ -60,15 +60,10 @@ export default {
     ],
 
     experiments: {
-      typedRoutes:     true,
-      reactCompiler:   true,
+      typedRoutes:   true,
+      reactCompiler: true,
     },
 
-    // ── Environment variables ─────────────────────────────────
-    // EXPO_PUBLIC_ vars are automatically injected into process.env
-    // by the Metro bundler when using app.config.js + dotenv/config.
-    // No extra code needed — process.env.EXPO_PUBLIC_CF_CUSTOMER_CODE
-    // will just work after this migration.
     extra: {
       cfCustomerCode: process.env.EXPO_PUBLIC_CF_CUSTOMER_CODE ?? "",
       cfWorkerUrl:    process.env.EXPO_PUBLIC_CF_WORKER_URL    ?? "",

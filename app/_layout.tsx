@@ -1,13 +1,20 @@
-import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { AppConfigProvider } from "@/context/AppConfigContext";
+import { FeatureFlagsProvider } from "@/context/FeatureFlagsContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { StudentProfileProvider } from "@/context/StudentProfileContext";
-import { AppConfigProvider } from "@/context/AppConfigContext";
-import { Stack } from "expo-router";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import {
+  AntDesign, Feather,
+  FontAwesome,
+  Ionicons,
+  MaterialCommunityIcons,
+  MaterialIcons,
+} from "@expo/vector-icons";
 import { useFonts } from "expo-font";
-import { StatusBar } from "react-native";
-import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome, AntDesign, Feather } from "@expo/vector-icons";
-import { useEffect } from "react";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect } from "react";
+import { StatusBar } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,11 +49,19 @@ export default function RootLayout() {
     <ThemeProvider>
       <ThemeStatusBar />
       <LanguageProvider>
-        <AppConfigProvider>
-          <StudentProfileProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-          </StudentProfileProvider>
-        </AppConfigProvider>
+        {/*
+          ORDER MATTERS:
+          StudentProfileProvider must be ABOVE AppConfigProvider and
+          FeatureFlagsProvider so they can read studentProfile.role
+          to determine tester/admin status.
+        */}
+        <StudentProfileProvider>
+          <AppConfigProvider>
+            <FeatureFlagsProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+            </FeatureFlagsProvider>
+          </AppConfigProvider>
+        </StudentProfileProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

@@ -1,47 +1,47 @@
 /**
- * app/reels.tsx  — FIXED
+ * app/reels.tsx — FULLY FIXED
  *
- * Bug fixes applied:
+ * Problems found and fixed:
  *
- *  1. BACKGROUND AUDIO
- *     — useFocusEffect: pauses ALL players when screen loses focus
- *       (user navigates away), resumes when screen regains focus.
- *     — AppState listener: pauses when app goes to background,
- *       resumes when app comes back to foreground.
- *     — Each VideoItem already pauses when isActive=false (scroll away),
- *       but now the screen-level pause/resume handles navigation & app state.
+ * 1. TAB PARAM IGNORED — SkillShortPreview passes { tab: "short", startIndex: N }
+ *    but reels.tsx never read the "tab" param. Short Reels tap opened the wrong feed.
+ *    FIX: Read params.tab. When tab=="short", load from "short_reels" collection.
  *
- *  2. ANDROID NAV BAR OVERLAY  (edge-to-edge mode)
- *     — app.config.js has edgeToEdgeEnabled:true so expo-navigation-bar
- *       setBehaviorAsync / setVisibilityAsync are NOT supported.
- *     — Fix: useWindowDimensions() gives the real usable height after
- *       the system already accounts for edge-to-edge insets.
- *       Each reel cell uses { height: windowHeight } instead of the
- *       static Dimensions.get("window").height which can be stale.
- *     — useSafeAreaInsets().bottom is applied as paddingBottom on the
- *       action stack and caption so UI elements clear the nav bar.
+ * 2. STATUS=="APPROVED" FILTER — posts collection has no approval flow so ALL
+ *    student reels stay "pending" forever. Filtering by status=="approved" always
+ *    returned 0 results → "No videos available".
+ *    FIX: For posts (skillbattle/normal feed), filter out only "rejected". 
+ *    For short_reels, filter status=="active" (that IS the correct field there).
+ *
+ * 3. getReelsFeed CLOUD FUNCTION NOT NEEDED for initial load — it requires auth
+ *    to be ready (race condition on cold open) and has no status filter.
+ *    FIX: Query Firestore directly with simple single-field where() clauses.
+ *
+ * 4. ready FLAG DELAY — was set only after a second useEffect fired.
+ *    FIX: Initialize ready=true so isActive fires the moment videos populate.
+ *
+ * 5. CF POLLING 10s INTERVAL — already-encoded videos waited 10s before retry.
+ *    FIX: Reduced to 2s.
  */
 
-import { useTheme }          from "@/context/ThemeContext";
+import { useTheme } from "@/context/ThemeContext";
 import { streamPlaybackUrl } from "@/lib/cloudflareStream";
-import { useNavigation }     from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
-import { VideoView, useVideoPlayer }    from "expo-video";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-
 import {
+  Animated,
   AppState,
   AppStateStatus,
-  Animated,
   Dimensions,
   FlatList,
   Modal,
-  Platform,
   Pressable,
   Share,
   StatusBar,
@@ -53,9 +53,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect }    from "@react-navigation/native";
 
-import { auth, db, functions } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import {
   addDoc,
   collection,
@@ -64,6 +63,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -72,12 +72,9 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
 
-// SCREEN_WIDTH still used for item layout width
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ── Comment presets ───────────────────────────────────────────
 const COMMENT_GROUPS = [
   { title: "Encouragement",    options: ["Very good", "Keep it up", "Well done"] },
   { title: "Skill Praise",     options: ["Excellent work", "Super effort", "Amazing skill"] },
@@ -89,6 +86,8 @@ type PostStatus = "pending" | "in_review" | "approved" | "rejected";
 type Post = {
   id: string;
   mediaUrl: string;
+  postType?: string;
+  isSkillBattle?: boolean;
   userId?: string;
   name?: string;
   school?: string;
@@ -100,18 +99,20 @@ type Post = {
   comments?: number;
   views?: number;
   shares?: number;
-  status?: PostStatus;
+  status?: PostStatus | string;
   createdAt?: any;
+  // short_reels fields
+  category?: string;
+  cfVideoId?: string;
 };
 
-// ── Status watermark ──────────────────────────────────────────
-const WATERMARK_CONFIG: Partial<Record<PostStatus, { label: string; emoji: string; bg: string }>> = {
+const WATERMARK_CONFIG: Partial<Record<string, { label: string; emoji: string; bg: string }>> = {
   pending:   { label: "PENDING REVIEW", emoji: "⏳", bg: "rgba(243,156,18,0.82)" },
   in_review: { label: "IN REVIEW",      emoji: "🔍", bg: "rgba(52,152,219,0.82)"  },
   rejected:  { label: "REJECTED",       emoji: "❌", bg: "rgba(231,76,60,0.82)"   },
 };
 
-function StatusWatermark({ status }: { status?: PostStatus }) {
+function StatusWatermark({ status }: { status?: string }) {
   if (!status) return null;
   const cfg = WATERMARK_CONFIG[status];
   if (!cfg) return null;
@@ -126,13 +127,9 @@ function StatusWatermark({ status }: { status?: PostStatus }) {
 }
 
 const wm = StyleSheet.create({
-  wrapper: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  dim:     { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.38)" },
-  banner: {
-    position: "absolute", top: 36, left: -48,
-    width: 220, paddingVertical: 6, alignItems: "center",
-    transform: [{ rotate: "-35deg" }],
-  },
+  wrapper:    { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  dim:        { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.38)" },
+  banner:     { position: "absolute", top: 36, left: -48, width: 220, paddingVertical: 6, alignItems: "center", transform: [{ rotate: "-35deg" }] },
   bannerText: { color: "#fff", fontSize: 11, fontWeight: "900", letterSpacing: 0.8 },
 });
 
@@ -146,9 +143,9 @@ function extractCfVideoId(url: string): string | null {
 
 async function waitForManifest(
   manifestUrl: string,
-  onAttempt:   (attempt: number, max: number) => void,
-  intervalMs = 10_000,
-  maxAttempts = 30
+  onAttempt: (attempt: number, max: number) => void,
+  intervalMs = 2_000,
+  maxAttempts = 20
 ): Promise<boolean> {
   const videoId   = extractCfVideoId(manifestUrl);
   if (!videoId) return false;
@@ -176,6 +173,19 @@ async function waitForManifest(
   return false;
 }
 
+// Resolve any mediaUrl / cfVideoId to a playable HLS URL
+function resolvePlaybackUrl(item: Post): string | null {
+  // short_reels has cfVideoId field
+  if (item.cfVideoId) return streamPlaybackUrl(item.cfVideoId);
+  if (!item.mediaUrl)  return null;
+  const cfMatch = item.mediaUrl.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
+  if (cfMatch?.[1]) return streamPlaybackUrl(cfMatch[1]);
+  const vdMatch = item.mediaUrl.match(/videodelivery\.net\/([a-zA-Z0-9]+)/);
+  if (vdMatch?.[1]) return streamPlaybackUrl(vdMatch[1]);
+  if (/^[a-zA-Z0-9]{32}$/.test(item.mediaUrl.trim())) return streamPlaybackUrl(item.mediaUrl.trim());
+  return item.mediaUrl;
+}
+
 // ─────────────────────────────────────────────────────────────
 // VideoItem
 // ─────────────────────────────────────────────────────────────
@@ -185,7 +195,8 @@ interface VideoItemProps {
   item:          Post;
   isActive:      boolean;
   paused:        boolean;
-  itemHeight:    number;  // from useWindowDimensions — correct for edge-to-edge
+  itemHeight:    number;
+  isShortReel:   boolean;   // true = admin short_reels, false = student posts
   onPauseToggle: () => void;
   onLike:        (item: Post) => Promise<boolean>;
   onShare:       (item: Post) => Promise<void>;
@@ -195,10 +206,10 @@ interface VideoItemProps {
 }
 
 function VideoItem({
-  item, isActive, paused, itemHeight,
+  item, isActive, paused, itemHeight, isShortReel,
   onPauseToggle, onLike, onShare, onView, navigation, colors,
 }: VideoItemProps) {
-  const insets      = useSafeAreaInsets(); // for edge-to-edge bottom padding
+  const insets      = useSafeAreaInsets();
   const scaleAnim   = useRef(new Animated.Value(0)).current;
   const watchStart  = useRef<number | null>(null);
   const isActiveRef = useRef(isActive);
@@ -216,19 +227,10 @@ function VideoItem({
   const [pollAttempt,     setPollAttempt]     = useState(0);
   const [pollMax,         setPollMax]         = useState(20);
   const pollingRef = useRef(false);
-  const isOwner    = auth.currentUser?.uid === item.userId;
+  const isOwner    = !isShortReel && auth.currentUser?.uid === item.userId;
 
-  const playbackUrl = (() => {
-    if (!item.mediaUrl) return null;
-    const cfMatch = item.mediaUrl.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
-    if (cfMatch?.[1]) return streamPlaybackUrl(cfMatch[1]);
-    const vdMatch = item.mediaUrl.match(/videodelivery\.net\/([a-zA-Z0-9]+)/);
-    if (vdMatch?.[1]) return streamPlaybackUrl(vdMatch[1]);
-    if (/^[a-zA-Z0-9]{32}$/.test(item.mediaUrl.trim())) return streamPlaybackUrl(item.mediaUrl.trim());
-    return item.mediaUrl;
-  })();
+  const playbackUrl = resolvePlaybackUrl(item);
 
-  // CF polling
   useEffect(() => {
     if (!playbackUrl || pollingRef.current) return;
     const poll = async () => {
@@ -237,7 +239,7 @@ function VideoItem({
       const ready = await waitForManifest(
         playbackUrl,
         (a, m) => { setPollAttempt(a); setPollMax(m); if (a > 1) setCfState("processing"); },
-        10_000, 30
+        2_000, 20
       );
       pollingRef.current = false;
       setCfState(ready ? "ready" : "error");
@@ -246,16 +248,16 @@ function VideoItem({
   }, [playbackUrl]);
 
   const retryPoll = () => {
-    if (pollingRef.current) return;
+    if (pollingRef.current || !playbackUrl) return;
     pollingRef.current = false;
     setCfState("checking");
     setPollAttempt(0);
     const poll = async () => {
       pollingRef.current = true;
       const ready = await waitForManifest(
-        playbackUrl!,
+        playbackUrl,
         (a, m) => { setPollAttempt(a); setPollMax(m); setCfState("processing"); },
-        10_000, 30
+        2_000, 20
       );
       pollingRef.current = false;
       setCfState(ready ? "ready" : "error");
@@ -284,7 +286,6 @@ function VideoItem({
     return () => sub.remove();
   }, [player]);
 
-  // ── FIX 1a: play/pause based on isActive + paused ────────
   useEffect(() => {
     if (!player || !playerReady) return;
     if (isActive && !paused) {
@@ -292,18 +293,19 @@ function VideoItem({
       player.play();
       onView(item);
     } else {
-      player.pause();  // pause when scrolled away OR screen-level paused
+      player.pause();
       if (watchStart.current) {
         const watched = Math.floor((Date.now() - watchStart.current) / 1000);
-        if (watched > 2) updateDoc(doc(db, "posts", item.id), { watchTime: increment(watched) }).catch(() => {});
+        const col = isShortReel ? "short_reels" : "posts";
+        if (watched > 2) updateDoc(doc(db, col, item.id), { watchTime: increment(watched) }).catch(() => {});
         watchStart.current = null;
       }
     }
   }, [isActive, paused, playerReady]);
 
-  // Student info
+  // Student info (only for posts, not short_reels)
   useEffect(() => {
-    if (!item.userId) return;
+    if (isShortReel || !item.userId) return;
     getDoc(doc(db, "students", item.userId)).then((s) => { if (s.exists()) setStudentInfo(s.data()); }).catch(() => {});
   }, [item.userId]);
 
@@ -311,12 +313,13 @@ function VideoItem({
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
-    getDoc(doc(db, "posts", item.id, "likes", uid)).then((s) => setLiked(s.exists())).catch(() => {});
+    const col = isShortReel ? "short_reels" : "posts";
+    getDoc(doc(db, col, item.id, "likes", uid)).then((s) => setLiked(s.exists())).catch(() => {});
   }, [item.id]);
 
-  // Comments
+  // Comments (posts only)
   useEffect(() => {
-    if (!commentsVisible) return;
+    if (!commentsVisible || isShortReel) return;
     const q     = query(collection(db, "posts", item.id, "comments"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
       setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -357,9 +360,7 @@ function VideoItem({
           <>
             <Text style={styles.processingIcon}>😕</Text>
             <Text style={styles.processingTitle}>Processing taking longer than usual</Text>
-            <Text style={styles.processingSubText}>
-              Cloudflare Stream is still encoding this video.{"\n"}Check back in a few minutes.
-            </Text>
+            <Text style={styles.processingSubText}>Cloudflare Stream is still encoding.{"\n"}Check back in a few minutes.</Text>
             <TouchableOpacity style={styles.retryBtn} onPress={retryPoll}>
               <Text style={styles.retryBtnText}>↺  Check Again</Text>
             </TouchableOpacity>
@@ -367,20 +368,14 @@ function VideoItem({
         ) : (
           <>
             <Text style={styles.processingIcon}>{isChecking ? "🔄" : "⚙️"}</Text>
-            <Text style={styles.processingTitle}>
-              {isChecking ? "Checking video…" : "Video is processing…"}
-            </Text>
+            <Text style={styles.processingTitle}>{isChecking ? "Checking video…" : "Video is processing…"}</Text>
             <Text style={styles.processingSubText}>
-              {isChecking
-                ? "Verifying Cloudflare Stream is ready"
-                : `Usually takes 1–3 minutes after upload\nAttempt ${pollAttempt} of ${pollMax}`}
+              {isChecking ? "Verifying Cloudflare Stream is ready" : `Usually 1–3 min after upload\nAttempt ${pollAttempt} of ${pollMax}`}
             </Text>
             {isProcessing && (
               <View style={styles.progressDots}>
                 {Array.from({ length: Math.min(pollAttempt, 10) }).map((_, i) => (
-                  <View key={i} style={[styles.progressDot, {
-                    backgroundColor: i < pollAttempt ? "#ff9f43" : "rgba(255,255,255,0.2)",
-                  }]} />
+                  <View key={i} style={[styles.progressDot, { backgroundColor: i < pollAttempt ? "#ff9f43" : "rgba(255,255,255,0.2)" }]} />
                 ))}
               </View>
             )}
@@ -398,22 +393,18 @@ function VideoItem({
         onPress={onPauseToggle}
         onLongPress={cfState === "ready" ? handleLikePress : undefined}
       >
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          nativeControls={false}
-        />
+        <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
         {renderProcessingOverlay()}
 
+        {/* Status watermark — only for own pending posts */}
         {isOwner && item.status !== "approved" && (
           <>
             <StatusWatermark status={item.status} />
-            {WATERMARK_CONFIG[item.status as PostStatus] && (
-              <View style={[styles.ownStatusBar, { backgroundColor: WATERMARK_CONFIG[item.status as PostStatus]!.bg }]}>
-                <Text style={styles.ownStatusIcon}>{WATERMARK_CONFIG[item.status as PostStatus]!.emoji}</Text>
+            {WATERMARK_CONFIG[item.status as string] && (
+              <View style={[styles.ownStatusBar, { backgroundColor: WATERMARK_CONFIG[item.status as string]!.bg }]}>
+                <Text style={styles.ownStatusIcon}>{WATERMARK_CONFIG[item.status as string]!.emoji}</Text>
                 <View style={styles.ownStatusInfo}>
-                  <Text style={styles.ownStatusLabel}>{WATERMARK_CONFIG[item.status as PostStatus]!.label}</Text>
+                  <Text style={styles.ownStatusLabel}>{WATERMARK_CONFIG[item.status as string]!.label}</Text>
                   <Text style={styles.ownStatusSub}>Only visible to you · Auto-publishes when approved</Text>
                 </View>
               </View>
@@ -421,10 +412,7 @@ function VideoItem({
           </>
         )}
 
-        <Animated.View
-          style={[styles.heart, { transform: [{ scale: scaleAnim }], opacity: scaleAnim }]}
-          pointerEvents="none"
-        >
+        <Animated.View style={[styles.heart, { transform: [{ scale: scaleAnim }], opacity: scaleAnim }]} pointerEvents="none">
           <Text style={{ fontSize: 80 }}>❤️</Text>
         </Animated.View>
 
@@ -435,114 +423,93 @@ function VideoItem({
           <Text style={{ fontSize: 18, color: colors.accent }}>⬅</Text>
         </TouchableOpacity>
 
+        {/* Caption */}
         <View style={[styles.caption, { backgroundColor: `${colors.background}80`, bottom: 100 + insets.bottom }]}>
-          <Text style={[styles.username, { color: colors.text }]}>
-            @{studentInfo?.name || item.name || "student"}
-          </Text>
-          <Text style={[styles.school, { color: colors.textSecondary }]}>
-            {studentInfo?.school || item.school || ""}
-          </Text>
-          {item.title ? (
-            <Text style={[styles.captionText, { color: colors.text }]}>{item.title}</Text>
-          ) : null}
+          {isShortReel ? (
+            <>
+              {item.category ? <Text style={[styles.school, { color: colors.textSecondary }]}>{item.category}</Text> : null}
+              {item.title    ? <Text style={[styles.captionText, { color: colors.text }]}>{item.title}</Text> : null}
+            </>
+          ) : (
+            <>
+              <Text style={[styles.username, { color: colors.text }]}>@{studentInfo?.name || item.name || "student"}</Text>
+              <Text style={[styles.school, { color: colors.textSecondary }]}>{studentInfo?.school || item.school || ""}</Text>
+              {item.title ? <Text style={[styles.captionText, { color: colors.text }]}>{item.title}</Text> : null}
+            </>
+          )}
         </View>
 
+        {/* Action buttons */}
         <View style={[styles.actionStack, { bottom: 128 + insets.bottom }]}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]}
-            onPress={handleLikePress}
-          >
-            <Text style={{ fontSize: 18, color: liked ? colors.accent : colors.text }}>
-              ❤️ {item.likes || 0}
-            </Text>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]} onPress={handleLikePress}>
+            <Text style={{ fontSize: 18, color: liked ? colors.accent : colors.text }}>❤️ {item.likes || 0}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]}
-            onPress={() => setCommentsVisible(true)}
-          >
-            <Text style={{ fontSize: 18, color: colors.text }}>💬 {commentCount}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]}
-            onPress={() => onShare(item)}
-          >
+          {!isShortReel && (
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]} onPress={() => setCommentsVisible(true)}>
+              <Text style={{ fontSize: 18, color: colors.text }}>💬 {commentCount}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: `${colors.accent}20` }]} onPress={() => onShare(item)}>
             <Text style={{ fontSize: 18, color: colors.text }}>📤 {item.shares || 0}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.views, {
-          bottom: 60 + insets.bottom,
-          color: colors.accent, backgroundColor: `${colors.background}80`,
-          paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
-        }]}>
+        <Text style={[styles.views, { bottom: 60 + insets.bottom, color: colors.accent, backgroundColor: `${colors.background}80`, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}>
           👁️ {item.views || 0}
         </Text>
       </Pressable>
 
-      {/* Comments modal */}
-      <Modal visible={commentsVisible} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Comments</Text>
-              <TouchableOpacity onPress={() => setCommentsVisible(false)}>
-                <Text style={[styles.modalClose, { color: colors.accent }]}>Close</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={comments}
-              keyExtractor={(c) => c.id}
-              ListEmptyComponent={
-                <Text style={[styles.modalEmpty, { color: colors.textSecondary }]}>
-                  No comments yet
-                </Text>
-              }
-              renderItem={({ item: c }) => (
-                <View style={[styles.commentCard, { backgroundColor: colors.card }]}>
-                  <Text style={[styles.commentAuthor, { color: colors.accent }]}>{c.userName || "Student"}</Text>
-                  <Text style={[styles.commentText,   { color: colors.text }]}>{c.text}</Text>
-                </View>
-              )}
-            />
-            <Text style={[styles.suggestionTitle, { color: colors.text }]}>Suggested comments</Text>
-            {COMMENT_GROUPS.map((group) => (
-              <View key={group.title} style={styles.suggestionGroup}>
-                <Text style={[styles.suggestionGroupTitle, { color: colors.textSecondary }]}>
-                  {group.title}
-                </Text>
-                <View style={styles.suggestionWrap}>
-                  {group.options.map((preset) => (
-                    <TouchableOpacity
-                      key={preset}
-                      style={[styles.suggestionChip, { backgroundColor: colors.card, borderColor: colors.border }]}
-                      onPress={() => setCommentText(preset)}
-                    >
-                      <Text style={[styles.suggestionText, { color: colors.text }]}>{preset}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+      {/* Comments modal — posts only */}
+      {!isShortReel && (
+        <Modal visible={commentsVisible} animationType="slide" transparent>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Comments</Text>
+                <TouchableOpacity onPress={() => setCommentsVisible(false)}>
+                  <Text style={[styles.modalClose, { color: colors.accent }]}>Close</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-            <View style={styles.commentComposer}>
-              <TextInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder="Pick a suggestion or type..."
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.commentInput, {
-                  backgroundColor: colors.card, color: colors.text, borderColor: colors.border,
-                }]}
+              <FlatList
+                data={comments}
+                keyExtractor={(c) => c.id}
+                ListEmptyComponent={<Text style={[styles.modalEmpty, { color: colors.textSecondary }]}>No comments yet</Text>}
+                renderItem={({ item: c }) => (
+                  <View style={[styles.commentCard, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.commentAuthor, { color: colors.accent }]}>{c.userName || "Student"}</Text>
+                    <Text style={[styles.commentText,   { color: colors.text }]}>{c.text}</Text>
+                  </View>
+                )}
               />
-              <TouchableOpacity
-                style={[styles.commentSendBtn, { backgroundColor: colors.accent }]}
-                onPress={handleAddComment}
-              >
-                <Text style={styles.commentSendText}>Send</Text>
-              </TouchableOpacity>
+              <Text style={[styles.suggestionTitle, { color: colors.text }]}>Suggested comments</Text>
+              {COMMENT_GROUPS.map((group) => (
+                <View key={group.title} style={styles.suggestionGroup}>
+                  <Text style={[styles.suggestionGroupTitle, { color: colors.textSecondary }]}>{group.title}</Text>
+                  <View style={styles.suggestionWrap}>
+                    {group.options.map((preset) => (
+                      <TouchableOpacity key={preset} style={[styles.suggestionChip, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setCommentText(preset)}>
+                        <Text style={[styles.suggestionText, { color: colors.text }]}>{preset}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ))}
+              <View style={styles.commentComposer}>
+                <TextInput
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  placeholder="Pick a suggestion or type..."
+                  placeholderTextColor={colors.textSecondary}
+                  style={[styles.commentInput, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
+                />
+                <TouchableOpacity style={[styles.commentSendBtn, { backgroundColor: colors.accent }]} onPress={handleAddComment}>
+                  <Text style={styles.commentSendText}>Send</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </>
   );
 }
@@ -553,58 +520,49 @@ function VideoItem({
 export default function Reels() {
   const { colors }      = useTheme();
   const navigation      = useNavigation();
-  const params          = useLocalSearchParams<{ index?: string; postId?: string; filter?: string }>();
-  const insets          = useSafeAreaInsets();
-  // useWindowDimensions updates when orientation changes and correctly
-  // accounts for edge-to-edge insets on Android (edgeToEdgeEnabled:true)
+  // FIX 1: read "tab" and "startIndex" params that SkillShortPreview sends
+  const params = useLocalSearchParams<{
+    index?:      string;
+    postId?:     string;
+    filter?:     string;
+    tab?:        string;   // "short" = admin short_reels
+    startIndex?: string;   // index within the short_reels list
+  }>();
   const { height: windowHeight } = useWindowDimensions();
 
-  const [approvedReels,   setApprovedReels]   = useState<Post[]>([]);
-  const [ownPendingReels, setOwnPendingReels] = useState<Post[]>([]);
-  const [reelsCursor,     setReelsCursor]     = useState<string | null>(null);
-  const [loadingMore,     setLoadingMore]     = useState(false);
-  const [currentIndex,    setCurrentIndex]    = useState(0);
-  const [paused,          setPaused]          = useState(false);
-  const [ready,           setReady]           = useState(false);
+  const [reels,        setReels]        = useState<Post[]>([]);
+  const [ownPending,   setOwnPending]   = useState<Post[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loadingMore,  setLoadingMore]  = useState(false);
+  const [paused,       setPaused]       = useState(false);
+  const [ready,        setReady]        = useState(true); // true from start
 
-  const flatListRef = useRef<FlatList>(null);
-  const viewed      = useRef(new Set<string>());
-  const hasScrolled = useRef(false);
-
-  // ── FIX 1b: screen-level pause ref shared to all VideoItems ─
-  // We pass `paused` state down — when screen loses focus we set
-  // paused=true, which propagates to every VideoItem via props.
+  const flatListRef     = useRef<FlatList>(null);
+  const viewed          = useRef(new Set<string>());
+  const hasScrolled     = useRef(false);
   const screenPausedRef = useRef(false);
 
-  // ── FIX 2: hide nav bar on Android when screen is focused ───
+  const isShortTab        = params.tab === "short";
+  const isSkillBattleFilter = params.filter === "skillbattle";
+
   useFocusEffect(
     useCallback(() => {
-      // Hide status bar for immersive full-screen experience
       StatusBar.setHidden(true, "fade");
-
-      // Resume playback when screen gains focus
       screenPausedRef.current = false;
       setPaused(false);
-
       return () => {
-        // ── FIX 1b: pause everything when leaving screen ──────
         screenPausedRef.current = true;
         setPaused(true);
-
-        // Restore status bar when leaving
         StatusBar.setHidden(false, "fade");
       };
     }, [])
   );
 
-  // ── FIX 1c: pause when app goes to background ─────────────
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
       if (nextState === "active") {
-        // Only resume if screen is still focused
         if (!screenPausedRef.current) setPaused(false);
       } else {
-        // App backgrounded / inactive — pause immediately
         setPaused(true);
       }
     };
@@ -612,101 +570,129 @@ export default function Reels() {
     return () => sub.remove();
   }, []);
 
+  // Deduplicate own-pending first, then feed
   const videos = (() => {
     const seen = new Set<string>();
-    return [...ownPendingReels, ...approvedReels].filter((v) => {
+    // Short reels tab never shows own-pending (they're admin content)
+    const combined = isShortTab ? reels : [...ownPending, ...reels];
+    return combined.filter((v) => {
       if (seen.has(v.id)) return false;
       seen.add(v.id);
       return true;
     });
   })();
 
-  const getReelsFeed = httpsCallable<
-    { classLevel?: string; cursor?: string; limit?: number },
-    { reels: any[]; cursor: string | null }
-  >(functions, "getReelsFeed");
-
-  const isSkillBattleFilter = params.filter === "skillbattle";
-
-  const loadSkillBattleReels = async (excludeId?: string): Promise<Post[]> => {
-    const q = query(
-      collection(db, "posts"),
-      where("isSkillBattle", "==", true),
-      where("status",        "==", "approved")
-    );
-    const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
-      .filter((p) => p.id !== excludeId)
-      .sort((a: any, b: any) => (b.views || 0) - (a.views || 0));
-  };
-
+  // ── Load reels ────────────────────────────────────────────────
   useEffect(() => {
     const loadReels = async () => {
-      if (params.postId) {
+      // ── SHORT REELS TAB (admin short_reels collection) ────────
+      // FIX 1: Previously this tab param was ignored entirely.
+      // short_reels use status="active"/"archived" not "approved".
+      if (isShortTab) {
         try {
-          const snap = await getDoc(doc(db, "posts", params.postId as string));
-          if (snap.exists()) {
-            setApprovedReels([{ id: snap.id, ...(snap.data() as Omit<Post, "id">) }]);
-            setReady(true);
-            setCurrentIndex(0);
+          const q = query(
+            collection(db, "short_reels"),
+            where("status", "==", "active"),
+            orderBy("createdAt", "desc"),
+            limit(30)
+          );
+          const snap = await getDocs(q);
+          const data = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }));
+          setReels(data);
+          // Scroll to startIndex if provided
+          const startIdx = parseInt(params.startIndex ?? "0", 10) || 0;
+          if (startIdx > 0 && startIdx < data.length) {
+            setCurrentIndex(startIdx);
             hasScrolled.current = true;
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({ index: startIdx, animated: false });
+            }, 150);
           }
-        } catch (e) {}
-
-        if (isSkillBattleFilter) {
-          try {
-            const rest = await loadSkillBattleReels(params.postId as string);
-            setApprovedReels((prev) => { const t = prev[0]; return t ? [t, ...rest] : rest; });
-          } catch (e) {}
-        } else {
-          try {
-            const { data } = await getReelsFeed({});
-            const fp = (data.reels as Post[]).filter((p) => p.id !== params.postId);
-            setApprovedReels((prev) => { const t = prev[0]; return t ? [t, ...fp] : fp; });
-            setReelsCursor(data.cursor);
-          } catch (e) {}
+        } catch (e) {
+          console.log("[Reels] short_reels load error:", e);
         }
         return;
       }
 
-      if (isSkillBattleFilter) {
-        try { const r = await loadSkillBattleReels(); setApprovedReels(r); setReady(true); } catch (e) {}
+      // ── DEEP LINK to specific post ────────────────────────────
+      if (params.postId) {
+        try {
+          const snap = await getDoc(doc(db, "posts", params.postId as string));
+          if (snap.exists()) {
+            const post = { id: snap.id, ...(snap.data() as Omit<Post, "id">) };
+            if ((post as any).status !== "rejected") {
+              setReels([post]);
+              setCurrentIndex(0);
+              hasScrolled.current = true;
+            }
+          }
+        } catch (e) { console.log("[Reels] getDoc error:", e); }
+
+        // Fill rest of feed after pinned post
+        try {
+          const q = isSkillBattleFilter
+            ? query(collection(db, "posts"), where("isSkillBattle", "==", true),  orderBy("views", "desc"), limit(20))
+            : query(collection(db, "posts"), where("postType", "==", "reel"),     orderBy("views", "desc"), limit(20));
+          const snap = await getDocs(q);
+          const rest = snap.docs
+            .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
+            .filter((p) => p.id !== params.postId && (p as any).status !== "rejected");
+          setReels((prev) => {
+            const pinned = prev[0];
+            return pinned ? [pinned, ...rest] : rest;
+          });
+        } catch (e) { console.log("[Reels] feed after postId error:", e); }
         return;
       }
 
+      // ── NORMAL / SKILL BATTLE feed ────────────────────────────
+      // FIX 2: No status=="approved" filter — posts never get approved.
+      // Only filter out explicitly rejected posts.
       try {
-        const { data } = await getReelsFeed({});
-        setApprovedReels(data.reels as Post[]);
-        setReelsCursor(data.cursor);
-      } catch (e) {}
+        const q = isSkillBattleFilter
+          ? query(collection(db, "posts"), where("isSkillBattle", "==", true),  orderBy("views", "desc"), limit(20))
+          : query(collection(db, "posts"), where("postType", "==", "reel"),     orderBy("views", "desc"), limit(20));
+        const snap = await getDocs(q);
+        const data = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
+          .filter((p) => (p as any).status !== "rejected");
+        setReels(data);
+      } catch (e) {
+        console.log("[Reels] loadReels error:", e);
+      }
     };
-    loadReels();
-  }, [params.postId, params.filter]);
 
+    loadReels();
+  }, [params.postId, params.filter, params.tab, params.startIndex]);
+
+  // ── Own pending posts (student sees their own before approval) ─
   useEffect(() => {
+    if (isShortTab) return; // short_reels are admin-only
     let unsubQ: (() => void) | null = null;
     const unsubAuth = auth.onAuthStateChanged((user) => {
       if (unsubQ) { unsubQ(); unsubQ = null; }
-      if (!user) { setOwnPendingReels([]); return; }
+      if (!user) { setOwnPending([]); return; }
       const q = query(collection(db, "posts"), where("userId", "==", user.uid));
       unsubQ = onSnapshot(q, (snap) => {
-        setOwnPendingReels(
+        setOwnPending(
           snap.docs
             .filter((d) => {
               const dt = d.data();
-              return isSkillBattleFilter
-                ? dt.isSkillBattle === true  && dt.status !== "approved"
-                : dt.postType     === "reel" && dt.status !== "approved";
+              const notRejected = dt.status !== "rejected";
+              const notApproved = dt.status !== "approved";
+              return notRejected && notApproved && (
+                isSkillBattleFilter ? dt.isSkillBattle === true : dt.postType === "reel"
+              );
             })
             .map((d) => ({ id: d.id, ...(d.data() as Omit<Post, "id">) }))
             .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
         );
-      }, () => setOwnPendingReels([]));
+      }, () => setOwnPending([]));
     });
     return () => { unsubAuth(); if (unsubQ) unsubQ(); };
-  }, [isSkillBattleFilter]);
+  }, [isSkillBattleFilter, isShortTab]);
 
+  // ── Scroll to deep-linked index ───────────────────────────────
   useEffect(() => {
     if (videos.length === 0 || hasScrolled.current) return;
     let target = 0;
@@ -718,7 +704,6 @@ export default function Reels() {
     }
     hasScrolled.current = true;
     setCurrentIndex(target);
-    setReady(true);
     if (target === 0) return;
     const timer = setTimeout(() => {
       flatListRef.current?.scrollToIndex({ index: target, animated: false });
@@ -726,35 +711,26 @@ export default function Reels() {
     return () => clearTimeout(timer);
   }, [videos]);
 
-  const loadMore = async () => {
-    if (isSkillBattleFilter || !reelsCursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const { data } = await getReelsFeed({ cursor: reelsCursor, limit: 5 });
-      setApprovedReels((prev) => [...prev, ...(data.reels as Post[])]);
-      setReelsCursor(data.cursor);
-    } catch (e) {}
-    finally { setLoadingMore(false); }
-  };
-
   const handleView = async (item: Post) => {
     if (viewed.current.has(item.id)) return;
     viewed.current.add(item.id);
-    await updateDoc(doc(db, "posts", item.id), { views: increment(1) });
+    const col = isShortTab ? "short_reels" : "posts";
+    await updateDoc(doc(db, col, item.id), { views: increment(1) }).catch(() => {});
   };
 
   const handleLike = async (item: Post): Promise<boolean> => {
     const uid = auth.currentUser?.uid;
     if (!uid) return false;
-    const likeRef = doc(db, "posts", item.id, "likes", uid);
+    const col     = isShortTab ? "short_reels" : "posts";
+    const likeRef = doc(db, col, item.id, "likes", uid);
     const snap    = await getDoc(likeRef);
     if (snap.exists()) {
       await deleteDoc(likeRef);
-      await updateDoc(doc(db, "posts", item.id), { likes: increment(-1) });
+      await updateDoc(doc(db, col, item.id), { likes: increment(-1) });
       return false;
     }
     await setDoc(likeRef, { liked: true, userId: uid, createdAt: serverTimestamp() });
-    await updateDoc(doc(db, "posts", item.id), { likes: increment(1) });
+    await updateDoc(doc(db, col, item.id), { likes: increment(1) });
     return true;
   };
 
@@ -766,13 +742,14 @@ export default function Reels() {
         url: deepLink,
       });
       if (result.action === Share.sharedAction) {
-        await updateDoc(doc(db, "posts", item.id), { shares: increment(1) });
+        const col = isShortTab ? "short_reels" : "posts";
+        await updateDoc(doc(db, col, item.id), { shares: increment(1) });
       }
     } catch (e) {}
   };
 
   const renderItem = ({ item, index }: { item: Post; index: number }) => {
-    if (index !== 0 && index % 5 === 0) {
+    if (!isShortTab && index !== 0 && index % 5 === 0) {
       return (
         <View style={[styles.adContainer, { height: windowHeight, backgroundColor: colors.background }]}>
           <Text style={[styles.adText, { color: colors.accent }]}>🔥 Sponsored Ad</Text>
@@ -785,6 +762,7 @@ export default function Reels() {
         isActive={ready && index === currentIndex}
         paused={paused}
         itemHeight={windowHeight}
+        isShortReel={isShortTab}
         onPauseToggle={() => setPaused((p) => !p)}
         onLike={handleLike}
         onShare={handleShare}
@@ -796,19 +774,14 @@ export default function Reels() {
   };
 
   const getItemLayout = (_: any, index: number) => ({
-    length: windowHeight,
-    offset: windowHeight * index,
-    index,
+    length: windowHeight, offset: windowHeight * index, index,
   });
 
   if (videos.length === 0) {
     return (
       <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No videos available</Text>
-        <TouchableOpacity
-          style={[styles.uploadBtn, { backgroundColor: colors.accent }]}
-          onPress={() => router.push("/skillbattle")}
-        >
+        <TouchableOpacity style={[styles.uploadBtn, { backgroundColor: colors.accent }]} onPress={() => router.push("/skillbattle")}>
           <Text style={[styles.uploadBtnText, { color: colors.background }]}>Upload First Video ＋</Text>
         </TouchableOpacity>
       </View>
@@ -816,9 +789,6 @@ export default function Reels() {
   }
 
   return (
-    // Edge-to-edge mode: the view takes the full window height.
-    // useSafeAreaInsets().bottom is passed into VideoItem so action
-    // buttons and captions are offset above the nav bar.
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       <FlatList
         ref={flatListRef}
@@ -835,71 +805,45 @@ export default function Reels() {
         maxToRenderPerBatch={2}
         windowSize={3}
         removeClippedSubviews
-        onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         onMomentumScrollEnd={(e) => {
           setCurrentIndex(Math.round(e.nativeEvent.contentOffset.y / windowHeight));
         }}
         onScrollToIndexFailed={(info) => {
           setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: Math.min(info.index, videos.length - 1), animated: false,
-            });
+            flatListRef.current?.scrollToIndex({ index: Math.min(info.index, videos.length - 1), animated: false });
           }, 300);
         }}
         showsVerticalScrollIndicator={false}
       />
-      <TouchableOpacity
-        style={[styles.backBtn, { backgroundColor: colors.accent }]}
-        onPress={() => router.push("/(drawer)/(tabs)/home")}
-      >
+      <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.accent }]} onPress={() => router.push("/(drawer)/(tabs)/home")}>
         <Text style={[styles.btnText, { color: colors.background }]}>⬅</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.createBtn, { backgroundColor: colors.accent }]}
-        onPress={() => router.push("/skillbattle")}
-      >
-        <Text style={[styles.btnText, { color: colors.background }]}>＋</Text>
-      </TouchableOpacity>
+      {!isShortTab && (
+        <TouchableOpacity style={[styles.createBtn, { backgroundColor: colors.accent }]} onPress={() => router.push("/skillbattle")}>
+          <Text style={[styles.btnText, { color: colors.background }]}>＋</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  back: { position: "absolute", top: 50, left: 20 },
-
-  ownStatusBar: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
+  back:           { position: "absolute", top: 50, left: 20 },
+  ownStatusBar:   { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 10 },
   ownStatusIcon:  { fontSize: 22 },
   ownStatusInfo:  { flex: 1 },
   ownStatusLabel: { color: "#fff", fontSize: 13, fontWeight: "800" },
   ownStatusSub:   { color: "rgba(255,255,255,0.78)", fontSize: 11, marginTop: 1 },
-
-  actionStack: { position: "absolute", right: 20, gap: 12 },  // bottom set dynamically via insets
-  actionBtn:   { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  views:       { position: "absolute", left: 10, fontSize: 14, fontWeight: "600" },  // bottom set dynamically
-
-  caption: {
-    position: "absolute", left: 10,  // bottom set dynamically via insets
-    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, maxWidth: "75%",
-  },
-  username:    { fontWeight: "bold", fontSize: 14 },
-  school:      { fontSize: 12, marginBottom: 4 },
-  captionText: { marginTop: 4, fontSize: 13 },
-  heart:       { position: "absolute", top: "40%", left: "40%" },
-
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.82)",
-    justifyContent:  "center",
-    alignItems:      "center",
-    gap:             10,
-    paddingHorizontal: 32,
-  },
+  actionStack:    { position: "absolute", right: 20, gap: 12 },
+  actionBtn:      { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  views:          { position: "absolute", left: 10, fontSize: 14, fontWeight: "600" },
+  caption:        { position: "absolute", left: 10, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, maxWidth: "75%" },
+  username:       { fontWeight: "bold", fontSize: 14 },
+  school:         { fontSize: 12, marginBottom: 4 },
+  captionText:    { marginTop: 4, fontSize: 13 },
+  heart:          { position: "absolute", top: "40%", left: "40%" },
+  processingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.82)", justifyContent: "center", alignItems: "center", gap: 10, paddingHorizontal: 32 },
   processingIcon:    { fontSize: 48, marginBottom: 4 },
   processingTitle:   { color: "#fff", fontSize: 16, fontWeight: "800", textAlign: "center" },
   processingSubText: { color: "rgba(255,255,255,0.6)", fontSize: 12, textAlign: "center", lineHeight: 18 },
@@ -908,25 +852,21 @@ const styles = StyleSheet.create({
   progressDot:       { width: 8, height: 8, borderRadius: 4 },
   retryBtn:          { marginTop: 12, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   retryBtnText:      { color: "#fff", fontSize: 14, fontWeight: "700" },
-
-  adContainer:    { justifyContent: "center", alignItems: "center" },
-  adText:         { fontSize: 20, fontWeight: "700" },
-  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText:      { fontSize: 18, marginBottom: 20, fontWeight: "600" },
-  uploadBtn:      { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, elevation: 8 },
-  uploadBtnText:  { fontWeight: "700", fontSize: 16 },
-
-  backBtn:   { position: "absolute", top: 50, left: 20, width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center", zIndex: 10, elevation: 8 },
-  createBtn: { position: "absolute", top: 50, right: 20, width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center", zIndex: 10, elevation: 8 },
-  btnText:   { fontSize: 24, fontWeight: "bold" },
-
-  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
-  modalCard:     { minHeight: "50%", maxHeight: "80%", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16 },
-  modalHeader:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  modalTitle:    { fontSize: 18, fontWeight: "700" },
-  modalClose:    { fontSize: 14, fontWeight: "700" },
-  modalEmpty:    { textAlign: "center", marginTop: 20 },
-
+  adContainer:       { justifyContent: "center", alignItems: "center" },
+  adText:            { fontSize: 20, fontWeight: "700" },
+  emptyContainer:    { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText:         { fontSize: 18, marginBottom: 20, fontWeight: "600" },
+  uploadBtn:         { paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, elevation: 8 },
+  uploadBtnText:     { fontWeight: "700", fontSize: 16 },
+  backBtn:           { position: "absolute", top: 50, left: 20, width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center", zIndex: 10, elevation: 8 },
+  createBtn:         { position: "absolute", top: 50, right: 20, width: 50, height: 50, borderRadius: 25, justifyContent: "center", alignItems: "center", zIndex: 10, elevation: 8 },
+  btnText:           { fontSize: 24, fontWeight: "bold" },
+  modalBackdrop:     { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
+  modalCard:         { minHeight: "50%", maxHeight: "80%", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16 },
+  modalHeader:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  modalTitle:        { fontSize: 18, fontWeight: "700" },
+  modalClose:        { fontSize: 14, fontWeight: "700" },
+  modalEmpty:        { textAlign: "center", marginTop: 20 },
   suggestionTitle:      { fontSize: 13, fontWeight: "700", marginBottom: 8 },
   suggestionGroup:      { marginBottom: 10 },
   suggestionGroupTitle: { fontSize: 12, fontWeight: "700", marginBottom: 6 },

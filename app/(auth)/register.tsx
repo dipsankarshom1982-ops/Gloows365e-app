@@ -2,10 +2,9 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -14,7 +13,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 let DateTimePicker: any = null;
@@ -23,14 +22,14 @@ if (Platform.OS !== "web") {
 }
 
 import { SafeAreaView } from "react-native-safe-area-context";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+
+import { INDIAN_LANGUAGES } from "@/app/language-settings";
+import { auth, db, firebaseConfig } from "@/lib/firebase";
+import { Ionicons } from "@expo/vector-icons";
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth, inMemoryPersistence, initializeAuth, signInWithPhoneNumber } from "firebase/auth";
-import { auth, db, firebaseConfig } from "@/lib/firebase";
-import { INDIAN_LANGUAGES } from "@/app/language-settings";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
-import { Ionicons } from "@expo/vector-icons";
 
 // Secondary Firebase app used only for parent phone OTP — doesn't affect main auth session
 function getPhoneVerifyAuth() {
@@ -71,7 +70,9 @@ export default function StudentRegister() {
   const [error, setError]                   = useState("");
 
   // Parent phone OTP state
-  const recaptchaVerifier                   = useRef<any>(null);
+  // expo-firebase-recaptcha removed — not compatible with Firebase SDK v12
+  // signInWithPhoneNumber on React Native does not need a DOM RecaptchaVerifier
+  const recaptchaVerifier = { current: null };
   const [confirmationResult, setConfirmResult] = useState<any>(null);
   const [otp, setOtp]                       = useState("");
   const [otpSent, setOtpSent]               = useState(false);
@@ -154,7 +155,7 @@ export default function StudentRegister() {
       const result = await signInWithPhoneNumber(
         phoneAuth,
         `+91${phone}`,
-        recaptchaVerifier.current
+        undefined as any
       );
       setConfirmResult(result);
       setOtpSent(true);
@@ -270,12 +271,6 @@ export default function StudentRegister() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {/* reCAPTCHA modal — required by Firebase Phone Auth */}
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-      />
 
       <LinearGradient colors={["#020617", "#1E1B4B", "#312E81"]} style={S.container}>
         <StatusBar barStyle="light-content" />
