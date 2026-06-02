@@ -1,7 +1,6 @@
+// PATH: app/(drawer)/(tabs)/home.tsx
 /**
- * app/(drawer)/(tabs)/home.tsx — UPDATED
- *
- * Each section in generateFeed() now checks useFeatureFlags().homeSection(key).
+ * Each section in generateFeed() checks useFeatureFlags().homeSection(key).
  * Admin can toggle any section off from the FeatureControl admin page.
  * Changes take effect in real-time via Firestore onSnapshot.
  */
@@ -32,6 +31,7 @@ import Stories from "@/components/Story";
 import DiscoverPreviewSection from "@/components/DiscoverPreviewSection";
 import HomeAdsCarousel from "@/components/HomeAdsCarousel";
 import KnowledgeHubSection from "@/components/KnowledgeHubSection";
+import ReferralCard from "@/components/ReferralCard"; // ← NEW
 import SeekhoPreviewSection from "@/components/SeekhoPreviewSection";
 import ShortLearnPreview from "@/components/ShortLearnPreview";
 import SkillBattlePreviewSection from "@/components/SkillBattlePreviewSection";
@@ -79,6 +79,7 @@ export default function Home() {
     if (homeSection("skillshorts"))      feed.push({ type: "skillshorts" });
     if (homeSection("skillbattle"))      feed.push({ type: "skillbattle_preview" });
     if (homeSection("home_ads"))         feed.push({ type: "home_ads" });
+    if (homeSection("referral"))         feed.push({ type: "referral" }); // ← NEW
     if (homeSection("vidya_star"))       feed.push({ type: "vidya_star" });
     if (homeSection("seekho_preview"))   feed.push({ type: "seekho_preview" });
     if (homeSection("scholarship_ad"))   feed.push({ type: "scholarship_ad" });
@@ -148,6 +149,10 @@ export default function Home() {
           </TouchableOpacity>
         );
 
+      // ── NEW: referral card ──────────────────────────────────────────────────
+      case "referral":
+        return <ReferralCard />;
+
       case "post":
         return <PostCard data={item.data} />;
 
@@ -156,16 +161,16 @@ export default function Home() {
           ? <FeedAdCard ad={feedAd} module="home" key={feedAd.id} style={{ marginVertical: 4 }} />
           : null;
 
-      case "skillshorts":       return <SkillShortPreview />;
-      case "learning":          return <ShortLearnPreview />;
-      case "skillbattle_preview": return <SkillBattlePreviewSection />;
-      case "home_ads":          return <HomeAdsCarousel />;
-      case "vidya_star":        return <VidyaStarPreviewSection />;
-      case "seekho_preview":    return <SeekhoPreviewSection />;
-      case "scholarship_ad":    return scholarshipAd ? <ScholarshipAdCard ad={scholarshipAd} module="home" /> : null;
-      case "discover_preview":  return <DiscoverPreviewSection />;
-      case "knowledge_hub":     return <KnowledgeHubSection />;
-      default:                  return null;
+      case "skillshorts":           return <SkillShortPreview />;
+      case "learning":              return <ShortLearnPreview />;
+      case "skillbattle_preview":   return <SkillBattlePreviewSection />;
+      case "home_ads":              return <HomeAdsCarousel />;
+      case "vidya_star":            return <VidyaStarPreviewSection />;
+      case "seekho_preview":        return <SeekhoPreviewSection />;
+      case "scholarship_ad":        return scholarshipAd ? <ScholarshipAdCard ad={scholarshipAd} module="home" /> : null;
+      case "discover_preview":      return <DiscoverPreviewSection />;
+      case "knowledge_hub":         return <KnowledgeHubSection />;
+      default:                      return null;
     }
   };
 

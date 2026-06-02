@@ -1,4 +1,4 @@
-// utils/formatVCoins.ts
+// PATH: utils/formatVCoins.ts
 // Formatting helpers for V-Coins display — no Firebase imports
 
 import { Timestamp } from "firebase/firestore";
@@ -17,6 +17,9 @@ export const VCOIN_SOURCES = {
   ADMIN_FAIR_USE_REWARD:             "ADMIN_FAIR_USE_REWARD",
   VIDYASTAR_CONTEST_ENTRY:           "VIDYASTAR_CONTEST_ENTRY",
   COURSE_DISCOUNT_REDEEM:            "COURSE_DISCOUNT_REDEEM",
+  // ── Referral rewards (NEW) ────────────────────────────────────────────────
+  REFERRAL_REWARD:                   "REFERRAL_REWARD",    // coins for student who shares
+  REFEREE_JOIN_BONUS:                "REFEREE_JOIN_BONUS", // welcome coins for new student
 } as const;
 
 export type VCoinSource = (typeof VCOIN_SOURCES)[keyof typeof VCOIN_SOURCES];
@@ -76,6 +79,8 @@ export function getVCoinsSourceLabel(source: string): string {
     case VCOIN_SOURCES.ADMIN_FAIR_USE_REWARD:            return "Bonus Reward";
     case VCOIN_SOURCES.VIDYASTAR_CONTEST_ENTRY:          return "VidyaStar Contest Entry";
     case VCOIN_SOURCES.COURSE_DISCOUNT_REDEEM:           return "Course Discount";
+    case VCOIN_SOURCES.REFERRAL_REWARD:                  return "Referral Reward";
+    case VCOIN_SOURCES.REFEREE_JOIN_BONUS:               return "Welcome Bonus";
     default:                                             return source;
   }
 }
@@ -96,6 +101,8 @@ export function getVCoinsSourceIcon(source: string): string {
     case VCOIN_SOURCES.ADMIN_FAIR_USE_REWARD:            return "gift-outline";
     case VCOIN_SOURCES.VIDYASTAR_CONTEST_ENTRY:          return "ticket-outline";
     case VCOIN_SOURCES.COURSE_DISCOUNT_REDEEM:           return "pricetag-outline";
+    case VCOIN_SOURCES.REFERRAL_REWARD:                  return "people-outline";
+    case VCOIN_SOURCES.REFEREE_JOIN_BONUS:               return "gift-outline";
     default:                                             return "ellipse-outline";
   }
 }
@@ -115,6 +122,8 @@ export function getVCoinsSourceIconBg(source: string): string {
     case VCOIN_SOURCES.ADMIN_FAIR_USE_REWARD:            return "#FDF2F8";
     case VCOIN_SOURCES.VIDYASTAR_CONTEST_ENTRY:          return "#FFF1F2";
     case VCOIN_SOURCES.COURSE_DISCOUNT_REDEEM:           return "#EFF6FF";
+    case VCOIN_SOURCES.REFERRAL_REWARD:                  return "#EDE9FE";
+    case VCOIN_SOURCES.REFEREE_JOIN_BONUS:               return "#FEF9C3";
     default:                                             return "#F3F4F6";
   }
 }
@@ -134,6 +143,8 @@ export function getVCoinsSourceIconColor(source: string): string {
     case VCOIN_SOURCES.ADMIN_FAIR_USE_REWARD:            return "#BE185D";
     case VCOIN_SOURCES.VIDYASTAR_CONTEST_ENTRY:          return "#E11D48";
     case VCOIN_SOURCES.COURSE_DISCOUNT_REDEEM:           return "#1D4ED8";
+    case VCOIN_SOURCES.REFERRAL_REWARD:                  return "#7C3AED";
+    case VCOIN_SOURCES.REFEREE_JOIN_BONUS:               return "#CA8A04";
     default:                                             return "#6B7280";
   }
 }

@@ -1,11 +1,10 @@
+// PATH: admin-web/src/main.tsx
 /**
  * admin-web/src/main.tsx — OPTIMIZED
  *
- * All 35 pages are now lazy-loaded with React.lazy() + Suspense.
+ * All pages are lazy-loaded with React.lazy() + Suspense.
  * Only the current route's code is downloaded on first visit.
  * Subsequent routes load in ~100ms from the Vite chunk cache.
- *
- * Also added vite.config optimization (see vite.config.ts output).
  */
 
 import React, { lazy, Suspense } from "react";
@@ -50,6 +49,7 @@ const BadgesAndStars      = lazy(() => import("./pages/BadgesAndStars"));
 
 const AppModules          = lazy(() => import("./pages/AppModules"));
 const FeatureControl      = lazy(() => import("./pages/FeatureControl"));
+const Referrals           = lazy(() => import("./pages/Referrals")); // ← NEW
 const SubscriptionPlans   = lazy(() => import("./pages/SubscriptionPlans"));
 const Coupons             = lazy(() => import("./pages/Coupons"));
 const VCoinRules          = lazy(() => import("./pages/VCoinRules"));
@@ -136,6 +136,7 @@ function ProtectedRoutes() {
 
           {/* App Config */}
           <Route path="/feature-control"    element={<FeatureControl />} />
+          <Route path="/referrals"          element={<Referrals />} />      {/* ← NEW */}
           <Route path="/modules"            element={<AppModules />} />
           <Route path="/subscription-plans" element={<SubscriptionPlans />} />
           <Route path="/coupons"            element={<Coupons />} />

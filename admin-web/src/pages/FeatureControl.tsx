@@ -1,25 +1,12 @@
-/**
- * admin-web/src/pages/FeatureControl.tsx
- *
- * Single page for admins to toggle:
- *   1. Home page sections (each card in the feed)
- *   2. AI Guru features (each menu card / sub-feature)
- *
- * Writes to Firestore collection "featureFlags" with two docs:
- *   - featureFlags/homeSection
- *   - featureFlags/aiGuru
- *
- * The mobile app reads these via AppConfigContext and conditionally
- * renders or hides each section / feature.
- */
+// PATH: admin-web/src/pages/FeatureControl.tsx
+// FIX: removed updatedAt from setDoc payload — it was polluting the flag docs
+//      and could cause unexpected truthy values on the mobile side
 
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import ToggleSwitch from "../components/ToggleSwitch";
 import { db } from "../lib/firebase";
-
-// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface HomeSection {
   key: string;
@@ -36,11 +23,10 @@ interface AiGuruFeature {
   isPremium?: boolean;
 }
 
-// ── Config: all controllable sections ─────────────────────────────────────────
-
 const HOME_SECTIONS: HomeSection[] = [
   { key: "stories",           icon: "📖", label: "Stories",              description: "Horizontal story circles at the top" },
   { key: "aiguru",            icon: "🤖", label: "AI Guru Banner",        description: "AI Guru 'Start Chatting' promo card" },
+  { key: "referral",          icon: "🎁", label: "Referral Card",         description: "Refer & Earn card with share button" },
   { key: "skillshorts",       icon: "🎬", label: "Skill Shorts & Battle", description: "Short reels + skill battle preview strip" },
   { key: "skillbattle",       icon: "⚔️", label: "Skill Battle Preview",  description: "Skill battle cards section" },
   { key: "home_ads",          icon: "📢", label: "Home Ads Carousel",     description: "Banner ads carousel" },
@@ -55,23 +41,19 @@ const HOME_SECTIONS: HomeSection[] = [
 ];
 
 const AIGURU_FEATURES: AiGuruFeature[] = [
-  { key: "dashboard",      icon: "🧠", label: "AI Dashboard",       description: "Personal AI study dashboard" },
-  { key: "vidyaguru",      icon: "🧑‍🏫", label: "VidyaGuru Chat",    description: "AI tutor voice/text chat" },
-  { key: "generate",       icon: "✨", label: "Generate Lesson",    description: "Create AI-generated lessons" },
-  { key: "my_lessons",     icon: "📚", label: "My Lessons",         description: "Saved and completed lessons" },
-  { key: "revision_reels", icon: "🎬", label: "Revision Reels",     description: "Video revision reels", isPremium: true },
-  { key: "practice_tests", icon: "📝", label: "Practice Tests",     description: "AI practice test generator", isPremium: true },
-  { key: "ask_aiguru",     icon: "🤖", label: "Ask AI Guru",        description: "Q&A chat with AI" },
-  { key: "discover",       icon: "🧭", label: "Discover AI",        description: "AI discovery and search" },
-  { key: "subscription",   icon: "💎", label: "Subscription / Plans", description: "Show premium upgrade option" },
+  { key: "dashboard",      icon: "🧠",  label: "AI Dashboard",        description: "Personal AI study dashboard" },
+  { key: "vidyaguru",      icon: "🧑‍🏫", label: "VidyaGuru Chat",     description: "AI tutor voice/text chat" },
+  { key: "generate",       icon: "✨",  label: "Generate Lesson",     description: "Create AI-generated lessons" },
+  { key: "my_lessons",     icon: "📚",  label: "My Lessons",          description: "Saved and completed lessons" },
+  { key: "revision_reels", icon: "🎬",  label: "Revision Reels",      description: "Video revision reels", isPremium: true },
+  { key: "practice_tests", icon: "📝",  label: "Practice Tests",      description: "AI practice test generator", isPremium: true },
+  { key: "ask_aiguru",     icon: "🤖",  label: "Ask AI Guru",         description: "Q&A chat with AI" },
+  { key: "discover",       icon: "🧭",  label: "Discover AI",         description: "AI discovery and search" },
+  { key: "subscription",   icon: "💎",  label: "Subscription / Plans",description: "Show premium upgrade option" },
 ];
-
-// ── Default all-on state ───────────────────────────────────────────────────────
 
 const defaultHomeFlags = Object.fromEntries(HOME_SECTIONS.map((s) => [s.key, true]));
 const defaultAiFlags   = Object.fromEntries(AIGURU_FEATURES.map((f) => [f.key, true]));
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function FeatureControl() {
   const [homeFlags, setHomeFlags] = useState<Record<string, boolean>>(defaultHomeFlags);
@@ -80,14 +62,26 @@ export default function FeatureControl() {
   const [saving,    setSaving]    = useState(false);
   const [saved,     setSaved]     = useState(false);
 
-  // Load from Firestore
   useEffect(() => {
     Promise.all([
       getDoc(doc(db, "featureFlags", "homeSection")),
       getDoc(doc(db, "featureFlags", "aiGuru")),
     ]).then(([homeSnap, aiSnap]) => {
-      if (homeSnap.exists()) setHomeFlags({ ...defaultHomeFlags, ...homeSnap.data() });
-      if (aiSnap.exists())   setAiFlags({   ...defaultAiFlags,   ...aiSnap.data()   });
+      if (homeSnap.exists()) {
+        // Only keep boolean keys — strip any non-boolean fields like updatedAt
+        const data = homeSnap.data();
+        const clean = Object.fromEntries(
+          Object.entries(data).filter(([, v]) => typeof v === "boolean")
+        );
+        setHomeFlags({ ...defaultHomeFlags, ...clean });
+      }
+      if (aiSnap.exists()) {
+        const data = aiSnap.data();
+        const clean = Object.fromEntries(
+          Object.entries(data).filter(([, v]) => typeof v === "boolean")
+        );
+        setAiFlags({ ...defaultAiFlags, ...clean });
+      }
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -95,9 +89,12 @@ export default function FeatureControl() {
   const save = async () => {
     setSaving(true); setSaved(false);
     try {
+      // ✅ FIX: only write pure boolean flag keys — NO updatedAt timestamp
+      // Adding non-boolean fields like updatedAt pollutes the doc and can cause
+      // the mobile app to read a Timestamp as a truthy flag value
       await Promise.all([
-        setDoc(doc(db, "featureFlags", "homeSection"), { ...homeFlags, updatedAt: serverTimestamp() }),
-        setDoc(doc(db, "featureFlags", "aiGuru"),      { ...aiFlags,   updatedAt: serverTimestamp() }),
+        setDoc(doc(db, "featureFlags", "homeSection"), homeFlags),
+        setDoc(doc(db, "featureFlags", "aiGuru"),      aiFlags),
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -112,8 +109,8 @@ export default function FeatureControl() {
   const toggleAi = (key: string) =>
     setAiFlags((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const homeEnabledCount = Object.values(homeFlags).filter(Boolean).length;
-  const aiEnabledCount   = Object.values(aiFlags).filter(Boolean).length;
+  const homeEnabledCount = HOME_SECTIONS.filter((s) => homeFlags[s.key]).length;
+  const aiEnabledCount   = AIGURU_FEATURES.filter((f) => aiFlags[f.key]).length;
 
   if (loading) {
     return (

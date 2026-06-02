@@ -1,3 +1,5 @@
+// PATH: components/header.tsx
+
 import {
   Image,
   StyleSheet,
@@ -10,6 +12,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
 import VCoinsHeaderBadge from "@/components/VCoinsHeaderBadge";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import {
@@ -28,12 +31,75 @@ type Props = {
   hideTitle?: boolean;
 };
 
+// ─── Brand logo component ─────────────────────────────────────────────────────
+function BrandLogo() {
+  const { isDarkMode } = useTheme();
+
+  return (
+    <View style={logo.wrap}>
+      {/* Gloows — gradient text effect using two colored spans */}
+      <Text style={logo.gloows}>
+        <Text style={{ color: isDarkMode ? "#A5B4FC" : "#4F46E5" }}>Gl</Text>
+        <Text style={{ color: isDarkMode ? "#F1F5F9" : "#1E293B" }}>oows</Text>
+      </Text>
+
+      {/* 365 — gradient pill */}
+      <LinearGradient
+        colors={["#6366F1", "#8B5CF6", "#EC4899"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={logo.pill}
+      >
+        <Text style={logo.pillText}>365</Text>
+      </LinearGradient>
+
+      {/* E — amber superscript */}
+      <Text style={logo.eTag}>E</Text>
+    </View>
+  );
+}
+
+const logo = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  gloows: {
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+  },
+  pill: {
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pillText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  eTag: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#FBBF24",
+    marginBottom: 8,
+    letterSpacing: 0,
+  },
+});
+
+// ─── Main Header ──────────────────────────────────────────────────────────────
+
 export default function Header({
-  title = "GLOOWS365E",
+  title,
   hideMenu = false,
   hideTitle = false,
 }: Props) {
-  const { colors } = useTheme();
+  const { colors, isDarkMode } = useTheme();
   const navigation = useNavigation<any>();
   const router = useRouter();
 
@@ -74,7 +140,6 @@ export default function Header({
   }, []);
 
   const handleMenuPress = () => {
-    // Walk up the navigator chain until we find the drawer (state.type === 'drawer')
     let nav: any = navigation;
     while (nav) {
       if (nav.getState?.()?.type === "drawer") {
@@ -83,7 +148,6 @@ export default function Header({
       }
       nav = nav.getParent?.();
     }
-    // Fallback: dispatch from current navigator and let React Navigation bubble it
     navigation?.dispatch(DrawerActions.openDrawer());
   };
 
@@ -93,24 +157,28 @@ export default function Header({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      
-      {/* 🔥 HEADER */}
+
+      {/* Bottom border line — subtle gradient */}
+      <LinearGradient
+        colors={["transparent", isDarkMode ? "rgba(99,102,241,0.25)" : "rgba(99,102,241,0.15)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.borderLine}
+      />
+
       <View style={styles.header}>
 
         {/* LEFT */}
         <View style={styles.leftSection}>
           {!hideMenu && (
-            <TouchableOpacity onPress={handleMenuPress}>
-              <Ionicons name="menu" size={26} color={colors.text} />
+            <TouchableOpacity onPress={handleMenuPress} style={styles.menuBtn}>
+              <View style={[styles.menuLines, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }]}>
+                <Ionicons name="menu" size={22} color={isDarkMode ? "#C7D2FE" : "#4F46E5"} />
+              </View>
             </TouchableOpacity>
           )}
 
-          {!hideTitle && (
-            <Text style={[styles.brand, { color: colors.text }]}>
-              {title.replace("AI", "")}
-              <Text style={styles.gold}>AI</Text>
-            </Text>
-          )}
+          {!hideTitle && <BrandLogo />}
         </View>
 
         {/* RIGHT */}
@@ -124,11 +192,13 @@ export default function Header({
             style={styles.iconBtn}
             onPress={() => router.push("/notifications")}
           >
-            <Ionicons
-              name="notifications-outline"
-              size={22}
-              color={colors.text}
-            />
+            <View style={[styles.iconBg, { backgroundColor: isDarkMode ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" }]}>
+              <Ionicons
+                name={unreadCount > 0 ? "notifications" : "notifications-outline"}
+                size={20}
+                color={unreadCount > 0 ? "#F59E0B" : (isDarkMode ? "#94A3B8" : "#64748B")}
+              />
+            </View>
             {unreadCount > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>
@@ -140,21 +210,19 @@ export default function Header({
 
           {/* PROFILE */}
           <TouchableOpacity onPress={handleProfilePress}>
-            <Image
-              source={{
-                uri:
-                  profilePic ||
-                  `https://i.pravatar.cc/100?u=${
-                    auth.currentUser?.uid || "user"
-                  }`,
-              }}
-              style={styles.avatar}
-              defaultSource={{
-                uri: `https://i.pravatar.cc/100?u=${
-                  auth.currentUser?.uid || "user"
-                }`,
-              }}
-            />
+            <View style={styles.avatarRing}>
+              <Image
+                source={{
+                  uri:
+                    profilePic ||
+                    `https://i.pravatar.cc/100?u=${auth.currentUser?.uid || "user"}`,
+                }}
+                style={styles.avatar}
+                defaultSource={{
+                  uri: `https://i.pravatar.cc/100?u=${auth.currentUser?.uid || "user"}`,
+                }}
+              />
+            </View>
           </TouchableOpacity>
 
         </View>
@@ -165,19 +233,23 @@ export default function Header({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#f8f9fa",
-
-    // 🔥 HANDLE STATUS BAR PROPERLY (NO EXTRA GAP)
     paddingTop: 0,
+  },
+
+  borderLine: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 1,
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-
-    paddingHorizontal: 15,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
 
   leftSection: {
@@ -186,48 +258,67 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  brand: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#000",
+  menuBtn: {
+    marginRight: 2,
   },
 
-  gold: {
-    color: "#FFD700",
+  menuLines: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   right: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
 
   iconBtn: {
-    padding: 5,
+    position: "relative",
+  },
+
+  iconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   notifBadge: {
     position: "absolute",
-    top: 0,
-    right: 0,
+    top: 2,
+    right: 2,
     backgroundColor: "#EF4444",
     borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    minWidth: 15,
+    height: 15,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: "transparent",
   },
 
   notifBadgeText: {
     color: "#fff",
-    fontSize: 9,
-    fontWeight: "800",
+    fontSize: 8,
+    fontWeight: "900",
+  },
+
+  avatarRing: {
+    padding: 2,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "#6366F1",
   },
 
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
   },
 });

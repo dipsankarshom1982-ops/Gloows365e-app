@@ -1,5 +1,5 @@
-// admin-web/src/components/Layout.tsx — UPDATED
-// Added "🎛️ Feature Control" to APP CONFIG section
+// PATH: admin-web/src/components/Layout.tsx
+// Added "🎁 Referrals" to APP CONFIG section
 
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
@@ -38,11 +38,12 @@ const NAV_GROUPS = [
     { path: "/badges",           label: "🏆 Badges & Stars",   permKey: "badges" },
   ]},
   { section: "APP CONFIG", items: [
-    { path: "/feature-control",    label: "🎛️ Feature Control",  permKey: "modules" },  // ← NEW
-    { path: "/modules",            label: "🧩 App Modules",      permKey: "modules" },
-    { path: "/subscription-plans", label: "💎 Plans",            permKey: "subscription-plans" },
-    { path: "/coupons",            label: "🎟️ Coupons",          permKey: "coupons" },
-    { path: "/vcoin-rules",        label: "🪙 V-Coin Rules",     permKey: "vcoin-rules" },
+    { path: "/feature-control",    label: "🎛️ Feature Control",  permKey: "modules" },
+    { path: "/referrals",          label: "🎁 Referrals",         permKey: "modules" },  // ← NEW
+    { path: "/modules",            label: "🧩 App Modules",       permKey: "modules" },
+    { path: "/subscription-plans", label: "💎 Plans",             permKey: "subscription-plans" },
+    { path: "/coupons",            label: "🎟️ Coupons",           permKey: "coupons" },
+    { path: "/vcoin-rules",        label: "🪙 V-Coin Rules",      permKey: "vcoin-rules" },
   ]},
   { section: "USERS", items: [
     { path: "/students",      label: "👥 Students",      permKey: "students" },

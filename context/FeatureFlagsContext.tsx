@@ -1,6 +1,5 @@
+// PATH: context/FeatureFlagsContext.tsx
 /**
- * context/FeatureFlagsContext.tsx
- *
  * Simple feature flags — reads from featureFlags/homeSection and featureFlags/aiGuru.
  * If docs don't exist, auto-creates them with everything ON.
  * Admin can then turn things off from FeatureControl page.
@@ -16,6 +15,7 @@ const ALL_HOME_FLAGS = {
   home_ads: true, vidya_star: true, seekho_preview: true,
   scholarship_ad: true, discover_preview: true, knowledge_hub: true,
   learning: true, feed_posts: true, feed_ads: true,
+  referral: true, // ← NEW: referral card on home screen
 };
 
 const ALL_AI_FLAGS = {

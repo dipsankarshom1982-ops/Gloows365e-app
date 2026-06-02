@@ -1,3 +1,5 @@
+// PATH: app/(auth)/register.tsx
+
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,7 +26,9 @@ if (Platform.OS !== "web") {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { INDIAN_LANGUAGES } from "@/app/language-settings";
+import { ensureReferralCode } from "@/lib/initUser"; // ← NEW
 import { auth, db, firebaseConfig } from "@/lib/firebase";
+import { applyReferral } from "@/services/referralService"; // ← NEW
 import { Ionicons } from "@expo/vector-icons";
 import { getApps, initializeApp } from "firebase/app";
 import { getAuth, inMemoryPersistence, initializeAuth, signInWithPhoneNumber } from "firebase/auth";
@@ -69,9 +73,10 @@ export default function StudentRegister() {
   const [loading, setLoading]               = useState(false);
   const [error, setError]                   = useState("");
 
+  // ── NEW: Referral code ──────────────────────────────────────────────────────
+  const [referralCode, setReferralCode]     = useState("");
+
   // Parent phone OTP state
-  // expo-firebase-recaptcha removed — not compatible with Firebase SDK v12
-  // signInWithPhoneNumber on React Native does not need a DOM RecaptchaVerifier
   const recaptchaVerifier = { current: null };
   const [confirmationResult, setConfirmResult] = useState<any>(null);
   const [otp, setOtp]                       = useState("");
@@ -260,6 +265,18 @@ export default function StudentRegister() {
         coins: 200, onboardingComplete: true,
         createdAt: serverTimestamp(),
       }, { merge: true });
+
+      // ── NEW: assign referral code to this user ────────────────────────────
+      await ensureReferralCode(user.uid);
+
+      // ── NEW: apply referral code if entered ───────────────────────────────
+      if (referralCode.length === 8) {
+        try {
+          await applyReferral({ code: referralCode });
+        } catch {
+          // Non-fatal — user still registers even if referral code is invalid
+        }
+      }
 
       router.replace("/(drawer)/(tabs)/home" as any);
     } catch (e: any) {
@@ -495,6 +512,27 @@ export default function StudentRegister() {
             />
           )}
 
+          {/* ── NEW: Referral code field ─────────────────────────────────────── */}
+          <Text style={S.label}>Referral Code (optional)</Text>
+          <View style={S.referralRow}>
+            <Ionicons name="gift-outline" size={18} color="#a78bfa" style={S.referralIcon} />
+            <TextInput
+              style={[S.input, S.referralInput]}
+              placeholder="Enter friend's referral code"
+              placeholderTextColor="#6b7280"
+              value={referralCode}
+              onChangeText={(t) => setReferralCode(t.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+              autoCapitalize="characters"
+              maxLength={8}
+            />
+          </View>
+          {referralCode.length > 0 && referralCode.length < 8 && (
+            <Text style={S.referralHint}>Code must be 8 characters</Text>
+          )}
+          {referralCode.length === 8 && (
+            <Text style={S.referralValid}>✓ Code looks good! You'll get a welcome bonus.</Text>
+          )}
+
           {error ? <Text style={S.error}>{error}</Text> : null}
 
           <TouchableOpacity
@@ -560,6 +598,13 @@ const S = StyleSheet.create({
   langNative:   { color: "#c7d2fe", fontSize: 13, fontWeight: "700" },
   active:       { backgroundColor: "#6366F1", borderColor: "#6366F1" },
   chipText:     { color: "#fff", fontSize: 12 },
+
+  // ── NEW: Referral field styles ──────────────────────────────────────────────
+  referralRow:  { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  referralIcon: { position: "absolute", left: 14, zIndex: 1, top: 14 },
+  referralInput:{ flex: 1, paddingLeft: 40, letterSpacing: 2, fontWeight: "700" },
+  referralHint: { color: "#94a3b8", fontSize: 11, marginBottom: 8 },
+  referralValid:{ color: "#34D399", fontSize: 11, marginBottom: 8 },
 
   error:        { color: "#F87171", marginTop: 10, textAlign: "center" },
   verifyNote:   { color: "#64748b", fontSize: 11, textAlign: "center", marginTop: 8 },

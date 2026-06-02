@@ -1,8 +1,12 @@
+// PATH: app/ai-guru/index.tsx
+// FIX: Added flagKey to each card def + filter by useFeatureFlags().aiGuru(key)
+
 import ScholarshipAdCard from "@/components/ads/ScholarshipAdCard";
 import AiGuruAvatar from "@/components/aiGuru/AiGuruAvatar";
 import { useAppTranslation, useLanguage } from "@/context/LanguageContext";
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useFeatureFlags } from "@/context/FeatureFlagsContext"; // ← NEW
 import { useAdFeed } from "@/hooks/useAdFeed";
 import { auth } from "@/lib/firebase";
 import { isSubscribed } from "@/services/aiGuruFirestore";
@@ -23,6 +27,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 type MenuCardDef = {
+  flagKey: string;        // ← NEW: matches key in featureFlags/aiGuru doc
   titleKey: string;
   subtitleKey: string;
   emoji: string;
@@ -32,15 +37,17 @@ type MenuCardDef = {
   accentColor: string;
 };
 
+// flagKey values must match the keys in FeatureFlagsContext ALL_AI_FLAGS
+// and the keys used in FeatureControl.tsx AIGURU_FEATURES
 const MENU_CARD_DEFS: MenuCardDef[] = [
-  { titleKey: "menuAiDashboard",    subtitleKey: "menuAiDashboardSub",    emoji: "🧠", gradient: ["#1e1b4b", "#312e81", "#4f46e5"], route: "/ai-guru/dashboard",  premium: false, accentColor: "#818cf8" },
-  { titleKey: "menuVidyaGuruCard",  subtitleKey: "menuVidyaGuruCardSub",  emoji: "🧑‍🏫", gradient: ["#1a0533", "#4c1d95", "#7c3aed"], route: "/ai-guru/vidyaguru",  premium: false, accentColor: "#c4b5fd" },
-  { titleKey: "menuGenerateLesson", subtitleKey: "menuGenerateLessonSub", emoji: "✨", gradient: ["#0f172a", "#1e3a5f", "#0284c7"], route: "/ai-guru/setup",      premium: false, accentColor: "#38bdf8" },
-  { titleKey: "menuMyLessons",      subtitleKey: "menuMyLessonsSub",      emoji: "📚", gradient: ["#052e16", "#064e3b", "#059669"], route: "/ai-guru/my-lessons", premium: false, accentColor: "#34d399" },
-  { titleKey: "menuRevisionReels",  subtitleKey: "menuRevisionReelsSub",  emoji: "🎬", gradient: ["#1c1917", "#44403c", "#78716c"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#d6d3d1" },
-  { titleKey: "menuPracticeTests",  subtitleKey: "menuPracticeTestsSub",  emoji: "📝", gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#f87171" },
-  { titleKey: "menuAskAiGuruCard",  subtitleKey: "menuAskAiGuruCardSub",  emoji: "🤖", gradient: ["#0f0f1e", "#1a1a3e", "#6366f1"], route: "/ai-guru/ask",        premium: false, accentColor: "#a5b4fc" },
-  { titleKey: "menuDiscoverAI",     subtitleKey: "menuDiscoverAISub",     emoji: "🧭", gradient: ["#0c1a2e", "#0f2d4a", "#0369a1"], route: "/discover",            premium: false, accentColor: "#7dd3fc" },
+  { flagKey: "dashboard",      titleKey: "menuAiDashboard",    subtitleKey: "menuAiDashboardSub",    emoji: "🧠",  gradient: ["#1e1b4b", "#312e81", "#4f46e5"], route: "/ai-guru/dashboard",  premium: false, accentColor: "#818cf8" },
+  { flagKey: "vidyaguru",      titleKey: "menuVidyaGuruCard",  subtitleKey: "menuVidyaGuruCardSub",  emoji: "🧑‍🏫", gradient: ["#1a0533", "#4c1d95", "#7c3aed"], route: "/ai-guru/vidyaguru",  premium: false, accentColor: "#c4b5fd" },
+  { flagKey: "generate",       titleKey: "menuGenerateLesson", subtitleKey: "menuGenerateLessonSub", emoji: "✨",  gradient: ["#0f172a", "#1e3a5f", "#0284c7"], route: "/ai-guru/setup",      premium: false, accentColor: "#38bdf8" },
+  { flagKey: "my_lessons",     titleKey: "menuMyLessons",      subtitleKey: "menuMyLessonsSub",      emoji: "📚",  gradient: ["#052e16", "#064e3b", "#059669"], route: "/ai-guru/my-lessons", premium: false, accentColor: "#34d399" },
+  { flagKey: "revision_reels", titleKey: "menuRevisionReels",  subtitleKey: "menuRevisionReelsSub",  emoji: "🎬",  gradient: ["#1c1917", "#44403c", "#78716c"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#d6d3d1" },
+  { flagKey: "practice_tests", titleKey: "menuPracticeTests",  subtitleKey: "menuPracticeTestsSub",  emoji: "📝",  gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#f87171" },
+  { flagKey: "ask_aiguru",     titleKey: "menuAskAiGuruCard",  subtitleKey: "menuAskAiGuruCardSub",  emoji: "🤖",  gradient: ["#0f0f1e", "#1a1a3e", "#6366f1"], route: "/ai-guru/ask",        premium: false, accentColor: "#a5b4fc" },
+  { flagKey: "discover",       titleKey: "menuDiscoverAI",     subtitleKey: "menuDiscoverAISub",     emoji: "🧭",  gradient: ["#0c1a2e", "#0f2d4a", "#0369a1"], route: "/discover",            premium: false, accentColor: "#7dd3fc" },
 ];
 
 // Animated pulse ring around avatar
@@ -94,6 +101,7 @@ export default function AiGuruHomeScreen() {
   const { languageName } = useLanguage();
   const { colors, isDarkMode } = useTheme();
   const { studentProfile } = useStudentProfile();
+  const { aiGuru } = useFeatureFlags(); // ← NEW
   const classLevel = String(studentProfile?.class ?? "all");
 
   const [subscribed, setSubscribed] = useState(false);
@@ -110,7 +118,6 @@ export default function AiGuruHomeScreen() {
   const textSec   = isDarkMode ? "#64748b" : colors.textSecondary;
   const backBtnBg = isDarkMode ? "rgba(255,255,255,0.08)" : colors.card;
 
-  // useFocusEffect so subscription status re-checks when returning from the subscription screen
   useFocusEffect(
     useCallback(() => {
       const uid = auth.currentUser?.uid;
@@ -125,6 +132,9 @@ export default function AiGuruHomeScreen() {
   const handleCardPress = (def: MenuCardDef) => {
     router.push(def.route as any);
   };
+
+  // ── NEW: filter cards by feature flag ──────────────────────────────────────
+  const visibleCards = MENU_CARD_DEFS.filter((def) => aiGuru(def.flagKey));
 
   return (
     <View style={[S.bg, { backgroundColor: isDarkMode ? "#060612" : colors.background }]}>
@@ -152,12 +162,10 @@ export default function AiGuruHomeScreen() {
           </Pressable>
 
           <View style={S.headerRight}>
-            {/* Language indicator */}
             <View style={[S.langBadge, { backgroundColor: isDarkMode ? "rgba(99,102,241,0.15)" : "#ede9fe", borderColor: "#6366f1" }]}>
               <Ionicons name="globe-outline" size={12} color="#6366f1" />
               <Text style={S.langBadgeText}>{languageName}</Text>
             </View>
-
           </View>
         </Animated.View>
 
@@ -197,9 +205,9 @@ export default function AiGuruHomeScreen() {
           </Animated.View>
         )}
 
-        {/* Menu grid */}
+        {/* Menu grid — filtered by feature flags */}
         <View style={S.grid}>
-          {MENU_CARD_DEFS.map((def, idx) => (
+          {visibleCards.map((def, idx) => (
             <Animated.View
               key={def.titleKey}
               entering={FadeInDown.duration(400).delay(280 + idx * 60)}
