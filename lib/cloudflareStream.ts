@@ -27,6 +27,21 @@ export function streamThumbnailUrl(videoId: string, timeSecs = 1): string {
   return `https://customer-${CF_CUSTOMER_CODE}.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg?time=${timeSecs}s`;
 }
 
+// Resolves any mediaUrl format to a playable HLS URL.
+// Handles: raw 32-char video ID, cloudflarestream.com URL,
+// videodelivery.net URL, or plain fallback URL.
+export function resolveStreamUrl(mediaUrl?: string): string | null {
+  if (!mediaUrl) return null;
+  if (/^[a-zA-Z0-9]{32}$/.test(mediaUrl.trim())) {
+    return streamPlaybackUrl(mediaUrl.trim());
+  }
+  const cfMatch = mediaUrl.match(/cloudflarestream\.com\/([a-zA-Z0-9]+)/);
+  if (cfMatch?.[1]) return streamPlaybackUrl(cfMatch[1]);
+  const vdMatch = mediaUrl.match(/videodelivery\.net\/([a-zA-Z0-9]+)/);
+  if (vdMatch?.[1]) return streamPlaybackUrl(vdMatch[1]);
+  return mediaUrl;
+}
+
 // ── Step 1: Not needed anymore — worker handles full upload ───
 // Kept for compatibility — returns a dummy uploadURL pointing to worker
 export async function getStreamUploadUrl(title?: string): Promise<{

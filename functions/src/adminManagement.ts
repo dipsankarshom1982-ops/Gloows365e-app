@@ -98,21 +98,27 @@ export const approveContent = onCall(async (request) => {
   }
 
   const { collection, docId, action, reason } =
-    request.data as { collection: string; docId: string; action: "approve" | "reject"; reason?: string };
+    request.data as { collection: string; docId: string; action: "approve" | "reject" | "in_review"; reason?: string };
 
-  const ALLOWED = ["stories", "skillBattles", "seekhoVideos", "knowledgeVideos"];
+  const ALLOWED = ["stories", "skillBattles", "seekhoVideos", "knowledgeVideos", "posts"];
   if (!ALLOWED.includes(collection)) {
     throw new HttpsError("invalid-argument", `collection must be one of: ${ALLOWED.join(", ")}`);
   }
-  if (!docId || !["approve", "reject"].includes(action)) {
-    throw new HttpsError("invalid-argument", "docId and action (approve|reject) are required.");
+  if (!docId || !["approve", "reject", "in_review"].includes(action)) {
+    throw new HttpsError("invalid-argument", "docId and action (approve|reject|in_review) are required.");
   }
 
+  const statusMap: Record<string, string> = {
+    approve:   "approved",
+    reject:    "rejected",
+    in_review: "in_review",
+  };
+
   const update: Record<string, unknown> = {
-    status:       action === "approve" ? "approved" : "rejected",
-    approvalStatus: action === "approve" ? "approved" : "rejected",
-    approvedBy:   request.auth.uid,
-    approvedAt:   admin.firestore.FieldValue.serverTimestamp(),
+    status:         statusMap[action],
+    approvalStatus: statusMap[action],
+    reviewedBy:     request.auth.uid,
+    reviewedAt:     admin.firestore.FieldValue.serverTimestamp(),
   };
   if (action === "reject" && reason) update.rejectionReason = reason;
 

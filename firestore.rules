@@ -10,7 +10,7 @@ service cloud.firestore {
 
     // 🔥 POSTS (Timeline + Reels + SkillBattle)
     match /posts/{postId} {
-      
+
       // ✅ Allow logged-in users to read posts (needed for timeline)
       allow read: if request.auth != null;
 
@@ -18,23 +18,26 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid;
 
-      // ✅ Owner can edit their post, and any signed-in user can update engagement counters only
+      // ✅ Admin can update any field (status, rejectionReason, reviewedBy, etc.)
+      // ✅ Owner can edit their post
+      // ✅ Any signed-in user can update engagement counters only
       allow update: if request.auth != null
-        && request.resource.data.userId == resource.data.userId
         && (
-          request.auth.uid == resource.data.userId
-          || request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            'views',
-            'likes',
-            'comments',
-            'watchTime',
-            'shares'
-          ])
+          request.auth.token.admin == true
+          || (
+            request.resource.data.userId == resource.data.userId
+            && (
+              request.auth.uid == resource.data.userId
+              || request.resource.data.diff(resource.data).changedKeys().hasOnly([
+                'views', 'likes', 'comments', 'watchTime', 'shares'
+              ])
+            )
+          )
         );
 
-      // ✅ Only owner can delete
+      // ✅ Owner can delete; admin can delete
       allow delete: if request.auth != null
-        && request.auth.uid == resource.data.userId;
+        && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
 
       // ❤️ Likes Subcollection
       match /likes/{userId} {
@@ -56,7 +59,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read:   if request.auth.uid == userId;
       allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId; // ⚡ Tighten to Cloud Function only after migration
+      allow update: if request.auth.uid == userId;
       allow delete: if false;
 
       // 💰 V-Coins transaction log (immutable after create)
@@ -67,7 +70,7 @@ service cloud.firestore {
           && request.resource.data.amount <= 1500
           && request.resource.data.type in ["CREDIT", "DEBIT"]
           && request.resource.data.status in ["SUCCESS", "PENDING"];
-        allow update, delete: if false; // reversal = new REVERSED doc
+        allow update, delete: if false;
       }
 
       // 🔒 V-Coins activity locks (duplicate / daily-limit prevention)
@@ -85,7 +88,6 @@ service cloud.firestore {
     // 🤖 AI CHATS
     match /aiChats/{userId} {
       allow read, write: if request.auth.uid == userId;
-
       match /messages/{messageId} {
         allow read, write: if request.auth.uid == userId;
       }
@@ -94,7 +96,6 @@ service cloud.firestore {
     // 🔖 BOOKMARKS
     match /bookmarks/{userId} {
       allow read, write: if request.auth.uid == userId;
-
       match /saved/{bookmarkId} {
         allow read, write: if request.auth.uid == userId;
       }
@@ -119,23 +120,16 @@ service cloud.firestore {
       allow update: if request.auth.token.admin == true
         || (
           request.auth != null
-          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            'joinedCount',
-            'updatedAt'
-          ])
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedCount', 'updatedAt'])
           && request.resource.data.joinedCount == resource.data.joinedCount + 1
           && request.resource.data.joinedCount <= resource.data.totalSpots
         );
-
-      // 📍 PARTICIPANT subcollection — document ID is the userId
-      // Supports new fields: answers, timeBonus, lessonCompleted, quizCompletedAt, rank
       match /participant/{userId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && request.auth.uid == userId
           && request.resource.data.userId == request.auth.uid;
-        allow update: if request.auth != null
-          && request.auth.uid == userId;
+        allow update: if request.auth != null && request.auth.uid == userId;
       }
     }
 
@@ -143,112 +137,81 @@ service cloud.firestore {
     match /quizzes/{quizId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
-
-      // ❓ QUESTIONS subcollection
       match /questions/{questionId} {
         allow read: if request.auth != null;
         allow write: if request.auth.token.admin == true;
       }
     }
 
-    // 🔍 Collection group rule for participant (needed for collectionGroup query in useUserContests)
+    // 🔍 Collection group rule for participant
     match /{path=**}/participant/{userId} {
-      allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // ✍️ ATTEMPTS
     match /attempts/{attemptId} {
       allow read: if request.auth != null
-        && (
-          request.auth.uid == resource.data.userId
-          || request.auth.token.admin == true
-        );
-
+        && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.contestId is string
         && request.resource.data.answers is list;
-
       allow update, delete: if request.auth.token.admin == true;
     }
 
     // 📖 STORIES
     match /stories/{storyId} {
-      // Approved stories visible to all authenticated users.
-      // Pending / rejected stories visible only to the owner.
       allow read: if request.auth != null
-        && (
-          resource.data.status == "approved"
-          || request.auth.uid == resource.data.userId
-        );
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+        && (resource.data.status == "approved" || request.auth.uid == resource.data.userId);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null
-        && (
-          request.auth.uid == resource.data.userId
-          || request.auth.token.admin == true
-        );
-      allow delete: if request.auth != null
-        && request.auth.uid == resource.data.userId;
+        && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
 
-    // ⚔️ SKILL BATTLES
+    // ⚔️ SKILL BATTLES — admin full control, authenticated read
     match /skillBattles/{battleId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.createdBy == request.auth.uid;
-      allow update: if request.auth != null
-        && (
-          request.auth.uid == resource.data.createdBy
-          || request.resource.data.diff(resource.data).changedKeys().hasOnly([
-            'participants', 'joinedCount', 'status', 'winnerId', 'scores'
+      allow create: if request.auth.token.admin == true;
+      allow update: if request.auth.token.admin == true
+        || (
+          request.auth != null
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'participants', 'participantCount', 'joinedCount'
           ])
         );
-      allow delete: if request.auth != null
-        && request.auth.uid == resource.data.createdBy;
+      allow delete: if request.auth.token.admin == true;
     }
 
-    // 🤝 PARTNERS (linked story sponsors — admin writes, all authenticated users read)
+    // 🤝 PARTNERS
     match /partners/{partnerId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
 
-    // 🎮 LEARNFUN — Daily missions (public read for authenticated users)
+    // 🎮 LEARNFUN
     match /dailyFunLearnMissions/{missionId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
-    // 🎮 LEARNFUN — Game catalog (public read for authenticated users)
     match /LearnFunGames/{gameId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
-    // 🎮 LEARNFUN — Badge catalog (public read for authenticated users)
     match /LearnFunBadges/{badgeId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
-    // 🏆 LEARNFUN — Pan India Leaderboard (score only, queryable by all authenticated users)
     match /leaderboard/{uid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
-
-    // 🏆 SKILL LEADERBOARDS — nested collection leaderboards/{tab}/country/{uid}
     match /leaderboards/{tab}/{scope}/{uid} {
       allow read: if request.auth != null;
       allow write: if false;
     }
-
-    // 🎮 LEARNFUN — Student progress (own data only)
     match /studentLearnFunProgress/{userId} {
       allow read, write: if request.auth.uid == userId;
-
       match /missions/{missionId} {
         allow read, write: if request.auth.uid == userId;
       }
@@ -257,32 +220,36 @@ service cloud.firestore {
     // 🔔 NOTIFICATIONS
     match /notifications/{userId} {
       allow read, write: if request.auth.uid == userId;
-
       match /items/{itemId} {
         allow read, write: if request.auth.uid == userId;
       }
     }
 
-    // 📺 SEEKHO VIDEOS (admin writes, all authenticated users read)
+    // 📺 SEEKHO VIDEOS
     match /seekhoVideos/{videoId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
 
-    // 🌐 KNOWLEDGE HUB VIDEOS (admin writes, all authenticated users read)
+    // 🎬 SHORT REELS
+    match /short_reels/{reelId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    // 🌐 KNOWLEDGE HUB VIDEOS
     match /knowledgeVideos/{videoId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
 
-    // 📢 HOME ADS — legacy carousel (kept for backward compat)
+    // 📢 HOME ADS
     match /homeAds/{adId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
 
-    // 📢 UNIFIED ADS — serves FeedAdCard, RewardedAd, SponsoredReel, ScholarshipCard
-    // Only approved + active ads are readable by authenticated users
+    // 📢 UNIFIED ADS
     match /ads/{adId} {
       allow read: if request.auth != null
         && resource.data.isActive == true
@@ -290,155 +257,135 @@ service cloud.firestore {
       allow write: if request.auth.token.admin == true;
     }
 
-    // 📊 AD ANALYTICS — Cloud Functions write; admin reads; users can create own events
+    // 📊 AD ANALYTICS
     match /adAnalytics/{adId} {
       allow read: if request.auth.token.admin == true;
-      allow write: if false;  // Cloud Functions only
-
+      allow write: if false;
       match /events/{eventId} {
         allow read:   if request.auth.token.admin == true;
-        allow create: if request.auth != null
-          && request.resource.data.userId == request.auth.uid;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
         allow update, delete: if false;
       }
     }
 
-    // 🕐 AD FREQUENCY — per-user daily rate limiting (read/write own only)
     match /adFrequency/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // ⭐ SHIKSHA STARS (admin writes, all authenticated users read)
     match /shikshaStars/{starId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
 
-    // 📊 DASHBOARD (own data only — future use)
     match /dashboard/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // 🎓 AI GURU LESSONS (Cloud Functions write, owner reads)
+    // 🎓 AI GURU LESSONS
     match /aiGuruLessons/{lessonId} {
-      allow read: if request.auth != null
-        && request.auth.uid == resource.data.uid;
+      allow read: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == "generating";
-      allow update, delete: if false; // Cloud Functions only
-
+      allow update, delete: if false;
       match /quizAttempts/{attemptId} {
         allow read: if request.auth != null
           && request.auth.uid == get(/databases/$(database)/documents/aiGuruLessons/$(lessonId)).data.uid;
-        allow create: if request.auth != null
-          && request.resource.data.uid == request.auth.uid;
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
         allow update, delete: if false;
       }
     }
 
-    // 📈 AI GURU USAGE (Cloud Functions write, owner reads)
     match /aiGuruUsage/{uid} {
       allow read: if request.auth.uid == uid;
-      allow write: if false; // Cloud Functions only
-
+      allow write: if false;
       match /daily/{date} {
         allow read: if request.auth.uid == uid;
         allow write: if false;
       }
     }
 
-    // 💎 SUBSCRIPTIONS (Cloud Functions / admin write, owner reads)
     match /subscriptions/{uid} {
       allow read: if request.auth.uid == uid || request.auth.token.admin == true;
-      allow write: if false; // Cloud Functions / admin only
+      allow write: if false;
     }
 
-    // ─── 📚 SEEKHO MODULE ─────────────────────────────────────────────────────
-
-    // Curriculum content — public read for authenticated users, admin write only
+    // 📚 SEEKHO MODULE
     match /seekho_courses/{courseId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
     match /seekho_lessons/{lessonId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
     match /seekho_practice/{questionId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
-    // Progress — owner read/write only
-    // Document ID format: "{userId}_{courseId}"
     match /seekho_progress/{progressId} {
-      allow read, write: if request.auth != null
-        && resource.data.userId == request.auth.uid;
-      // Allow create when doc doesn't exist yet
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
-
-    // Subscription — owner read, Cloud Functions write only
     match /seekho_subscriptions/{userId} {
       allow read: if request.auth.uid == userId || request.auth.token.admin == true;
-      allow write: if false; // Cloud Functions only
+      allow write: if false;
     }
-
-    // Revision queue — owner read, Cloud Functions write only (SM-2 runs server-side)
-    // Document ID format: "{userId}_{conceptTag}"
     match /seekho_revision_queue/{docId} {
-      allow read: if request.auth != null
-        && resource.data.userId == request.auth.uid;
-      allow write: if false; // Cloud Functions only
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow write: if false;
     }
 
-    // ─── 🧭 DISCOVER AI MODULE ────────────────────────────────────────────────
-
-    // Usage counters — Cloud Functions write, owner reads
+    // 🧭 DISCOVER AI MODULE
     match /discoverUsage/{uid} {
       allow read: if request.auth.uid == uid;
       allow write: if false;
-
       match /daily/{date} {
         allow read: if request.auth.uid == uid;
         allow write: if false;
       }
     }
-
-    // Search history — owner read/write
     match /discoverHistory/{uid} {
       allow read, write: if request.auth.uid == uid;
     }
-
-    // Query cache — authenticated read, Cloud Functions write only
     match /discoverCache/{hash} {
       allow read: if request.auth != null;
       allow write: if false;
     }
 
-    // ─── APP CONFIG (dynamic modules & subscription plans) ───────────────────
-
-    // Authenticated users read; admin-only write (same pattern as banners)
+    // ⚙️ APP CONFIG
     match /appModules/{moduleId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
-
     match /subscriptionPlans/{planId} {
       allow read: if request.auth != null;
       allow write: if request.auth.token.admin == true;
     }
+    match /appConfig/{configId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+    match /featureFlags/{flagId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
 
-    // 🎟️ COUPONS — admin only
+    // 🎟️ COUPONS
     match /coupons/{id} {
       allow read, write: if request.auth.token.admin == true;
     }
 
-    // 👑 ADMINS — admin reads, superAdmin writes
+    // 🎁 REFERRALS — Cloud Functions write only; users can read their own
+    match /referrals/{referralId} {
+      allow read: if request.auth != null
+        && (resource.data.referrerId == request.auth.uid
+            || resource.data.refereeId == request.auth.uid
+            || request.auth.token.admin == true);
+      allow write: if false;
+    }
+
+    // 👑 ADMINS
     match /admins/{uid} {
       allow read:  if request.auth.token.admin == true;
       allow write: if request.auth.token.superAdmin == true;

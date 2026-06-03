@@ -77,18 +77,23 @@ exports.approveContent = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError("permission-denied", "Admins only.");
     }
     const { collection, docId, action, reason } = request.data;
-    const ALLOWED = ["stories", "skillBattles", "seekhoVideos", "knowledgeVideos"];
+    const ALLOWED = ["stories", "skillBattles", "seekhoVideos", "knowledgeVideos", "posts"];
     if (!ALLOWED.includes(collection)) {
         throw new https_1.HttpsError("invalid-argument", `collection must be one of: ${ALLOWED.join(", ")}`);
     }
-    if (!docId || !["approve", "reject"].includes(action)) {
-        throw new https_1.HttpsError("invalid-argument", "docId and action (approve|reject) are required.");
+    if (!docId || !["approve", "reject", "in_review"].includes(action)) {
+        throw new https_1.HttpsError("invalid-argument", "docId and action (approve|reject|in_review) are required.");
     }
+    const statusMap = {
+        approve: "approved",
+        reject: "rejected",
+        in_review: "in_review",
+    };
     const update = {
-        status: action === "approve" ? "approved" : "rejected",
-        approvalStatus: action === "approve" ? "approved" : "rejected",
-        approvedBy: request.auth.uid,
-        approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: statusMap[action],
+        approvalStatus: statusMap[action],
+        reviewedBy: request.auth.uid,
+        reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
     if (action === "reject" && reason)
         update.rejectionReason = reason;

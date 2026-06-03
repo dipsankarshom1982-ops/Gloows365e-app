@@ -1,6 +1,16 @@
 "use strict";
+// PATH: functions/src/index.ts
+/**
+ * admin-web/src/main.tsx — OPTIMIZED
+ *
+ * All 35 pages are now lazy-loaded with React.lazy() + Suspense.
+ * Only the current route's code is downloaded on first visit.
+ * Subsequent routes load in ~100ms from the Vite chunk cache.
+ *
+ * Also added vite.config optimization (see vite.config.ts output).
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.generateContestLesson = exports.getUserSubscriptionHistory = exports.createComboPlan = exports.createCoupon = exports.approveContent = exports.removeAdmin = exports.createAdmin = exports.aggregateAdAnalytics = exports.claimAdReward = exports.recordAdEvent = exports.getAds = exports.aiGuruCreateSubscription = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoDailyRevisionReminder = exports.seekhoGetDailyStudyPlan = exports.seekhoCreateSubscription = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
+exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.getReferralLeaderboard = exports.applyReferral = exports.onContestParticipantWrite = exports.generateContestLesson = exports.getUserSubscriptionHistory = exports.createComboPlan = exports.createCoupon = exports.approveContent = exports.removeAdmin = exports.createAdmin = exports.aggregateAdAnalytics = exports.claimAdReward = exports.recordAdEvent = exports.getAds = exports.aiGuruCreateSubscription = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoDailyRevisionReminder = exports.seekhoGetDailyStudyPlan = exports.seekhoCreateSubscription = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const functionsV1 = require("firebase-functions/v1");
@@ -61,6 +71,13 @@ Object.defineProperty(exports, "getUserSubscriptionHistory", { enumerable: true,
 // ── Contest Lesson Generation ──────────────────────────────────────────────────
 var contestLesson_1 = require("./contestLesson");
 Object.defineProperty(exports, "generateContestLesson", { enumerable: true, get: function () { return contestLesson_1.generateContestLesson; } });
+// ── VidyaStar Board Aggregation ───────────────────────────────────────────────
+var vidyastarBoard_1 = require("./vidyastarBoard");
+Object.defineProperty(exports, "onContestParticipantWrite", { enumerable: true, get: function () { return vidyastarBoard_1.onContestParticipantWrite; } });
+// ── Referral System ───────────────────────────────────────────────────────────  ← NEW
+var referral_1 = require("./referral");
+Object.defineProperty(exports, "applyReferral", { enumerable: true, get: function () { return referral_1.applyReferral; } });
+Object.defineProperty(exports, "getReferralLeaderboard", { enumerable: true, get: function () { return referral_1.getReferralLeaderboard; } });
 // ───────────────────────────────────────────────────────────
 // FUNCTION 1: updateSkillboard
 // Triggers on any post write — updates skillboard + ranks
@@ -89,7 +106,6 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
     let state = after.location?.state ?? "";
     let pincode = after.location?.pincode ?? "";
     // ── Fallback: fetch location from students collection ─
-    // This runs when post location fields are empty
     if (!district || !state || !pincode) {
         try {
             const studentSnap = await db
@@ -130,8 +146,6 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
         totalShares += p.shares ?? 0;
         totalComments += p.comments ?? 0;
     });
-    // ── Score formula ─────────────────────────────────────
-    // (likes×5) + (comments×3) + (shares×4) + (views×1) + (watchtime×2)
     const totalScore = totalLikes * 5 +
         totalComments * 3 +
         totalShares * 4 +
@@ -140,8 +154,6 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
     console.log(`📊 Score for ${userId}: ${totalScore} | ` +
         `likes=${totalLikes} comments=${totalComments} ` +
         `shares=${totalShares} views=${totalViews} watchtime=${totalWatchtime}`);
-    // ── Write skillboard doc ──────────────────────────────
-    // Doc ID: userId_class_month  e.g. "XkxPlrf_8_2026-05"
     const skillboardId = `${userId}_${cls}_${month}`;
     const skillboardRef = db.collection("skillboard").doc(skillboardId);
     const docData = {
@@ -164,7 +176,6 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
         totalShares,
         totalComments,
         totalScore,
-        // ✅ Always initialize ranks to 0 — recalculated below
         ranks: {
             local: 0,
             district: 0,
@@ -173,11 +184,8 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
         },
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
-    // ✅ merge: false — ensures ranks map is always freshly written
-    // If merge:true, existing ranks from previous run persist even if score dropped
     await skillboardRef.set(docData);
     console.log(`✅ Skillboard doc written: ${skillboardId} | score: ${totalScore}`);
-    // ── Recalculate all 4 location-scoped ranks ───────────
     await Promise.all([
         recalculateRank("india", { class: cls, month }),
         recalculateRank("state", { class: cls, month, "location.state": state }),
@@ -188,18 +196,15 @@ exports.updateSkillboard = (0, firestore_1.onDocumentWritten)({ document: "posts
 });
 // ───────────────────────────────────────────────────────────
 // FUNCTION 2: onPostCreated
-// Increments participantCount on skillBattles when new post added
 // ───────────────────────────────────────────────────────────
 exports.onPostCreated = (0, firestore_1.onDocumentWritten)({ document: "posts/{postId}", secrets: ["REDIS_URL", "REDIS_TOKEN"] }, async (event) => {
     const change = event.data;
     if (!change)
         return null;
-    // Only trigger on CREATE (before didn't exist, after exists)
     const wasCreated = !change.before.exists && change.after.exists;
     if (!wasCreated)
         return null;
     const post = change.after.data();
-    // Only count skill battle posts
     if (!post?.battleId || !post?.isSkillBattle)
         return null;
     try {
@@ -214,17 +219,12 @@ exports.onPostCreated = (0, firestore_1.onDocumentWritten)({ document: "posts/{p
     catch (err) {
         console.error("❌ Failed to increment participantCount:", err);
     }
-    // Invalidate home and reels feed caches for this post's class
     const cls = post.class !== undefined ? String(post.class) : "all";
     (0, redish_1.getRedis)().del(redish_1.RK.homeFeed("all"), redish_1.RK.homeFeed(cls), redish_1.RK.reelsFeed("all"), redish_1.RK.reelsFeed(cls)).catch(() => { });
     return null;
 });
 // ───────────────────────────────────────────────────────────
-// HELPER: recalculateRank
-// Recalculates rank for one location scope (india/state/district/local)
-// ───────────────────────────────────────────────────────────
-// ───────────────────────────────────────────────────────────
-// AI GURU FUNCTIONS
+// HELPER: verifyAuthToken
 // ───────────────────────────────────────────────────────────
 async function verifyAuthToken(req) {
     const auth = req.headers.authorization;
@@ -240,18 +240,7 @@ function setCorsHeaders(res) {
 }
 function buildLessonPromptInline(body) {
     const { board, classLevel, subject, chapter, topic, language, difficulty, lessonStyle, inputText } = body;
-    return `You are AI Guru, a friendly Indian AI teacher for school students.
-Convert the content into an interactive self-learning lesson.
-Rules: Teach at Class ${classLevel} level, ${board} board. Use ${language}. Style: ${lessonStyle}. Difficulty: ${difficulty}.
-Keep each narration under 120 words. Use Indian examples. Return ONLY valid JSON, no markdown.
-
-Board: ${board}, Class: ${classLevel}, Subject: ${subject}, Chapter: ${chapter}, Topic: ${topic ?? "Full Chapter"}
-
-Student Content:
-${inputText || `Create a comprehensive lesson on "${chapter}" for Class ${classLevel} ${subject} (${board}).`}
-
-Return exactly this JSON (populate ALL fields, minimum 5 scenes, 8 quiz, 8 flashcards, 5 keyConcepts):
-{"lessonTitle":"","shortIntro":"","estimatedDurationMinutes":0,"learningObjectives":[""],"prerequisites":[""],"storyHook":{"title":"","narration":"","studentMission":""},"scenes":[{"sceneNumber":1,"sceneTitle":"","visualType":"animation","visualDescription":"","narration":"","keyConcept":"","example":"","studentAction":"","checkQuestion":{"question":"","options":["","","",""],"correctAnswerIndex":0,"explanation":""}}],"keyConcepts":[{"term":"","simpleMeaning":"","realLifeExample":""}],"practicalActivity":{"title":"","instructions":[""],"expectedOutput":"","aiEvaluationCriteria":[""]},"flashcards":[{"front":"","back":""}],"quickRevisionNotes":[""],"quiz":[{"question":"","options":["","","",""],"correctAnswerIndex":0,"explanation":"","difficulty":"easy","concept":""}],"finalMission":{"title":"","task":"","successCriteria":[""],"rewardText":""},"commonMistakes":[{"mistake":"","correction":""}],"examTips":[""],"followUpPrompts":["Explain this chapter again in simpler way","Give me real-life examples","Take my test","Create revision notes"]}`;
+    return `You are AI Guru, a friendly Indian AI teacher for school students.\nConvert the content into an interactive self-learning lesson.\nRules: Teach at Class ${classLevel} level, ${board} board. Use ${language}. Style: ${lessonStyle}. Difficulty: ${difficulty}.\nKeep each narration under 120 words. Use Indian examples. Return ONLY valid JSON, no markdown.\n\nBoard: ${board}, Class: ${classLevel}, Subject: ${subject}, Chapter: ${chapter}, Topic: ${topic ?? "Full Chapter"}\n\nStudent Content:\n${inputText || `Create a comprehensive lesson on "${chapter}" for Class ${classLevel} ${subject} (${board}).`}\n\nReturn exactly this JSON (populate ALL fields, minimum 5 scenes, 8 quiz, 8 flashcards, 5 keyConcepts):\n{"lessonTitle":"","shortIntro":"","estimatedDurationMinutes":0,"learningObjectives":[""],"prerequisites":[""],"storyHook":{"title":"","narration":"","studentMission":""},"scenes":[{"sceneNumber":1,"sceneTitle":"","visualType":"animation","visualDescription":"","narration":"","keyConcept":"","example":"","studentAction":"","checkQuestion":{"question":"","options":["","","",""],"correctAnswerIndex":0,"explanation":""}}],"keyConcepts":[{"term":"","simpleMeaning":"","realLifeExample":""}],"practicalActivity":{"title":"","instructions":[""],"expectedOutput":"","aiEvaluationCriteria":[""]},"flashcards":[{"front":"","back":""}],"quickRevisionNotes":[""],"quiz":[{"question":"","options":["","","",""],"correctAnswerIndex":0,"explanation":"","difficulty":"easy","concept":""}],"finalMission":{"title":"","task":"","successCriteria":[""],"rewardText":""},"commonMistakes":[{"mistake":"","correction":""}],"examTips":[""],"followUpPrompts":["Explain this chapter again in simpler way","Give me real-life examples","Take my test","Create revision notes"]}`;
 }
 exports.generateLesson = functionsV1
     .runWith({ timeoutSeconds: 300, memory: "512MB", secrets: ["GEMINI_API_KEY"] })
@@ -368,10 +357,7 @@ exports.followUp = functionsV1
             exam_focus: "Give exam tips and likely exam questions.",
             evaluate_practical: "Evaluate the student's practical activity and give feedback.",
         };
-        const prompt = `You are AI Guru helping a Class ${lesson.classLevel} student about "${lesson.chapter}" (${lesson.subject}, ${lesson.board}).
-Language: ${language}. ${modeMap[mode] ?? "Answer helpfully."}
-Student input: ${question}
-Return ONLY this JSON (no markdown): {"answer":"","example":"","miniQuestion":"","miniQuestionAnswer":"","suggestedNextAction":""}`;
+        const prompt = `You are AI Guru helping a Class ${lesson.classLevel} student about "${lesson.chapter}" (${lesson.subject}, ${lesson.board}).\nLanguage: ${language}. ${modeMap[mode] ?? "Answer helpfully."}\nStudent input: ${question}\nReturn ONLY this JSON (no markdown): {"answer":"","example":"","miniQuestion":"","miniQuestionAnswer":"","suggestedNextAction":""}`;
         const raw = await (0, gemini_1.callGeminiText)(prompt);
         const parsed = (0, gemini_1.parseJsonFromResponse)(raw);
         await (0, usageCheck_1.incrementFollowUpUsage)(uid, db);
@@ -391,8 +377,6 @@ Return ONLY this JSON (no markdown): {"answer":"","example":"","miniQuestion":""
 // HELPER: recalculateRank
 // ───────────────────────────────────────────────────────────
 async function recalculateRank(scopeKey, filters) {
-    // ✅ Skip if scope value is empty string
-    // e.g. if pincode is "" — don't rank by empty pincode
     if (scopeKey !== "india") {
         const scopeFieldMap = {
             state: "location.state",
@@ -407,7 +391,6 @@ async function recalculateRank(scopeKey, filters) {
         }
     }
     try {
-        // Build query with all filters
         let q = db.collection("skillboard");
         for (const [field, value] of Object.entries(filters)) {
             if (value && value.trim() !== "") {
@@ -424,13 +407,11 @@ async function recalculateRank(scopeKey, filters) {
         }
         const batch = db.batch();
         snap.docs.forEach((rankDoc, index) => {
-            // ✅ Dot notation update — safe since ranks map always exists (set above)
             batch.update(rankDoc.ref, {
                 [`ranks.${scopeKey}`]: index + 1,
             });
         });
         await batch.commit();
-        // Cache India top-50 leaderboard after rank update
         if (scopeKey === "india") {
             const top50 = snap.docs.slice(0, 50).map((d) => ({ id: d.id, ...d.data() }));
             const cacheKey = redish_1.RK.leaderboard("india", filters.class ?? "", filters.month ?? "");

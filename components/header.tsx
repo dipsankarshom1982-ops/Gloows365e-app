@@ -8,12 +8,12 @@ import {
   View
 } from "react-native";
 
+import VCoinsHeaderBadge from "@/components/VCoinsHeaderBadge";
 import { useTheme } from "@/context/ThemeContext";
 import { auth, db } from "@/lib/firebase";
-import VCoinsHeaderBadge from "@/components/VCoinsHeaderBadge";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   collection,

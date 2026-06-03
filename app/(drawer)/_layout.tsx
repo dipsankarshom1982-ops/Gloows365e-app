@@ -12,6 +12,7 @@ import {
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage, useAppTranslation } from "@/context/LanguageContext";
 import { useStudentProfile } from "@/context/StudentProfileContext";
+import { useFeatureFlags } from "@/context/FeatureFlagsContext";
 import { INDIAN_LANGUAGES } from "@/app/language-settings";
 import { auth, db } from "@/lib/firebase";
 import { getLevelFromXP, XP_PER_LEVEL } from "@/lib/learnfun/constants";
@@ -33,6 +34,7 @@ export default function DrawerLayout() {
   const router = useRouter();
   const { colors } = useTheme();
   const { languageName } = useLanguage();
+  const { drawerItem } = useFeatureFlags();
   const { t } = useAppTranslation();
   const insets = useSafeAreaInsets();
 
@@ -164,69 +166,62 @@ export default function DrawerLayout() {
 
             {/* MENU */}
             <View style={styles.menu}>
-              <DrawerItem icon="home" label={t("home")}
-                onPress={() => router.push("/(drawer)/(tabs)/home")} active colors={colors} />
-              <DrawerItem icon="trophy-outline" label={t("leaderboard")}
-                onPress={() => router.push("/leaderboard")} colors={colors} />
-              <DrawerItem icon="wallet-outline" label={t("wallet")}
-                onPress={() => router.push("/vcoins/wallet")} colors={colors} />
-              <DrawerItem icon="settings-outline" label={t("settings")}
-                onPress={() => router.push("/settings")} colors={colors} />
-              <DrawerItem icon="grid-outline" label={t("dashboard")}
-                onPress={() => router.push("/dashboard")} colors={colors} />
-              <DrawerItem icon="school-outline" label={t("aiGuru")}
-                onPress={() => router.push("/ai-guru")} colors={colors} />
-              {/* AI Guru Premium upgrade — gradient button like SkillBoardItem */}
-              <TouchableOpacity
-                onPress={() => router.push("/ai-guru/subscription" as any)}
-                activeOpacity={0.85}
-                style={styles.aiGuruPremiumWrapper}
-              >
-                <LinearGradient
-                  colors={["#1e1b4b", "#4f46e5", "#6366f1"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.aiGuruPremiumGradient}
-                >
-                  <View style={styles.aiGuruPremiumLeft}>
-                    <Ionicons name="sparkles" size={18} color="#fbbf24" />
-                    <Text style={styles.aiGuruPremiumLabel}>AI Guru Premium</Text>
-                  </View>
-                  <View style={styles.aiGuruPremiumBadge}>
-                    <Text style={styles.aiGuruPremiumBadgeText}>⭐ UPGRADE</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-              <DrawerItem icon="sparkles-outline" label="VidyaGuru AI"
-                onPress={() => router.push("/ai-guru/vidyaguru")} colors={colors} />
-              <DrawerItem icon="compass-outline" label="Discover AI"
-                onPress={() => router.push("/discover")} colors={colors} />
-              <DrawerItem icon="book-outline" label="LearnFun"
-                onPress={() => router.push("/(drawer)/(tabs)/learnFun")} colors={colors} />
+              {drawerItem("home") && (
+                <DrawerItem icon="home" label={t("home")}
+                  onPress={() => router.push("/(drawer)/(tabs)/home")} active colors={colors} />
+              )}
+              {drawerItem("leaderboard") && (
+                <DrawerItem icon="trophy-outline" label={t("leaderboard")}
+                  onPress={() => router.push("/leaderboard")} colors={colors} />
+              )}
+              {drawerItem("wallet") && (
+                <DrawerItem icon="wallet-outline" label={t("wallet")}
+                  onPress={() => router.push("/vcoins/wallet")} colors={colors} />
+              )}
+              {drawerItem("settings") && (
+                <DrawerItem icon="settings-outline" label={t("settings")}
+                  onPress={() => router.push("/settings")} colors={colors} />
+              )}
+              {drawerItem("dashboard") && (
+                <DrawerItem icon="grid-outline" label={t("dashboard")}
+                  onPress={() => router.push("/dashboard")} colors={colors} />
+              )}
+              {drawerItem("aiguru") && (
+                <DrawerItem icon="school-outline" label={t("aiGuru")}
+                  onPress={() => router.push("/ai-guru")} colors={colors} />
+              )}
+              {drawerItem("learnfun") && (
+                <DrawerItem icon="book-outline" label="LearnFun"
+                  onPress={() => router.push("/(drawer)/(tabs)/learnFun")} colors={colors} />
+              )}
 
               {/* Language selector */}
-              <TouchableOpacity
-                style={[styles.langItem, { backgroundColor: colors.background }]}
-                onPress={() => router.push("/language-settings" as any)}
-              >
-                <View style={[styles.langIconBox, { backgroundColor: `${colors.accent}20` }]}>
-                  <Ionicons name="globe-outline" size={18} color={colors.accent} />
-                </View>
-                <View style={styles.langTextBlock}>
-                  <Text style={[styles.langItemLabel, { color: colors.text }]}>{t("language")}</Text>
-                  {(() => {
-                    const lang = INDIAN_LANGUAGES.find((l) => l.name === languageName);
-                    return (
-                      <Text style={[styles.langItemSub, { color: colors.accent }]}>
-                        {lang ? `${lang.native} · ${lang.name}` : languageName}
-                      </Text>
-                    );
-                  })()}
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
+              {drawerItem("language") && (
+                <TouchableOpacity
+                  style={[styles.langItem, { backgroundColor: colors.background }]}
+                  onPress={() => router.push("/language-settings" as any)}
+                >
+                  <View style={[styles.langIconBox, { backgroundColor: `${colors.accent}20` }]}>
+                    <Ionicons name="globe-outline" size={18} color={colors.accent} />
+                  </View>
+                  <View style={styles.langTextBlock}>
+                    <Text style={[styles.langItemLabel, { color: colors.text }]}>{t("language")}</Text>
+                    {(() => {
+                      const lang = INDIAN_LANGUAGES.find((l) => l.name === languageName);
+                      return (
+                        <Text style={[styles.langItemSub, { color: colors.accent }]}>
+                          {lang ? `${lang.native} · ${lang.name}` : languageName}
+                        </Text>
+                      );
+                    })()}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
 
-              <SkillBoardItem onPress={() => router.push("/skillboard")} />
+              {drawerItem("skillboard") && (
+                <SkillBoardItem onPress={() => router.push("/skillboard")} />
+              )}
             </View>
           </ScrollView>
 
@@ -481,47 +476,6 @@ const styles = StyleSheet.create({
   },
   skillBoardBadgeText: {
     color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  aiGuruPremiumWrapper: {
-    marginVertical: 6,
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#6366f1",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  aiGuruPremiumGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  aiGuruPremiumLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  aiGuruPremiumLabel: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  aiGuruPremiumBadge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
-  },
-  aiGuruPremiumBadgeText: {
-    color: "#fbbf24",
     fontSize: 11,
     fontWeight: "800",
   },
