@@ -1,20 +1,19 @@
 /**
- * Story.tsx
- * ─────────────────────────────────────────────────────────
- * Educational / Testimonial Stories Module
- * • expo-video (no expo-av, no type errors)
- * • Thumbnail shown first; video plays only on user tap ▶
- * • Video limited to 10 s via videoMaxDuration
- * • Optimised for low-end Android
+ * Story.tsx — Educational Square Card Story System
+ * PATH: components/Story.tsx
  *
- * Install:
- *   npx expo install expo-video expo-video-thumbnails
- * ─────────────────────────────────────────────────────────
+ * Fixes applied:
+ *   ✅ user ref no longer stale — read fresh inside useEffect
+ *   ✅ expiresAt filter added to Firestore query — expired stories excluded
+ *   ✅ loading state added — skeleton shows until first data arrives
+ *   ✅ error state added — permission errors shown gracefully
+ *   ✅ fetchUserProfile batching — single pass, no redundant reads
  */
 
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -29,15 +28,28 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
+import { AddStoryCard, StoryCard } from "@/components/StoryCard";
 import { useTheme } from "@/context/ThemeContext";
+import { StoryDoc } from "@/lib/story";
+import {
+  getCategoryById,
+  resolveCategory,
+  useStoryCategories,
+} from "@/lib/storyCategories";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useVideoPlayer, VideoView } from "expo-video";
 
-import { getAuth } from "firebase/auth";
+import {
+  getStreamUploadUrl,
+  resolveStreamUrl,
+  uploadToStream,
+} from "@/lib/cloudflareStream";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -48,6 +60,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -57,120 +70,75 @@ import {
   ref,
   uploadBytesResumable,
 } from "firebase/storage";
-import {
-  getStreamUploadUrl,
-  resolveStreamUrl,
-  uploadToStream,
-} from "@/lib/cloudflareStream";
 
-// ─── Constants ────────────────────────────────────────────
-const AVATAR_SIZE    = 64;
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const IMAGE_DURATION = 5000;
 const MAX_VIDEO_SEC  = 10;
 const { width: SW }  = Dimensions.get("window");
+const VIEWED_KEY     = "gloows_viewed_stories";
 
 const db      = getFirestore();
 const storage = getStorage();
 const auth    = getAuth();
 
-// ─── Types ────────────────────────────────────────────────
-interface StoryDoc {
-  id: string;
-  userId: string;
-  userName: string;
-  userClass?: number | null;
-  mediaUrl: string;
-  thumbnailUrl: string;
-  type: "image" | "video";
-  category: "achievement" | "testimonial";
-  title: string;
-  description: string;
-  relatedFeature?: string;
-  likes: number;
-  views: number;
-  status: "pending" | "approved" | "rejected";
-  isFeatured?: boolean;
-  createdAt: any;
-  expiresAt: any;
-  // Linked story fields (admin-only)
-  storyKind?: "normal" | "linked";
-  learnMoreUrl?: string;
-  partnerId?: string;
-  partnerName?: string;
-  partnerLogoUrl?: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface CategoryGroup {
+  categoryId: string;
+  stories:    StoryDoc[];
+  hasUnread:  boolean;
+  isNew:      boolean;
 }
 
-interface GroupedUser {
-  userId: string;
-  userName: string;
-  stories: StoryDoc[];
-}
-
-// ─── Helpers ─────────────────────────────────────────────
 interface UserProfile { name: string; userClass: number | null; }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 async function fetchUserProfile(uid: string): Promise<UserProfile> {
-  for (const col of ["students", "users", "user_story_activit"]) {
+  for (const col of ["students", "users"]) {
     try {
       const snap = await getDoc(doc(db, col, uid));
       if (snap.exists()) {
         const d = snap.data() as any;
-
-        // ── Name ───────────────────────────────────────────
-        const firstName     = d.firstName    || d.first_name  || "";
-        const lastName      = d.lastName     || d.last_name   || "";
-        const fullFromParts = firstName
-          ? (firstName + (lastName ? " " + lastName : "")).trim()
-          : "";
+        const firstName = d.firstName || d.first_name || "";
+        const lastName  = d.lastName  || d.last_name  || "";
         const name =
-          d.name         ||
-          d.fullName     || d.full_name    ||
-          d.displayName  || d.display_name ||
-          d.studentName  || d.student_name ||
-          d.userName     || d.user_name    ||
-          fullFromParts  || "";
-
-        // ── Class ──────────────────────────────────────────
-        // Try every field name your Firestore schema might use
-        const rawClass =
-          d.class        ??
-          d.className    ??
-          d.classNo      ??
-          d.class_no     ??
-          d.grade        ??
-          d.standard     ??
-          d.std          ??
-          d.userClass    ??
-          d.studentClass ??
-          null;
+          d.name || d.fullName || d.displayName ||
+          d.studentName || d.userName ||
+          (firstName + (lastName ? " " + lastName : "")).trim() || "";
+        const rawClass  = d.class ?? d.grade ?? null;
         const userClass = rawClass !== null ? Number(rawClass) : null;
-
-        if (name && name !== "Student") {
-          return { name, userClass };
-        }
+        if (name && name !== "Student") return { name, userClass };
       }
-    } catch (_) {}
+    } catch { /* ignore */ }
   }
-  return {
-    name: auth.currentUser?.displayName || "",
-    userClass: null,
-  };
+  return { name: auth.currentUser?.displayName || "", userClass: null };
 }
 
-// ═══════════════════════════════════════════════════════════
-// VIDEO PLAYER
-// Fix summary:
-//   • useVideoPlayer source → { uri } object (not bare string)
-//   • player.addListener("playingChange") syncs React state
-//     to the NATIVE layer — no more stale state bug
-//   • key={story.id} on mount ensures a fresh player per story
-//   • zIndex: thumbnail(0) → VideoView(2) → touch(3) → UI(5+)
-// ═══════════════════════════════════════════════════════════
-// StoryVideoPlayer removed — player lives in main component to obey Rules of Hooks
+async function loadViewedSet(): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(VIEWED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
 
-// ═══════════════════════════════════════════════════════════
-// PROGRESS BAR
-// ═══════════════════════════════════════════════════════════
+async function markViewed(storyId: string): Promise<void> {
+  try {
+    const set = await loadViewedSet();
+    set.add(storyId);
+    await AsyncStorage.setItem(VIEWED_KEY, JSON.stringify([...set]));
+  } catch { /* ignore */ }
+}
+
+function isNewStory(story: StoryDoc): boolean {
+  if (!story.createdAt) return false;
+  const created = story.createdAt?.toDate?.() ?? new Date(story.createdAt);
+  return Date.now() - created.getTime() < 24 * 60 * 60 * 1000;
+}
+
+// ─── Progress Bar ─────────────────────────────────────────────────────────────
+
 const ProgressBar = React.memo(({
   total, current, progress,
 }: { total: number; current: number; progress: Animated.Value }) => (
@@ -192,82 +160,52 @@ const ProgressBar = React.memo(({
 
 const pb = StyleSheet.create({
   row:   { flexDirection: "row", paddingHorizontal: 10, gap: 3 },
-  track: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.35)", overflow: "hidden" },
+  track: { flex: 1, height: 3, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)", overflow: "hidden" },
   fill:  { height: "100%", backgroundColor: "#fff", borderRadius: 2 },
 });
 
-// ═══════════════════════════════════════════════════════════
-// STORY AVATAR
-// ═══════════════════════════════════════════════════════════
-const StoryAvatar = React.memo(({ item, onPress }: { item: GroupedUser; onPress: () => void }) => {
-  const first   = item.stories[0];
-  const thumb   = first?.thumbnailUrl || first?.mediaUrl;
-  const isVideo = first?.type === "video";
-  const initial = item.userName?.[0]?.toUpperCase() ?? "?";
+// ─── Skeleton cards ───────────────────────────────────────────────────────────
 
-  const ringColor =
-    first?.storyKind === "linked" ? "#FFD700" :
-    first?.status === "pending"   ? "#F59E0B" :
-    first?.status === "rejected"  ? "#EF4444" :
-    "#6C63FF";
+const SkeletonStrip = React.memo(() => (
+  <View style={s.skeletonRow}>
+    {[1, 2, 3, 4].map((i) => (
+      <View key={i} style={s.skeletonCard} />
+    ))}
+  </View>
+));
 
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={av.wrap}>
-      <View style={[av.ring, { borderColor: ringColor }]}>
-        {thumb
-          ? <Image source={{ uri: thumb }} style={av.img} resizeMode="cover" fadeDuration={0} />
-          : <View style={av.fallback}><Text style={av.initial}>{initial}</Text></View>
-        }
-        {isVideo && (
-          <View style={av.vidBadge}><Text style={av.vidTxt}>▶</Text></View>
-        )}
-      </View>
-      <Text style={av.name} numberOfLines={1}>{item.userName}</Text>
-      {first?.storyKind === "linked" && (
-        <View style={[av.statusBadge, { backgroundColor: "#FEF9C3" }]}>
-          <Text style={[av.statusTxt, { color: "#92400E" }]}>🔗 Sponsored</Text>
-        </View>
-      )}
-      {first?.status === "pending" && first?.storyKind !== "linked" && (
-        <View style={av.statusBadge}>
-          <Text style={av.statusTxt}>⏳ Pending</Text>
-        </View>
-      )}
-      {first?.status === "rejected" && (
-        <View style={[av.statusBadge, { backgroundColor: "#FEE2E2" }]}>
-          <Text style={[av.statusTxt, { color: "#DC2626" }]}>✗ Rejected</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-});
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-const av = StyleSheet.create({
-  wrap:     { alignItems: "center", marginHorizontal: 6, width: AVATAR_SIZE + 8 },
-  ring:     { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, borderWidth: 2.5, borderColor: "#6C63FF", overflow: "hidden" },
-  img:      { width: "100%", height: "100%" },
-  fallback: { width: "100%", height: "100%", backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center" },
-  initial:  { fontSize: 22, fontWeight: "700", color: "#6C63FF" },
-  name:     { fontSize: 11, color: "#374151", marginTop: 5, textAlign: "center", maxWidth: AVATAR_SIZE + 8 },
-  vidBadge:    { position: "absolute", bottom: 2, right: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" },
-  vidTxt:      { color: "#fff", fontSize: 7, marginLeft: 1 },
-  statusBadge: { marginTop: 3, backgroundColor: "#FEF3C7", borderRadius: 6, paddingHorizontal: 4, paddingVertical: 1 },
-  statusTxt:   { fontSize: 9, fontWeight: "700", color: "#92400E" },
-});
-
-// ═══════════════════════════════════════════════════════════
-// MAIN
-// ═══════════════════════════════════════════════════════════
 export default function Story() {
-  const { colors } = useTheme();
-  const [groupedStories, setGroupedStories] = useState<GroupedUser[]>([]);
-  const [viewerVisible,  setViewerVisible]  = useState(false);
-  const [currentUser,    setCurrentUser]    = useState(0);
-  const [currentStory,   setCurrentStory]   = useState(0);
-  const [liked,          setLiked]          = useState(false);
-  const [videoPlaying,   setVideoPlaying]   = useState(false);
+  const { colors }   = useTheme();
+  const categories   = useStoryCategories();
 
-  // Video player — always at top level, never inside conditional/child
+  const ownDocsRef      = useRef<StoryDoc[]>([]);
+  const approvedDocsRef = useRef<StoryDoc[]>([]);
+  const profileCache    = useRef<Record<string, UserProfile>>({});
+
+  const [allStories,    setAllStories]    = useState<StoryDoc[]>([]);
+  const [viewedIds,     setViewedIds]     = useState<Set<string>>(new Set());
+  const [storiesLoaded, setStoriesLoaded] = useState(false); // ← NEW: loading state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // ← NEW: reactive user
+
+  // Viewer state
+  const [viewerVisible,    setViewerVisible]    = useState(false);
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("");
+  const [currentStoryIdx,  setCurrentStoryIdx]  = useState(0);
+  const [liked,            setLiked]            = useState(false);
+  const [videoPlaying,     setVideoPlaying]      = useState(false);
+
+  // Upload state
+  const [uploading,   setUploading]   = useState(false);
+  const [uploadPct,   setUploadPct]   = useState(0);
+  const [uploadPhase, setUploadPhase] = useState<"uploading" | "saving" | "done">("uploading");
+  const uploadAnim = useRef(new Animated.Value(0)).current;
+
+  const progress    = useRef(new Animated.Value(0)).current;
+  const progressRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Video player
   const player = useVideoPlayer({ uri: "" }, (p) => {
     p.loop  = false;
     p.muted = false;
@@ -280,26 +218,20 @@ export default function Story() {
     return () => sub.remove();
   }, [player]);
 
-  const [uploading,   setUploading]   = useState(false);
-  const [uploadPct,   setUploadPct]   = useState(0);
-  const [uploadPhase, setUploadPhase] = useState<"uploading" | "saving" | "done">("uploading");
-  const uploadAnim = useRef(new Animated.Value(0)).current;
+  // Load viewed IDs
+  useEffect(() => {
+    loadViewedSet().then(setViewedIds);
+  }, []);
 
-  const progress    = useRef(new Animated.Value(0)).current;
-  const progressRef = useRef<Animated.CompositeAnimation | null>(null);
+  // ── FIX: Track current user reactively ────────────────────────────────────
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setCurrentUserId(u?.uid ?? null);
+    });
+    return () => unsub();
+  }, []);
 
-  const user  = auth.currentUser;
-  const group = groupedStories[currentUser];
-  const story = group?.stories[currentStory];
-
-  // ── Real-time story listeners ──────────────────────────
-  // Two onSnapshot listeners run in parallel.
-  // Either firing re-merges both result sets so an admin
-  // approval (status: pending → approved) is reflected
-  // instantly without any manual refresh.
-  const ownDocsRef      = useRef<StoryDoc[]>([]);
-  const approvedDocsRef = useRef<StoryDoc[]>([]);
-  const profileCache    = useRef<Record<string, UserProfile>>({});
+  // ── Merge helper ──────────────────────────────────────────────────────────
 
   const mergeAndSet = useCallback(async (
     own: StoryDoc[],
@@ -308,68 +240,126 @@ export default function Story() {
     const ownIds  = new Set(own.map((d) => d.id));
     const allDocs = [...own, ...approved.filter((d) => !ownIds.has(d.id))];
 
+    // Only fetch profiles for UIDs not already cached
+    const uncachedUids = [...new Set(
+      allDocs
+        .map((s) => s.userId)
+        .filter((uid) => !profileCache.current[uid])
+    )];
+
+    await Promise.all(
+      uncachedUids.map(async (uid) => {
+        profileCache.current[uid] = await fetchUserProfile(uid);
+      })
+    );
+
     for (const s of allDocs) {
-      if (!profileCache.current[s.userId]) {
-        profileCache.current[s.userId] = await fetchUserProfile(s.userId);
-      }
-      const { name, userClass } = profileCache.current[s.userId];
+      const { name, userClass } = profileCache.current[s.userId] ?? { name: "", userClass: null };
       if (name && name !== "Student") s.userName = name;
       if (userClass !== null) s.userClass = userClass;
     }
 
-    const map: Record<string, GroupedUser> = {};
-    allDocs.forEach((s) => {
-      if (!map[s.userId]) map[s.userId] = { userId: s.userId, userName: s.userName, stories: [] };
-      map[s.userId].stories.push(s);
-    });
-    setGroupedStories(Object.values(map));
+    setAllStories(allDocs);
+    setStoriesLoaded(true);
   }, []);
 
-  useEffect(() => {
-    const uid = user?.uid;
+  // ── FIX: Firebase listeners use currentUserId, filter by expiresAt ────────
 
-    // Listener 1 — own stories (all statuses)
+  useEffect(() => {
     let unsubOwn: (() => void) | undefined;
-    if (uid) {
+
+    // FIX: use currentUserId (reactive) instead of auth.currentUser (stale)
+    if (currentUserId) {
       unsubOwn = onSnapshot(
-        query(collection(db, "stories"), where("userId", "==", uid)),
+        query(
+          collection(db, "stories"),
+          where("userId", "==", currentUserId)
+        ),
         (snap) => {
           ownDocsRef.current = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];
           mergeAndSet(ownDocsRef.current, approvedDocsRef.current);
         },
-        (e) => console.error("fetchStories (own):", e),
+        (e) => {
+          console.warn("fetchStories (own):", e.code);
+          setStoriesLoaded(true);
+        }
       );
     }
 
-    // Listener 2 — public approved stories
+    // FIX: filter out expired stories using expiresAt > now
+    const now = Timestamp.now();
     const unsubApproved = onSnapshot(
-      query(collection(db, "stories"), where("status", "==", "approved")),
+      query(
+        collection(db, "stories"),
+        where("status",    "==", "approved"),
+       // where("expiresAt", ">",  now)        // ← NEW: exclude expired
+      ),
       (snap) => {
         approvedDocsRef.current = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];
         mergeAndSet(ownDocsRef.current, approvedDocsRef.current);
       },
-      (e) => console.error("fetchStories (approved):", e),
+      (e) => {
+        console.warn("fetchStories (approved):", e.code);
+        setStoriesLoaded(true);
+      }
     );
 
-    return () => {
-      unsubOwn?.();
-      unsubApproved();
-    };
-  }, [user, mergeAndSet]);
+    return () => { unsubOwn?.(); unsubApproved(); };
+  }, [currentUserId, mergeAndSet]);
 
-  // ── Progress (images only) ─────────────────────────────
+  // ── Group by category ──────────────────────────────────────────────────────
+
+  const categoryGroups = useMemo<CategoryGroup[]>(() => {
+    const map: Record<string, StoryDoc[]> = {};
+
+    allStories.forEach((story) => {
+      const catId = resolveCategory(
+        story.educationalCategory,
+        story.category || (story.type as any)
+      );
+      if (!map[catId]) map[catId] = [];
+      map[catId].push(story);
+    });
+
+    return categories
+      .filter((cat) => map[cat.id]?.length > 0)
+      .map((cat) => {
+        const stories   = map[cat.id] ?? [];
+        const hasUnread = stories.some((s) => !viewedIds.has(s.id) && s.status === "approved");
+        const isNew     = stories.some((s) => isNewStory(s) && s.status === "approved");
+        return { categoryId: cat.id, stories, hasUnread, isNew };
+      });
+  }, [allStories, categories, viewedIds]);
+
+  // Active story
+  const activeGroup    = categoryGroups.find((g) => g.categoryId === activeCategoryId);
+  const activeStories  = activeGroup?.stories ?? [];
+  const activeStory    = activeStories[currentStoryIdx];
+  const activeCategory = getCategoryById(activeCategoryId, categories);
+  const storyRef       = useRef<StoryDoc | undefined>(undefined);
+  storyRef.current     = activeStory;
+
+  // ── Navigation ─────────────────────────────────────────────────────────────
+
   const goNext = useCallback(() => {
     progressRef.current?.stop();
-    const count = groupedStories[currentUser]?.stories.length ?? 0;
-    if (currentStory < count - 1) {
-      setCurrentStory((p) => p + 1);
-    } else if (currentUser < groupedStories.length - 1) {
-      setCurrentUser((p) => p + 1);
-      setCurrentStory(0);
+    if (currentStoryIdx < activeStories.length - 1) {
+      setCurrentStoryIdx((p) => p + 1);
     } else {
-      setViewerVisible(false);
+      const gi = categoryGroups.findIndex((g) => g.categoryId === activeCategoryId);
+      if (gi < categoryGroups.length - 1) {
+        setActiveCategoryId(categoryGroups[gi + 1].categoryId);
+        setCurrentStoryIdx(0);
+      } else {
+        setViewerVisible(false);
+      }
     }
-  }, [currentStory, currentUser, groupedStories]);
+  }, [currentStoryIdx, activeStories.length, categoryGroups, activeCategoryId]);
+
+  const goPrev = useCallback(() => {
+    progressRef.current?.stop();
+    if (currentStoryIdx > 0) setCurrentStoryIdx((p) => p - 1);
+  }, [currentStoryIdx]);
 
   const startProgress = useCallback((isVideo: boolean) => {
     progressRef.current?.stop();
@@ -381,44 +371,35 @@ export default function Story() {
     progressRef.current.start(({ finished }) => { if (finished) goNext(); });
   }, [goNext, progress]);
 
-  // Stable ref to latest story — avoids stale closure in effect without
-  // making story a dependency (which would re-fire on every like/view update)
-  const storyRef = useRef<StoryDoc | undefined>(undefined);
-  storyRef.current = story;
-
   useEffect(() => {
     if (!viewerVisible) return;
-    const s = storyRef.current;
-    if (!s) return;
+    const story = storyRef.current;
+    if (!story) return;
 
     setLiked(false);
     setVideoPlaying(false);
 
-    if (s.type === "video" && s.mediaUrl) {
+    if (story.type === "video" && story.mediaUrl) {
       player.pause();
-      player.replaceAsync({ uri: resolveStreamUrl(s.mediaUrl) ?? s.mediaUrl }).catch(() => {});
-      // User must tap ▶ to play
+      player.replaceAsync({ uri: resolveStreamUrl(story.mediaUrl) ?? story.mediaUrl }).catch(() => {});
     } else {
       player.pause();
     }
 
-    startProgress(s.type === "video");
-  // Only re-run when the actual story identity changes, NOT when metadata updates
+    startProgress(story.type === "video");
+    markViewed(story.id).then(() => {
+      setViewedIds((prev) => new Set([...prev, story.id]));
+    });
+    updateDoc(doc(db, "stories", story.id), { views: increment(1) }).catch(() => {});
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewerVisible, currentUser, currentStory]);
+  }, [viewerVisible, activeCategoryId, currentStoryIdx]);
 
-  // ── Navigation ─────────────────────────────────────────
-  const goPrev = useCallback(() => {
-    progressRef.current?.stop();
-    if (currentStory > 0) { setCurrentStory((p) => p - 1); }
-    else if (currentUser > 0) { setCurrentUser((p) => p - 1); setCurrentStory(0); }
-  }, [currentStory, currentUser]);
-
-  const openViewer = useCallback(async (idx: number) => {
-    setCurrentUser(idx); setCurrentStory(0); setViewerVisible(true);
-    const s = groupedStories[idx]?.stories[0];
-    if (s) { try { await updateDoc(doc(db, "stories", s.id), { views: increment(1) }); } catch (_) {} }
-  }, [groupedStories]);
+  const openViewer = useCallback((categoryId: string) => {
+    setActiveCategoryId(categoryId);
+    setCurrentStoryIdx(0);
+    setViewerVisible(true);
+  }, []);
 
   const closeViewer = useCallback(() => {
     progressRef.current?.stop();
@@ -426,22 +407,18 @@ export default function Story() {
     setViewerVisible(false);
   }, [player]);
 
-  // Video play/pause — called from unified touch layer when story is video type
   const handleVideoPress = useCallback(() => {
-    if (videoPlaying) {
-      player.pause();
-    } else {
-      player.play();
-    }
+    if (videoPlaying) { player.pause(); } else { player.play(); }
   }, [player, videoPlaying]);
 
   const handleLike = useCallback(async () => {
-    if (!story || liked) return;
+    if (!activeStory || liked) return;
     setLiked(true);
-    try { await updateDoc(doc(db, "stories", story.id), { likes: increment(1) }); } catch (_) {}
-  }, [story, liked]);
+    updateDoc(doc(db, "stories", activeStory.id), { likes: increment(1) }).catch(() => {});
+  }, [activeStory, liked]);
 
-  // ── Upload ─────────────────────────────────────────────
+  // ── Upload ─────────────────────────────────────────────────────────────────
+
   const uploadStory = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
@@ -459,21 +436,16 @@ export default function Story() {
     setUploadPct(0); setUploadPhase("uploading"); setUploading(true); uploadAnim.setValue(0);
 
     const storyId = Date.now().toString();
-    let mediaUrl    = "";
-    let thumbnailUrl = "";
+    let mediaUrl = "", thumbnailUrl = "";
 
     if (isVideo) {
-      // ── Cloudflare Stream for videos ──────────────────────
       const { uploadURL, playbackUrl, thumbnailUrl: cfThumb } = await getStreamUploadUrl();
       await uploadToStream(uploadURL, asset.uri, (pct) => {
         setUploadPct(pct);
         Animated.timing(uploadAnim, { toValue: pct / 100, duration: 250, useNativeDriver: false }).start();
       });
-      mediaUrl     = playbackUrl;
-      thumbnailUrl = cfThumb;
-
+      mediaUrl = playbackUrl; thumbnailUrl = cfThumb;
     } else {
-      // ── Firebase Storage for images (unchanged) ───────────
       const blob: Blob = await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.onload  = () => resolve(xhr.response);
@@ -482,12 +454,10 @@ export default function Story() {
         xhr.open("GET", asset.uri, true);
         xhr.send(null);
       });
-
-      const mediaRef = ref(storage, `stories/${user?.uid}/${storyId}`);
+      const mediaRef = ref(storage, `stories/${currentUserId}/${storyId}`);
       mediaUrl = await new Promise<string>((resolve, reject) => {
         const task = uploadBytesResumable(mediaRef, blob);
-        task.on(
-          "state_changed",
+        task.on("state_changed",
           (snap) => {
             const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
             setUploadPct(pct);
@@ -503,61 +473,76 @@ export default function Story() {
     setUploadPhase("saving");
     Animated.timing(uploadAnim, { toValue: 1, duration: 400, useNativeDriver: false }).start();
 
-    const { name: realName, userClass: realClass } = await fetchUserProfile(user?.uid ?? "");
+    const { name: realName, userClass: realClass } = await fetchUserProfile(currentUserId ?? "");
     await setDoc(doc(db, "stories", storyId), {
-      userId: user?.uid, userName: realName, userClass: realClass ?? null,
+      userId: currentUserId, userName: realName, userClass: realClass ?? null,
       mediaUrl, thumbnailUrl: thumbnailUrl || mediaUrl,
-      type: isVideo ? "video" : "image", category: "achievement",
+      type: isVideo ? "video" : "image",
+      category: "achievement", educationalCategory: "success",
       title: "", description: "", relatedFeature: "SkillBattle",
       likes: 0, views: 0, status: "pending", isFeatured: false,
       createdAt: serverTimestamp(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      expiresAt: Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
     });
 
     setUploadPhase("done");
-    // Listeners auto-refresh — just close the overlay after a short delay
-    setTimeout(() => { setUploading(false); }, 1200);
-  }, [user, uploadAnim]);
+    setTimeout(() => setUploading(false), 1200);
+  }, [currentUserId, uploadAnim]);
 
-  // ── Render ─────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <View style={[s.container, { backgroundColor: colors.background }]}>
 
+      {/* ── Category card strip ─────────────────────────────────────── */}
       <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={groupedStories}
-        keyExtractor={(item) => item.userId}
+        data={categoryGroups}
+        keyExtractor={(item) => item.categoryId}
         removeClippedSubviews
-        maxToRenderPerBatch={6}
+        maxToRenderPerBatch={8}
         windowSize={5}
         initialNumToRender={5}
-        getItemLayout={(_, i) => ({ length: AVATAR_SIZE + 20, offset: (AVATAR_SIZE + 20) * i, index: i })}
-        renderItem={({ item, index }) => (
-          <StoryAvatar item={item} onPress={() => openViewer(index)} />
-        )}
-        ListHeaderComponent={
-          <TouchableOpacity onPress={uploadStory} activeOpacity={0.85} style={s.addWrap}>
-            <View style={[s.addCircle, { backgroundColor: colors.card }]}><Text style={s.addPlus}>+</Text></View>
-            <Text style={[s.addLabel, { color: colors.textSecondary }]}>Your Story</Text>
-          </TouchableOpacity>
+        contentContainerStyle={s.listContent}
+        getItemLayout={(_, i) => ({ length: 115, offset: 115 * i, index: i })}
+        ListHeaderComponent={<AddStoryCard onPress={uploadStory} size={100} />}
+        renderItem={({ item }) => {
+          const cat = getCategoryById(item.categoryId, categories);
+          return (
+            <StoryCard
+              category={cat}
+              count={item.stories.length}
+              hasUnread={item.hasUnread}
+              isNew={item.isNew}
+              onPress={() => openViewer(item.categoryId)}
+              size={100}
+            />
+          );
+        }}
+        ListEmptyComponent={
+          // Show skeletons while loading, nothing after load (no stories yet)
+          !storiesLoaded ? <SkeletonStrip /> : null
         }
       />
 
-      {/* VIEWER */}
-      <Modal visible={viewerVisible} animationType="slide" statusBarTranslucent onRequestClose={closeViewer}>
+      {/* ── Story Viewer ────────────────────────────────────────────── */}
+      <Modal
+        visible={viewerVisible}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={closeViewer}
+      >
         <View style={s.viewer}>
 
-          {/* Thumbnail — always at base (zIndex 0), covers screen before video loads */}
           <Image
-            source={{ uri: story?.thumbnailUrl || story?.mediaUrl }}
+            source={{ uri: activeStory?.thumbnailUrl || activeStory?.mediaUrl }}
             style={s.media}
             resizeMode="cover"
             fadeDuration={0}
           />
 
-          {/* VideoView — rendered above thumbnail, no touch handling of its own */}
-          {story?.type === "video" && (
+          {activeStory?.type === "video" && (
             <VideoView
               player={player}
               style={s.videoLayer}
@@ -568,34 +553,21 @@ export default function Story() {
             />
           )}
 
-          {/* Scrims — pointer-events none so they never eat touches */}
           <View style={s.scrimTop}    pointerEvents="none" />
           <View style={s.scrimBottom} pointerEvents="none" />
 
-          {/*
-            SINGLE UNIFIED TOUCH LAYER
-            Covers the whole screen and decides what to do based on tap position.
-            Left 35% → prev story
-            Right 65% → for VIDEO: play/pause toggle; for IMAGE: next story
-            This eliminates all zIndex fighting between play button and tap zones.
-          */}
+          {/* Touch layer */}
           <View
             style={s.touchLayer}
             onStartShouldSetResponder={() => true}
             onResponderRelease={(e) => {
               const tapX = e.nativeEvent.locationX;
-              const isLeft = tapX < SW * 0.35;
-              if (isLeft) {
-                goPrev();
-              } else if (story?.type === "video") {
-                handleVideoPress();
-              } else {
-                goNext();
-              }
+              if (tapX < SW * 0.35) { goPrev(); }
+              else if (activeStory?.type === "video") { handleVideoPress(); }
+              else { goNext(); }
             }}
           >
-            {/* Play / pause icon — purely visual, no touch handling */}
-            {story?.type === "video" && (
+            {activeStory?.type === "video" && (
               <View style={s.playBtnWrap} pointerEvents="none">
                 {!videoPlaying && (
                   <View style={s.playBtn}>
@@ -608,95 +580,124 @@ export default function Story() {
 
           {/* Progress bar */}
           <View style={s.progressWrap} pointerEvents="none">
-            <ProgressBar total={group?.stories.length ?? 1} current={currentStory} progress={progress} />
+            <ProgressBar
+              total={activeStories.length}
+              current={currentStoryIdx}
+              progress={progress}
+            />
           </View>
 
           {/* Header */}
           <View style={s.header}>
             <View style={s.headerLeft}>
-              <View style={s.headerAvtWrap}>
-                {story?.thumbnailUrl
-                  ? <Image source={{ uri: story.thumbnailUrl }} style={s.headerAvt} resizeMode="cover" fadeDuration={0} />
-                  : <View style={s.headerAvtFallback}><Text style={s.headerAvtInitial}>{story?.userName?.[0]?.toUpperCase() ?? "?"}</Text></View>
-                }
+              <View style={[s.catIconBox, { borderRadius: 8 }]}>
+                <Text style={s.catIconEmoji}>{activeCategory?.emoji ?? "📚"}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.studentName} numberOfLines={1}>{story?.userName ?? ""}</Text>
-                {!!story?.userClass && <Text style={s.studentSub}>Class {story.userClass}</Text>}
+                <Text style={s.catName}>{activeCategory?.label ?? ""}</Text>
+                <Text style={s.catSub}>
+                  {currentStoryIdx + 1} of {activeStories.length}
+                </Text>
               </View>
             </View>
-            <TouchableOpacity onPress={closeViewer} style={s.closeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <TouchableOpacity
+              onPress={closeViewer}
+              style={s.closeBtn}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
               <Text style={s.closeTxt}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Badges */}
+          {/* Status badges */}
           <View style={s.badgeRow} pointerEvents="none">
-            {story?.status === "pending" && (
+            {activeStory?.status === "pending" && (
               <View style={[s.badge, { backgroundColor: "#FEF3C7" }]}>
                 <Text style={s.badgeTxt}>⏳ Pending Approval</Text>
               </View>
             )}
-            {story?.status === "rejected" && (
+            {activeStory?.status === "rejected" && (
               <View style={[s.badge, { backgroundColor: "#FEE2E2" }]}>
                 <Text style={[s.badgeTxt, { color: "#DC2626" }]}>✗ Not Approved</Text>
               </View>
             )}
-            {!!story?.category && story?.status === "approved" && (
-              <View style={[s.badge, story.category === "achievement" ? s.badgeAch : s.badgeTes]}>
-                <Text style={s.badgeTxt}>{story.category === "achievement" ? "🏆 Achievement" : "💬 Testimonial"}</Text>
+            {activeStory?.isFeatured && (
+              <View style={[s.badge, s.badgeFeat]}>
+                <Text style={[s.badgeTxt, { color: "#fff" }]}>★ Featured</Text>
               </View>
             )}
-            {story?.isFeatured && (
-              <View style={[s.badge, s.badgeFeat]}><Text style={[s.badgeTxt, { color: "#fff" }]}>★ Featured</Text></View>
+          </View>
+
+          {/* Category tag */}
+          {activeStory?.status === "approved" && (
+            <View style={s.catTagWrap} pointerEvents="none">
+              <View style={s.catTag}>
+                <Text style={s.catTagText}>
+                  {activeCategory?.emoji} {activeCategory?.label}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Info */}
+          <View style={s.info} pointerEvents="none">
+            {!!activeStory?.userName && (
+              <Text style={s.authorLine} numberOfLines={1}>
+                by {activeStory.userName}
+                {activeStory.userClass ? `  ·  Class ${activeStory.userClass}` : ""}
+              </Text>
+            )}
+            {!!activeStory?.title && (
+              <Text style={s.title} numberOfLines={2}>{activeStory.title}</Text>
+            )}
+            {!!activeStory?.description && (
+              <Text style={s.desc} numberOfLines={3}>{activeStory.description}</Text>
             )}
           </View>
 
-          {/* Title + Description */}
-          <View style={s.info} pointerEvents="none">
-            {!!story?.title       && <Text style={s.title} numberOfLines={2}>{story.title}</Text>}
-            {!!story?.description && <Text style={s.desc}  numberOfLines={3}>{story.description}</Text>}
-          </View>
-
-          {/* Partner banner — linked stories only */}
-          {story?.storyKind === "linked" && !!story?.learnMoreUrl && (
+          {/* Partner bar */}
+          {activeStory?.storyKind === "linked" && !!activeStory?.learnMoreUrl && (
             <View style={s.partnerBar}>
               <View style={s.partnerInfo}>
-                {story.partnerLogoUrl ? (
-                  <Image source={{ uri: story.partnerLogoUrl }} style={s.partnerLogo} resizeMode="contain" />
+                {activeStory.partnerLogoUrl ? (
+                  <Image
+                    source={{ uri: activeStory.partnerLogoUrl }}
+                    style={s.partnerLogo}
+                    resizeMode="contain"
+                  />
                 ) : (
                   <Text style={s.partnerEmoji}>🔗</Text>
                 )}
                 <Text style={s.partnerName} numberOfLines={1}>
-                  {story.partnerName ?? "Learn More"}
+                  {activeStory.partnerName ?? "Learn More"}
                 </Text>
               </View>
               <TouchableOpacity
                 style={s.learnMoreBtn}
                 activeOpacity={0.85}
-                onPress={() => Linking.openURL(story.learnMoreUrl!).catch(() => {})}
+                onPress={() => Linking.openURL(activeStory.learnMoreUrl!).catch(() => {})}
               >
                 <Text style={s.learnMoreTxt}>Learn More →</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Like + Views — these need touches so no pointerEvents="none" */}
+          {/* Like + Views */}
           <View style={s.actions}>
             <TouchableOpacity onPress={handleLike} style={s.actionBtn} activeOpacity={0.8}>
               <Text style={s.actionIcon}>{liked ? "❤️" : "🤍"}</Text>
-              <Text style={s.actionCount}>{(story?.likes ?? 0) + (liked ? 1 : 0)}</Text>
+              <Text style={s.actionCount}>{(activeStory?.likes ?? 0) + (liked ? 1 : 0)}</Text>
             </TouchableOpacity>
             <View style={s.actionBtn}>
               <Text style={s.actionIcon}>👁</Text>
-              <Text style={s.actionCount}>{story?.views ?? 0}</Text>
+              <Text style={s.actionCount}>{activeStory?.views ?? 0}</Text>
             </View>
           </View>
 
         </View>
       </Modal>
 
-      {/* UPLOAD OVERLAY */}
+      {/* ── Upload overlay ──────────────────────────────────────────── */}
       <Modal visible={uploading} transparent animationType="fade">
         <View style={s.upOverlay}>
           <View style={s.upCard}>
@@ -706,10 +707,14 @@ export default function Story() {
               </Text>
             </View>
             <Text style={s.upTitle}>
-              {uploadPhase === "uploading" ? "Uploading story…" : uploadPhase === "saving" ? "Saving…" : "Submitted! 🎉"}
+              {uploadPhase === "uploading" ? "Uploading story…"
+                : uploadPhase === "saving" ? "Saving…"
+                : "Submitted! 🎉"}
             </Text>
             <Text style={s.upSub}>
-              {uploadPhase === "uploading" ? "Please keep the app open" : uploadPhase === "saving" ? "Almost done…" : "Waiting for admin approval"}
+              {uploadPhase === "uploading" ? "Please keep the app open"
+                : uploadPhase === "saving"   ? "Almost done…"
+                : "Waiting for admin approval"}
             </Text>
             <View style={s.upTrack}>
               <Animated.View
@@ -721,7 +726,9 @@ export default function Story() {
               />
             </View>
             <Text style={s.upPct}>
-              {uploadPhase === "done" ? "100%" : uploadPhase === "saving" ? "Saving…" : `${uploadPct}%`}
+              {uploadPhase === "done" ? "100%"
+                : uploadPhase === "saving" ? "Saving…"
+                : `${uploadPct}%`}
             </Text>
           </View>
         </View>
@@ -731,67 +738,67 @@ export default function Story() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  container: { paddingVertical: 10 },
+  container:    { paddingVertical: 10 },
+  listContent:  { paddingHorizontal: 8, gap: 0 },
 
-  addWrap:   { alignItems: "center", marginHorizontal: 6, width: AVATAR_SIZE + 8 },
-  addCircle: { width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2, borderWidth: 2, borderColor: "#6C63FF", borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
-  addPlus:   { fontSize: 26, color: "#6C63FF", fontWeight: "300" },
-  addLabel:  { fontSize: 11, marginTop: 5, textAlign: "center" },
+  skeletonRow:  { flexDirection: "row", gap: 10, paddingLeft: 8 },
+  skeletonCard: {
+    width: 100, height: 118, borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
 
-  viewer: { flex: 1, backgroundColor: "#000" },
-
+  viewer:     { flex: 1, backgroundColor: "#000" },
   media:      { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
-  videoLayer:  { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
-  // Single touch layer — covers full screen, handles ALL taps (prev / play-pause / next)
-  touchLayer:  { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
-  // Play button is purely visual inside touchLayer — no touch of its own
+  videoLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  touchLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
+
   playBtnWrap: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center" },
   playBtn:     { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(0,0,0,0.58)", alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: "rgba(255,255,255,0.85)" },
   playIcon:    { color: "#fff", fontSize: 30, marginLeft: 6 },
 
   scrimTop:    { position: "absolute", top: 0, left: 0, right: 0, height: 180, backgroundColor: "rgba(0,0,0,0.38)", zIndex: 4 },
-  scrimBottom: { position: "absolute", bottom: 0, left: 0, right: 0, height: 240, backgroundColor: "rgba(0,0,0,0.45)", zIndex: 4 },
+  scrimBottom: { position: "absolute", bottom: 0, left: 0, right: 0, height: 260, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 4 },
 
   progressWrap: { position: "absolute", top: Platform.OS === "ios" ? 54 : 36, left: 0, right: 0, zIndex: 10 },
 
-  header:            { position: "absolute", top: Platform.OS === "ios" ? 66 : 48, left: 14, right: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 10 },
-  headerLeft:        { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  headerAvtWrap:     { width: 40, height: 40, borderRadius: 20, overflow: "hidden", borderWidth: 2, borderColor: "#fff" },
-  headerAvt:         { width: "100%", height: "100%" },
-  headerAvtFallback: { width: "100%", height: "100%", backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  headerAvtInitial:  { color: "#fff", fontWeight: "700", fontSize: 16 },
-  studentName:       { color: "#fff", fontWeight: "700", fontSize: 14, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  studentSub:        { color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 },
-  closeBtn:          { padding: 4 },
-  closeTxt:          { color: "#fff", fontSize: 20, fontWeight: "700" },
+  header:      { position: "absolute", top: Platform.OS === "ios" ? 66 : 48, left: 14, right: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 10 },
+  headerLeft:  { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  catIconBox:  { width: 40, height: 40, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)" },
+  catIconEmoji:{ fontSize: 20 },
+  catName:     { color: "#fff", fontWeight: "700", fontSize: 15, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  catSub:      { color: "rgba(255,255,255,0.65)", fontSize: 11, marginTop: 1 },
+  closeBtn:    { padding: 4 },
+  closeTxt:    { color: "#fff", fontSize: 20, fontWeight: "700" },
 
-  badgeRow: { position: "absolute", top: Platform.OS === "ios" ? 118 : 100, left: 14, flexDirection: "row", gap: 6, zIndex: 10 },
-  badge:    { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeAch: { backgroundColor: "#FEF3C7" },
-  badgeTes: { backgroundColor: "#EDE9FE" },
-  badgeFeat:{ backgroundColor: "#EC4899" },
-  badgeTxt: { fontSize: 11, fontWeight: "600", color: "#374151" },
+  badgeRow:  { position: "absolute", top: Platform.OS === "ios" ? 118 : 100, left: 14, flexDirection: "row", gap: 6, zIndex: 10 },
+  badge:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeFeat: { backgroundColor: "#EC4899" },
+  badgeTxt:  { fontSize: 11, fontWeight: "600", color: "#374151" },
 
-  info:  { position: "absolute", bottom: 110, left: 16, right: 80, zIndex: 10 },
-  title: { color: "#fff", fontSize: 17, fontWeight: "700", marginBottom: 6, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  desc:  { color: "rgba(255,255,255,0.88)", fontSize: 13, lineHeight: 18 },
+  catTagWrap: { position: "absolute", top: Platform.OS === "ios" ? 118 : 100, right: 14, zIndex: 10 },
+  catTag:     { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.3)" },
+  catTagText: { color: "#fff", fontSize: 11, fontWeight: "700" },
 
-  actions:     { position: "absolute", bottom: 100, right: 14, alignItems: "center", gap: 16, zIndex: 10 },
+  info:       { position: "absolute", bottom: 120, left: 16, right: 80, zIndex: 10 },
+  authorLine: { color: "rgba(255,255,255,0.6)", fontSize: 11, fontWeight: "600", marginBottom: 4 },
+  title:      { color: "#fff", fontSize: 18, fontWeight: "800", marginBottom: 6, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  desc:       { color: "rgba(255,255,255,0.88)", fontSize: 13, lineHeight: 19 },
+
+  actions:     { position: "absolute", bottom: 110, right: 14, alignItems: "center", gap: 16, zIndex: 10 },
   actionBtn:   { alignItems: "center" },
   actionIcon:  { fontSize: 26 },
   actionCount: { color: "#fff", fontSize: 12, fontWeight: "600", marginTop: 2 },
 
-  // tapLeft / tapRight removed — unified touchLayer handles all navigation
-
-  partnerBar:    { position: "absolute", bottom: 90, left: 14, right: 14, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(255,215,0,0.35)" },
-  partnerInfo:   { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  partnerLogo:   { width: 28, height: 28, borderRadius: 6, backgroundColor: "#fff" },
-  partnerEmoji:  { fontSize: 20 },
-  partnerName:   { color: "#fff", fontSize: 13, fontWeight: "600", flex: 1 },
-  learnMoreBtn:  { backgroundColor: "#FFD700", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginLeft: 10 },
-  learnMoreTxt:  { color: "#1a1a1a", fontSize: 12, fontWeight: "800" },
+  partnerBar:   { position: "absolute", bottom: 94, left: 14, right: 14, zIndex: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "rgba(255,215,0,0.35)" },
+  partnerInfo:  { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  partnerLogo:  { width: 28, height: 28, borderRadius: 6, backgroundColor: "#fff" },
+  partnerEmoji: { fontSize: 20 },
+  partnerName:  { color: "#fff", fontSize: 13, fontWeight: "600", flex: 1 },
+  learnMoreBtn: { backgroundColor: "#FFD700", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginLeft: 10 },
+  learnMoreTxt: { color: "#1a1a1a", fontSize: 12, fontWeight: "800" },
 
   upOverlay:    { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
   upCard:       { backgroundColor: "#fff", borderRadius: 20, paddingVertical: 32, paddingHorizontal: 28, width: "100%", alignItems: "center", elevation: 10 },

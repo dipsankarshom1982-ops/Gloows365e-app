@@ -1,6 +1,13 @@
-// hooks/useLearnFun.ts
+// PATH: hooks/useLearnFun.ts
+// Changes:
+//  • completeMission no longer increments LearnFunCoins or learnScore
+//  • Instead calls claimVCoinReward Cloud Function (activityId: "lesson_complete")
+//    so V-Coins are awarded via the single authoritative path (with Redis dedup + yearlyVCoins)
+//  • profile.coins now reads from vCoins (users doc) not LearnFunCoins
+//  • leaderboard write removed (rank is now derived from vCoinsYear_* not learnScore)
+//  • XP + streak + badges still work exactly as before
 
-import { auth, db } from "@/lib/firebase";
+import { auth, db, functions } from "@/lib/firebase";
 import { BADGES, GAMES, getLevelFromXP, SKILL_WORLDS } from "@/lib/learnfun/constants";
 import { getMissionForClass } from "@/lib/learnfun/missionData";
 import { Badge, DailyMission, LearnFunGame, SkillWorld, StudentLearnFunProfile } from "@/lib/learnfun/types";
@@ -17,6 +24,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { useCallback, useEffect, useState } from "react";
 
 interface UseLearnFunReturn {
@@ -36,6 +44,12 @@ function getTodayStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Cloud Function callable
+const claimVCoinRewardCF = httpsCallable<
+  { activityId: string; referenceId?: string },
+  { success: boolean; coinsAwarded: number }
+>(functions, "claimVCoinReward");
+
 export function useLearnFun(): UseLearnFunReturn {
   const [profile, setProfile]                   = useState<StudentLearnFunProfile | null>(null);
   const [todaysMission, setTodaysMission]       = useState<DailyMission | null>(null);
@@ -48,7 +62,7 @@ export function useLearnFun(): UseLearnFunReturn {
 
   const todayStr = getTodayStr();
 
-  // ── Load games: Firestore first, always fall back to local constants ─────────
+  // ── Load games ────────────────────────────────────────────────────────────
   const loadGamesForClass = useCallback(async (studentClass: number) => {
     const local = GAMES.filter(
       (g) => g.classRange.includes(studentClass) && g.isActive && !g.isComingSoon
@@ -75,7 +89,7 @@ export function useLearnFun(): UseLearnFunReturn {
     }
   }, []);
 
-  // ── Load today's mission ───────────────────────────────────────────────────
+  // ── Load today's mission ──────────────────────────────────────────────────
   const loadTodaysMission = useCallback(async (studentClass: number) => {
     try {
       const q = query(
@@ -118,7 +132,9 @@ export function useLearnFun(): UseLearnFunReturn {
             class:               studentClass,
             level:               getLevelFromXP(xp),
             xp,
-            coins:               data.LearnFunCoins ?? 0,
+            // coins now reflects V-Coins balance (read from users doc via useVCoins elsewhere)
+            // keeping the field here as 0 so CoinXPBar doesn't break — it will be fed vCoins
+            coins:               data.vCoins ?? 0,
             streak:              data.LearnFunStreak ?? 0,
             badges:              data.LearnFunBadges ?? [],
             completedMissionIds: data.LearnFunCompletedMissions ?? [],
@@ -147,29 +163,33 @@ export function useLearnFun(): UseLearnFunReturn {
       const user = auth.currentUser;
       if (!user || !todaysMission) return;
 
-      const earnedXP    = Math.round((todaysMission.reward.xp    * score) / 100);
-      const earnedCoins = Math.round((todaysMission.reward.coins * score) / 100);
-      const learnDelta  = earnedXP + earnedCoins;
+      const earnedXP = Math.round((todaysMission.reward.xp * score) / 100);
 
       try {
-        // 1. Update student stats
+        // 1. Update student XP + streak + badges (NO coins here — V-Coins handled below)
         const studentUpdate: Record<string, unknown> = {
-          LearnFunXP:               increment(earnedXP),
-          LearnFunCoins:            increment(earnedCoins),
-          LearnFunStreak:           increment(1),
-          LearnFunLastMissionDate:  todayStr,
-          learnScore:               increment(learnDelta),
+          LearnFunXP:                increment(earnedXP),
+          LearnFunStreak:            increment(1),
+          LearnFunLastMissionDate:   todayStr,
           LearnFunCompletedMissions: arrayUnion(missionId),
         };
         if (badgeEarned) studentUpdate.LearnFunBadges = arrayUnion(badgeEarned);
         await updateDoc(doc(db, "students", user.uid), studentUpdate);
 
-        // 2. Update leaderboard entry (for rank queries)
-        await setDoc(
-          doc(db, "leaderboard", user.uid),
-          { learnScore: increment(learnDelta), updatedAt: Timestamp.now() },
-          { merge: true }
-        );
+        // 2. Award V-Coins via Cloud Function (handles dedup + yearlyVCoins + Redis lock)
+        //    activityId "lesson_complete" = 10 V-Coins, max 5/day
+        //    referenceId = missionId prevents double-awarding same mission
+        try {
+          await claimVCoinRewardCF({
+            activityId:  "lesson_complete",
+            referenceId: missionId,
+          });
+        } catch (vcErr: any) {
+          // "already-exists" or "resource-exhausted" = daily limit hit — silent, not an error
+          if (vcErr?.code !== "already-exists" && vcErr?.code !== "resource-exhausted") {
+            console.warn("[useLearnFun] V-Coin claim failed:", vcErr?.message);
+          }
+        }
 
         // 3. Save individual mission progress
         await setDoc(
@@ -181,9 +201,8 @@ export function useLearnFun(): UseLearnFunReturn {
             gameType:      todaysMission.gameType,
             score,
             xpEarned:      earnedXP,
-            coinsEarned:   earnedCoins,
-            badgeEarned:   badgeEarned ?? null,
             completedAt:   Timestamp.now(),
+            badgeEarned:   badgeEarned ?? null,
             studentClass:  profile?.class ?? 0,
           }
         );

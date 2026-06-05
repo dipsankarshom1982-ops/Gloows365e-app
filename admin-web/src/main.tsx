@@ -1,11 +1,4 @@
 // PATH: admin-web/src/main.tsx
-/**
- * admin-web/src/main.tsx — OPTIMIZED
- *
- * All pages are lazy-loaded with React.lazy() + Suspense.
- * Only the current route's code is downloaded on first visit.
- * Subsequent routes load in ~100ms from the Vite chunk cache.
- */
 
 import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
@@ -14,54 +7,53 @@ import Layout from "./components/Layout";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import "./index.css";
 
-// ── Lazy imports — each page is a separate JS chunk ──────────────────────────
+const Dashboard            = lazy(() => import("./pages/Dashboard"));
+const PlatformAnalytics    = lazy(() => import("./pages/PlatformAnalytics"));
 
-const Dashboard           = lazy(() => import("./pages/Dashboard"));
-const PlatformAnalytics   = lazy(() => import("./pages/PlatformAnalytics"));
+const AdsList              = lazy(() => import("./pages/AdsList"));
+const CreateAd             = lazy(() => import("./pages/CreateAd"));
+const Analytics            = lazy(() => import("./pages/Analytics"));
 
-const AdsList             = lazy(() => import("./pages/AdsList"));
-const CreateAd            = lazy(() => import("./pages/CreateAd"));
-const Analytics           = lazy(() => import("./pages/Analytics"));
+const Banners              = lazy(() => import("./pages/Banners"));
+const ShortReels           = lazy(() => import("./pages/ShortReels"));
+const SeekhoVideos         = lazy(() => import("./pages/SeekhoVideos"));
+const CreateSeekhoVideo    = lazy(() => import("./pages/CreateSeekhoVideo"));
+const KnowledgeVideos      = lazy(() => import("./pages/KnowledgeVideos"));
+const CreateKnowledgeVideo = lazy(() => import("./pages/CreateKnowledgeVideo"));
+const Stories              = lazy(() => import("./pages/Stories"));
+const Partners             = lazy(() => import("./pages/Partners"));
 
-const Banners             = lazy(() => import("./pages/Banners"));
-const ShortReels          = lazy(() => import("./pages/ShortReels"));
-const SeekhoVideos        = lazy(() => import("./pages/SeekhoVideos"));
-const CreateSeekhoVideo   = lazy(() => import("./pages/CreateSeekhoVideo"));
-const KnowledgeVideos     = lazy(() => import("./pages/KnowledgeVideos"));
-const CreateKnowledgeVideo= lazy(() => import("./pages/CreateKnowledgeVideo"));
-const Stories             = lazy(() => import("./pages/Stories"));
-const Partners            = lazy(() => import("./pages/Partners"));
+const Courses              = lazy(() => import("./pages/Courses"));
+const CreateCourse         = lazy(() => import("./pages/CreateCourse"));
+const Lessons              = lazy(() => import("./pages/Lessons"));
+const Practice             = lazy(() => import("./pages/Practice"));
 
-const Courses             = lazy(() => import("./pages/Courses"));
-const CreateCourse        = lazy(() => import("./pages/CreateCourse"));
-const Lessons             = lazy(() => import("./pages/Lessons"));
-const Practice            = lazy(() => import("./pages/Practice"));
+const Contests             = lazy(() => import("./pages/Contests"));
+const CreateContest        = lazy(() => import("./pages/CreateContest"));
+const VidyastarConfig      = lazy(() => import("./pages/VidyastarConfig"));
+const Quizzes              = lazy(() => import("./pages/Quizzes"));
+const CreateQuiz           = lazy(() => import("./pages/CreateQuiz"));
+const QuizQuestions        = lazy(() => import("./pages/QuizQuestions"));
+const SkillBattles         = lazy(() => import("./pages/SkillBattles"));
+const LearnFun             = lazy(() => import("./pages/LearnFun"));
+const BadgesAndStars       = lazy(() => import("./pages/BadgesAndStars"));
 
-const Contests            = lazy(() => import("./pages/Contests"));
-const CreateContest       = lazy(() => import("./pages/CreateContest"));
-const VidyastarConfig     = lazy(() => import("./pages/VidyastarConfig"));
-const Quizzes             = lazy(() => import("./pages/Quizzes"));
-const CreateQuiz          = lazy(() => import("./pages/CreateQuiz"));
-const QuizQuestions       = lazy(() => import("./pages/QuizQuestions"));
-const SkillBattles        = lazy(() => import("./pages/SkillBattles"));
-const LearnFun            = lazy(() => import("./pages/LearnFun"));
-const BadgesAndStars      = lazy(() => import("./pages/BadgesAndStars"));
+const AppModules           = lazy(() => import("./pages/AppModules"));
+const FeatureControl       = lazy(() => import("./pages/FeatureControl"));
+const Referrals            = lazy(() => import("./pages/Referrals"));
+const SubscriptionPlans    = lazy(() => import("./pages/SubscriptionPlans"));
+const Coupons              = lazy(() => import("./pages/Coupons"));
+const VCoinRules           = lazy(() => import("./pages/VCoinRules"));
+const VCoinLeaderboard     = lazy(() => import("./pages/VCoinLeaderboard"));
 
-const AppModules          = lazy(() => import("./pages/AppModules"));
-const FeatureControl      = lazy(() => import("./pages/FeatureControl"));
-const Referrals           = lazy(() => import("./pages/Referrals")); // ← NEW
-const SubscriptionPlans   = lazy(() => import("./pages/SubscriptionPlans"));
-const Coupons             = lazy(() => import("./pages/Coupons"));
-const VCoinRules          = lazy(() => import("./pages/VCoinRules"));
+const Students             = lazy(() => import("./pages/Students"));
+const Subscriptions        = lazy(() => import("./pages/Subscriptions"));
+const AiUsage              = lazy(() => import("./pages/AiUsage"));
+const RestartLeads         = lazy(() => import("./pages/RestartLeads")); // ← NEW
 
-const Students            = lazy(() => import("./pages/Students"));
-const Subscriptions       = lazy(() => import("./pages/Subscriptions"));
-const AiUsage             = lazy(() => import("./pages/AiUsage"));
+const Admins               = lazy(() => import("./pages/Admins"));
+const Login                = lazy(() => import("./pages/Login"));
 
-const Admins              = lazy(() => import("./pages/Admins"));
-const Login               = lazy(() => import("./pages/Login"));
-
-// ── Loading spinner shown while a page chunk downloads ───────────────────────
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -73,7 +65,6 @@ function PageLoader() {
   );
 }
 
-// ── Protected route wrapper ───────────────────────────────────────────────────
 function ProtectedRoutes() {
   const { user, loading } = useAuth();
 
@@ -92,17 +83,14 @@ function ProtectedRoutes() {
     <Layout>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Overview */}
           <Route path="/"                   element={<Dashboard />} />
           <Route path="/platform-analytics" element={<PlatformAnalytics />} />
 
-          {/* Ads */}
           <Route path="/ads"       element={<AdsList />} />
           <Route path="/ads/new"   element={<CreateAd />} />
           <Route path="/ads/:id"   element={<CreateAd />} />
           <Route path="/analytics" element={<Analytics />} />
 
-          {/* Content */}
           <Route path="/banners"                    element={<Banners />} />
           <Route path="/short-reels"                element={<ShortReels />} />
           <Route path="/seekho-videos"              element={<SeekhoVideos />} />
@@ -114,14 +102,12 @@ function ProtectedRoutes() {
           <Route path="/stories"                    element={<Stories />} />
           <Route path="/partners"                   element={<Partners />} />
 
-          {/* Curriculum */}
           <Route path="/courses"                   element={<Courses />} />
           <Route path="/courses/new"               element={<CreateCourse />} />
           <Route path="/courses/:id"               element={<CreateCourse />} />
           <Route path="/courses/:courseId/lessons" element={<Lessons />} />
           <Route path="/practice"                  element={<Practice />} />
 
-          {/* Gamification */}
           <Route path="/contests"                  element={<Contests />} />
           <Route path="/contests/new"              element={<CreateContest />} />
           <Route path="/contests/:id"              element={<CreateContest />} />
@@ -134,20 +120,19 @@ function ProtectedRoutes() {
           <Route path="/learnfun"                  element={<LearnFun />} />
           <Route path="/badges"                    element={<BadgesAndStars />} />
 
-          {/* App Config */}
           <Route path="/feature-control"    element={<FeatureControl />} />
-          <Route path="/referrals"          element={<Referrals />} />      {/* ← NEW */}
+          <Route path="/referrals"          element={<Referrals />} />
           <Route path="/modules"            element={<AppModules />} />
           <Route path="/subscription-plans" element={<SubscriptionPlans />} />
           <Route path="/coupons"            element={<Coupons />} />
           <Route path="/vcoin-rules"        element={<VCoinRules />} />
+          <Route path="/vcoin-leaderboard"  element={<VCoinLeaderboard />} />
 
-          {/* Users */}
-          <Route path="/students"      element={<Students />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
-          <Route path="/ai-usage"      element={<AiUsage />} />
+          <Route path="/students"        element={<Students />} />
+          <Route path="/subscriptions"   element={<Subscriptions />} />
+          <Route path="/ai-usage"        element={<AiUsage />} />
+          <Route path="/restart-leads"   element={<RestartLeads />} /> {/* ← NEW */}
 
-          {/* Admin */}
           <Route path="/admins" element={<Admins />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />

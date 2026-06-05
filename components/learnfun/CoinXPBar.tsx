@@ -1,4 +1,8 @@
-// components/learnfun/CoinXPBar.tsx
+// PATH: components/learnfun/CoinXPBar.tsx
+// Changes:
+//  • Prop renamed from `coins` to `vCoins` (breaking: update all callers)
+//  • Label changed from "🪙 {coins}" to "🪙 V-Coins" display
+//  • No logic change — just removes reference to old LearnFunCoins semantics
 
 import { useTheme } from "@/context/ThemeContext";
 import { XP_PER_LEVEL } from "@/lib/learnfun/constants";
@@ -6,13 +10,13 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 interface CoinXPBarProps {
-  coins: number;
+  vCoins: number;   // was: coins (LearnFunCoins) — now V-Coins balance
   xp: number;
   level: number;
   streak: number;
 }
 
-export default function CoinXPBar({ coins, xp, level, streak }: CoinXPBarProps) {
+export default function CoinXPBar({ vCoins, xp, level, streak }: CoinXPBarProps) {
   const { colors } = useTheme();
 
   const xpInCurrentLevel = xp % XP_PER_LEVEL;
@@ -26,10 +30,10 @@ export default function CoinXPBar({ coins, xp, level, streak }: CoinXPBarProps) 
         <Text style={[styles.pillValue, { color: "#EF4444" }]}>{streak}</Text>
       </View>
 
-      {/* Coins */}
+      {/* V-Coins */}
       <View style={[styles.pill, { backgroundColor: "rgba(245,158,11,0.18)" }]}>
         <Text style={styles.pillEmoji}>🪙</Text>
-        <Text style={[styles.pillValue, { color: "#F59E0B" }]}>{coins.toLocaleString()}</Text>
+        <Text style={[styles.pillValue, { color: "#F59E0B" }]}>{vCoins.toLocaleString()}</Text>
       </View>
 
       {/* XP + Level */}
@@ -74,13 +78,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 4,
   },
-  pillEmoji: {
-    fontSize: 14,
-  },
-  pillValue: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  pillEmoji: { fontSize: 14 },
+  pillValue: { fontSize: 13, fontWeight: "700" },
   xpPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -91,26 +90,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 120,
   },
-  xpTextGroup: {
-    flex: 1,
-    gap: 3,
-  },
-  xpLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  xpBarBg: {
-    height: 4,
-    borderRadius: 2,
-    overflow: "hidden",
-    width: "100%",
-  },
-  xpBarFill: {
-    height: "100%",
-    borderRadius: 2,
-  },
-  xpCount: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  xpTextGroup: { flex: 1, gap: 3 },
+  xpLabel:    { fontSize: 10, fontWeight: "600" },
+  xpBarBg:    { height: 4, borderRadius: 2, overflow: "hidden", width: "100%" },
+  xpBarFill:  { height: "100%", borderRadius: 2 },
+  xpCount:    { fontSize: 11, fontWeight: "700" },
 });

@@ -1,3 +1,9 @@
+// PATH: app/(drawer)/_layout.tsx
+// Changes:
+//  • Removed LearnFunCoins and Pan-India learnScore rank
+//  • Replaced with VCoins balance + VCoins annual rank
+//  • Added surprise gift claim banner (if gift is available and unclaimed)
+
 import { Drawer } from "expo-router/drawer";
 import {
   ActivityIndicator,
@@ -23,7 +29,9 @@ import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import {
   collection,
+  doc,
   getCountFromServer,
+  onSnapshot,
   query,
   where,
 } from "firebase/firestore";
@@ -39,24 +47,65 @@ export default function DrawerLayout() {
   const insets = useSafeAreaInsets();
 
   const { studentProfile, profileLoading: loading } = useStudentProfile();
-  const [indiaRank, setIndiaRank] = useState<number | null>(null);
 
-  // Fetch leaderboard rank whenever learnScore changes
+  // VCoins balance (real-time from users/{uid})
+  const [vCoins, setVCoins] = useState<number>(0);
+  // Annual VCoins rank
+  const [vCoinRank, setVCoinRank] = useState<number | null>(null);
+  // Surprise gift state
+  const [giftAvailable, setGiftAvailable] = useState(false);
+  const [giftClaimed, setGiftClaimed] = useState(false);
+
+  const currentYear = new Date().getFullYear();
+
+  // Listen to user doc for vCoins balance + gift
   useEffect(() => {
-    const score: number = studentProfile?.learnScore ?? 0;
-    getCountFromServer(
-      query(collection(db, "leaderboard"), where("learnScore", ">", score))
-    )
-      .then((r) => setIndiaRank(r.data().count + 1))
-      .catch(() => setIndiaRank(null));
-  }, [studentProfile?.learnScore]);
+    const user = auth.currentUser;
+    if (!user) return;
 
-  // Derive LearnFun stats from correct field names
-  const learnXP    = studentProfile?.LearnFunXP    ?? 0;
-  const coins      = studentProfile?.LearnFunCoins  ?? 0;
-  const level      = getLevelFromXP(learnXP);
-  const xpInLevel  = learnXP % XP_PER_LEVEL;
-  const xpPct      = Math.min((xpInLevel / XP_PER_LEVEL) * 100, 100);
+    const unsub = onSnapshot(doc(db, "users", user.uid), (snap) => {
+      if (!snap.exists()) return;
+      const d = snap.data();
+      const bal = d.vCoins ?? 0;
+      setVCoins(bal);
+
+      // Gift: admin sets surpriseGift.year + surpriseGift.available
+      const gift = d.surpriseGift;
+      if (gift && gift.available && gift.year === currentYear) {
+        setGiftAvailable(true);
+        setGiftClaimed(!!gift.claimed);
+      } else {
+        setGiftAvailable(false);
+        setGiftClaimed(false);
+      }
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Compute annual VCoins rank: count users with more yearlyVCoins than current user
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const yearField = `vCoinsYear_${currentYear}`;
+    const score = studentProfile?.[yearField] ?? 0;
+
+    getCountFromServer(
+      query(
+        collection(db, "users"),
+        where(`vCoinsYear_${currentYear}`, ">", score)
+      )
+    )
+      .then((r) => setVCoinRank(r.data().count + 1))
+      .catch(() => setVCoinRank(null));
+  }, [studentProfile]);
+
+  // Derive LearnFun XP stats
+  const learnXP   = studentProfile?.LearnFunXP ?? 0;
+  const level     = getLevelFromXP(learnXP);
+  const xpInLevel = learnXP % XP_PER_LEVEL;
+  const xpPct     = Math.min((xpInLevel / XP_PER_LEVEL) * 100, 100);
 
   const name         = studentProfile?.name         || auth.currentUser?.email?.split("@")[0] || "Student";
   const school       = studentProfile?.school       || "Your School";
@@ -120,12 +169,12 @@ export default function DrawerLayout() {
                     )}
                   </View>
 
-                  {/* LearnFun stats: Coins · XP · Level */}
+                  {/* V-Coins + XP + Level stats */}
                   <View style={styles.statsRow}>
                     <View style={styles.statBox}>
                       <Text style={styles.statEmoji}>🪙</Text>
-                      <Text style={styles.statValue}>{coins}</Text>
-                      <Text style={styles.statLabel}>Coins</Text>
+                      <Text style={styles.statValue}>{vCoins}</Text>
+                      <Text style={styles.statLabel}>V-Coins</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statBox}>
@@ -150,16 +199,49 @@ export default function DrawerLayout() {
                     <View style={[styles.progressFill, { width: `${xpPct}%` }]} />
                   </View>
 
-                  {/* Pan India Rank */}
+                  {/* V-Coins Annual Rank */}
                   <View style={styles.rankBanner}>
                     <Text style={styles.rankTrophy}>🏆</Text>
                     <View>
-                      <Text style={styles.rankLabel}>Pan India Rank</Text>
+                      <Text style={styles.rankLabel}>V-Coins Rank {currentYear}</Text>
                       <Text style={styles.rankValue}>
-                        {indiaRank !== null ? `#${indiaRank}` : "—"}
+                        {vCoinRank !== null ? `#${vCoinRank}` : "—"}
                       </Text>
                     </View>
+                    <TouchableOpacity
+                      style={styles.rankViewBtn}
+                      onPress={() => router.push("/vcoins/wallet")}
+                    >
+                      <Text style={styles.rankViewText}>View</Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {/* Surprise Gift Banner */}
+                  {giftAvailable && (
+                    <TouchableOpacity
+                      style={[
+                        styles.giftBanner,
+                        giftClaimed && styles.giftBannerClaimed,
+                      ]}
+                      onPress={() => router.push("/vcoins/claim-gift")}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.giftEmoji}>🎁</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.giftTitle}>
+                          {giftClaimed ? "Gift Claimed!" : "Surprise Gift Waiting!"}
+                        </Text>
+                        <Text style={styles.giftSub}>
+                          {giftClaimed
+                            ? "Your gift is on its way"
+                            : "Tap to claim your reward"}
+                        </Text>
+                      </View>
+                      {!giftClaimed && (
+                        <Ionicons name="chevron-forward" size={18} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </>
               )}
             </LinearGradient>
@@ -278,205 +360,87 @@ function DrawerItem({ icon, label, onPress, active, colors }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 12,
-  },
+  safeArea: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 12 },
   profileCard: {
-    borderRadius: 20,
-    padding: 20,
-    alignItems: "center",
-    gap: 8,
+    borderRadius: 20, padding: 20, alignItems: "center", gap: 8,
   },
-  avatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    marginBottom: 4,
-  },
-  name: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  infoBox: {
-    alignItems: "center",
-    marginVertical: 4,
-  },
-  infoText: {
-    color: "#c7d2fe",
-    fontSize: 12,
-    marginVertical: 2,
-    fontWeight: "500",
-  },
+  avatar: { width: 70, height: 70, borderRadius: 35, marginBottom: 4 },
+  name: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  infoBox: { alignItems: "center", marginVertical: 4 },
+  infoText: { color: "#c7d2fe", fontSize: 12, marginVertical: 2, fontWeight: "500" },
   statsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    marginTop: 8, backgroundColor: "rgba(0,0,0,0.35)", borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 12, width: "100%",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-    gap: 3,
-  },
-  statEmoji: {
-    fontSize: 18,
-  },
-  statValue: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 15,
-  },
-  statLabel: {
-    color: "#a5b4fc",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  statDivider: {
-    width: 1,
-    height: 38,
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
+  statBox:    { flex: 1, alignItems: "center", gap: 3 },
+  statEmoji:  { fontSize: 18 },
+  statValue:  { color: "#fff", fontWeight: "800", fontSize: 15 },
+  statLabel:  { color: "#a5b4fc", fontSize: 10, fontWeight: "600" },
+  statDivider: { width: 1, height: 38, backgroundColor: "rgba(255,255,255,0.2)" },
   xpBarRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 2,
+    flexDirection: "row", justifyContent: "space-between", width: "100%", paddingHorizontal: 2,
   },
-  xpBarLabel: {
-    color: "#c7d2fe",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 6,
-    width: "100%",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#818cf8",
-    borderRadius: 6,
-  },
+  xpBarLabel: { color: "#c7d2fe", fontSize: 10, fontWeight: "600" },
+  progressBar: { height: 8, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 6, width: "100%" },
+  progressFill: { height: "100%", backgroundColor: "#818cf8", borderRadius: 6 },
   rankBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    width: "100%",
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: "rgba(251,191,36,0.4)",
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(0,0,0,0.35)", borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 16, width: "100%", marginTop: 4,
+    borderWidth: 1, borderColor: "rgba(251,191,36,0.4)",
   },
-  rankTrophy: {
-    fontSize: 24,
+  rankTrophy: { fontSize: 24 },
+  rankLabel:  { color: "#fde68a", fontSize: 11, fontWeight: "600" },
+  rankValue:  { color: "#fff", fontSize: 20, fontWeight: "800" },
+  rankViewBtn: {
+    marginLeft: "auto", backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
   },
-  rankLabel: {
-    color: "#fde68a",
-    fontSize: 11,
-    fontWeight: "600",
+  rankViewText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+
+  // Surprise gift banner
+  giftBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "#d97706", borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 14, width: "100%",
+    marginTop: 6,
   },
-  rankValue: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "800",
-  },
-  menu: {
-    marginTop: 20,
-  },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-  },
-  label: {
-    marginLeft: 15,
-    fontSize: 15,
-  },
-  langItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    gap: 10,
-  },
-  langIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  giftBannerClaimed: { backgroundColor: "#4B5563" },
+  giftEmoji: { fontSize: 22 },
+  giftTitle: { color: "#fff", fontSize: 13, fontWeight: "800" },
+  giftSub:   { color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: "500" },
+
+  menu:     { marginTop: 20 },
+  item:     { flexDirection: "row", alignItems: "center", paddingVertical: 14 },
+  label:    { marginLeft: 15, fontSize: 15 },
+  langItem: { flexDirection: "row", alignItems: "center", paddingVertical: 10, gap: 10 },
+  langIconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   langTextBlock: { flex: 1 },
   langItemLabel: { fontSize: 15, fontWeight: "600" },
   langItemSub:   { fontSize: 12, fontWeight: "600", marginTop: 1 },
   logout: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderTopWidth: 1,
-    borderColor: "#222",
+    flexDirection: "row", alignItems: "center",
+    paddingVertical: 15, paddingHorizontal: 20,
+    borderTopWidth: 1, borderColor: "#222",
   },
-  logoutText: {
-    color: "#F87171",
-    marginLeft: 10,
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  logoutText: { color: "#F87171", marginLeft: 10, fontSize: 16, fontWeight: "600" },
   skillBoardWrapper: {
-    marginVertical: 6,
-    borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#d97706",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    elevation: 6,
+    marginVertical: 6, borderRadius: 14, overflow: "hidden",
+    shadowColor: "#d97706", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45, shadowRadius: 8, elevation: 6,
   },
   skillBoardGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 14, paddingHorizontal: 16,
   },
-  skillBoardLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  skillBoardLeft:      { flexDirection: "row", alignItems: "center", gap: 12 },
+  skillBoardLabel:     { color: "#fff", fontSize: 16, fontWeight: "800", letterSpacing: 0.3 },
+  skillBoardBadge:     {
+    backgroundColor: "rgba(255,255,255,0.25)", paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.4)",
   },
-  skillBoardLabel: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
-  skillBoardBadge: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
-  },
-  skillBoardBadgeText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "800",
-  },
+  skillBoardBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
 });

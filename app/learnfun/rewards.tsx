@@ -1,14 +1,22 @@
-// app/learnfun/rewards.tsx
-// RewardScreen
+// PATH: app/learnfun/rewards.tsx
+// Changes:
+//  • Coins card now shows V-Coins (from useVCoins hook) not profile.coins (LearnFunCoins)
+//  • Label changed from "LearnFun Coins" → "V-Coins"
+//  • Mystery box reward no longer awards old coins — calls claimVCoinReward CF instead
+//  • canOpenMysteryBox threshold unchanged
+//  • buildMysteryReward still computes amount; the actual award goes via CF
 
 import MysteryBoxModal from "@/components/learnfun/MysteryBoxModal";
 import RewardBadgeCard from "@/components/learnfun/RewardBadgeCard";
 import { useTheme } from "@/context/ThemeContext";
 import { useLearnFun } from "@/hooks/useLearnFun";
+import { useVCoins } from "@/hooks/useVCoins";
+import { functions } from "@/lib/firebase";
 import { MissionReward } from "@/lib/learnfun/types";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { httpsCallable } from "firebase/functions";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -21,16 +29,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Mystery box is available once per session if coins > 100 (reward for active students)
-function canOpenMysteryBox(coins: number, completedCount: number): boolean {
-  return coins >= 50 || completedCount >= 1;
+const claimVCoinRewardCF = httpsCallable<
+  { activityId: string; referenceId?: string },
+  { success: boolean; coinsAwarded: number }
+>(functions, "claimVCoinReward");
+
+function canOpenMysteryBox(completedCount: number): boolean {
+  return completedCount >= 1;
 }
 
-function buildMysteryReward(coins: number, level: number): MissionReward {
+function buildMysteryReward(level: number): MissionReward {
   const base = Math.min(level * 5, 30);
   return {
     coins: base + Math.floor(Math.random() * 20),
-    xp: base * 2 + Math.floor(Math.random() * 30),
+    xp:    base * 2 + Math.floor(Math.random() * 30),
     badge: level >= 3 ? "badge_streak_7" : undefined,
   };
 }
@@ -39,21 +51,34 @@ export default function RewardScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { profile, allBadges, loading } = useLearnFun();
+  const { balance: vCoinsBalance } = useVCoins();
 
   const [mysteryVisible, setMysteryVisible] = useState(false);
   const mysteryBoxAnim = React.useRef(new Animated.Value(1)).current;
 
   const mysteryReward = useMemo(
-    () => (profile ? buildMysteryReward(profile.coins, profile.level) : { coins: 10, xp: 15 }),
+    () => (profile ? buildMysteryReward(profile.level) : { coins: 10, xp: 15 }),
     [profile]
   );
 
-  const handleOpenMystery = useCallback(() => {
+  const handleOpenMystery = useCallback(async () => {
     setMysteryVisible(true);
     Animated.sequence([
       Animated.timing(mysteryBoxAnim, { toValue: 1.15, duration: 200, useNativeDriver: true }),
-      Animated.timing(mysteryBoxAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(mysteryBoxAnim, { toValue: 1,    duration: 200, useNativeDriver: true }),
     ]).start();
+
+    // Award V-Coins via Cloud Function for mystery box
+    try {
+      await claimVCoinRewardCF({
+        activityId:  "lesson_complete", // reuse lesson_complete (max 5/day) for mystery box
+        referenceId: `mystery_${new Date().toDateString()}`,
+      });
+    } catch (e: any) {
+      if (e?.code !== "already-exists" && e?.code !== "resource-exhausted") {
+        console.warn("[rewards] mystery box V-Coin claim failed:", e?.message);
+      }
+    }
   }, [mysteryBoxAnim]);
 
   if (loading) {
@@ -75,9 +100,9 @@ export default function RewardScreen() {
     );
   }
 
-  const earnedBadges = allBadges.filter((b) => profile.badges.includes(b.id));
+  const earnedBadges   = allBadges.filter((b) => profile.badges.includes(b.id));
   const unearnedBadges = allBadges.filter((b) => !profile.badges.includes(b.id));
-  const mysteryAvailable = canOpenMysteryBox(profile.coins, profile.completedMissionIds.length);
+  const mysteryAvailable = canOpenMysteryBox(profile.completedMissionIds.length);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -90,17 +115,17 @@ export default function RewardScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Coins summary */}
+        {/* V-Coins summary card */}
         <LinearGradient
-          colors={["#78350F", "#92400E"]}
+          colors={["#7C3AED", "#F59E0B"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.coinsCard}
         >
           <Text style={styles.coinsEmoji}>🪙</Text>
           <View style={styles.coinsTextGroup}>
-            <Text style={styles.coinsValue}>{profile.coins.toLocaleString()}</Text>
-            <Text style={styles.coinsLabel}>LearnFun Coins</Text>
+            <Text style={styles.coinsValue}>{(vCoinsBalance ?? 0).toLocaleString()}</Text>
+            <Text style={styles.coinsLabel}>V-Coins Balance</Text>
           </View>
           <View style={styles.coinsStats}>
             <Text style={styles.coinsStatItem}>⭐ Level {profile.level}</Text>
@@ -122,10 +147,7 @@ export default function RewardScreen() {
             <TouchableOpacity
               onPress={mysteryAvailable ? handleOpenMystery : undefined}
               disabled={!mysteryAvailable}
-              style={[
-                styles.mysteryBtn,
-                { opacity: mysteryAvailable ? 1 : 0.4 },
-              ]}
+              style={[styles.mysteryBtn, { opacity: mysteryAvailable ? 1 : 0.4 }]}
               activeOpacity={0.85}
             >
               <LinearGradient
@@ -147,7 +169,6 @@ export default function RewardScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             🏅 Earned Badges ({earnedBadges.length})
           </Text>
-
           {earnedBadges.length > 0 ? (
             <View style={styles.badgesGrid}>
               {earnedBadges.map((badge) => (
@@ -176,11 +197,12 @@ export default function RewardScreen() {
           </View>
         </View>
 
-        {/* Coins info */}
+        {/* V-Coins info */}
         <View style={[styles.coinsInfo, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.coinsInfoTitle, { color: colors.text }]}>💡 About LearnFun Coins</Text>
+          <Text style={[styles.coinsInfoTitle, { color: colors.text }]}>💡 About V-Coins</Text>
           <Text style={[styles.coinsInfoText, { color: colors.textSecondary }]}>
-            Earn coins by completing daily missions and boss battles. Score higher to earn more! Coins track your progress as a Life Skills champion.
+            Earn V-Coins by completing daily missions, watching videos, using AI Guru, and winning Skill Battles.
+            V-Coins are used for Pan-India rankings and unlock surprise rewards each year!
           </Text>
         </View>
       </ScrollView>
@@ -195,60 +217,41 @@ export default function RewardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container:        { flex: 1 },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
   },
-  backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  backBtn:     { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   headerTitle: { fontSize: 16, fontWeight: "700" },
-  content: { padding: 20, gap: 20, paddingBottom: 40 },
+  content:     { padding: 20, gap: 20, paddingBottom: 40 },
   coinsCard: {
-    borderRadius: 20,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
+    borderRadius: 20, padding: 20, flexDirection: "row", alignItems: "center", gap: 14,
   },
-  coinsEmoji: { fontSize: 40 },
+  coinsEmoji:     { fontSize: 40 },
   coinsTextGroup: { flex: 1, gap: 3 },
-  coinsValue: { color: "#FEF3C7", fontSize: 28, fontWeight: "900" },
-  coinsLabel: { color: "rgba(254,243,199,0.7)", fontSize: 13 },
-  coinsStats: { alignItems: "flex-end", gap: 4 },
-  coinsStatItem: { color: "rgba(254,243,199,0.8)", fontSize: 12, fontWeight: "600" },
+  coinsValue:     { color: "#FEF3C7", fontSize: 28, fontWeight: "900" },
+  coinsLabel:     { color: "rgba(254,243,199,0.7)", fontSize: 13 },
+  coinsStats:     { alignItems: "flex-end", gap: 4 },
+  coinsStatItem:  { color: "rgba(254,243,199,0.8)", fontSize: 12, fontWeight: "600" },
   mysterySection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    gap: 12,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    borderRadius: 16, padding: 16, borderWidth: 1, gap: 12,
   },
-  mysteryTextGroup: { flex: 1, gap: 3 },
-  mysteryTitle: { fontSize: 16, fontWeight: "700" },
-  mysterySubtitle: { fontSize: 12, lineHeight: 17 },
-  mysteryBtn: { borderRadius: 14, overflow: "hidden" },
-  mysteryBtnGradient: { paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", borderRadius: 14 },
-  mysteryBtnText: { color: "#fff", fontSize: 14, fontWeight: "800" },
-  section: { gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: "800" },
-  badgesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  emptyBadges: {
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    alignItems: "center",
-    gap: 10,
-  },
-  emptyEmoji: { fontSize: 36 },
-  emptyText: { fontSize: 13, textAlign: "center", lineHeight: 19 },
-  coinsInfo: { borderRadius: 16, padding: 16, borderWidth: 1, gap: 8 },
-  coinsInfoTitle: { fontSize: 14, fontWeight: "700" },
-  coinsInfoText: { fontSize: 13, lineHeight: 19 },
+  mysteryTextGroup:    { flex: 1, gap: 3 },
+  mysteryTitle:        { fontSize: 16, fontWeight: "700" },
+  mysterySubtitle:     { fontSize: 12, lineHeight: 17 },
+  mysteryBtn:          { borderRadius: 14, overflow: "hidden" },
+  mysteryBtnGradient:  { paddingHorizontal: 16, paddingVertical: 12, alignItems: "center", borderRadius: 14 },
+  mysteryBtnText:      { color: "#fff", fontSize: 14, fontWeight: "800" },
+  section:             { gap: 12 },
+  sectionTitle:        { fontSize: 16, fontWeight: "800" },
+  badgesGrid:          { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  emptyBadges:         { borderRadius: 16, padding: 24, borderWidth: 1, alignItems: "center", gap: 10 },
+  emptyEmoji:          { fontSize: 36 },
+  emptyText:           { fontSize: 13, textAlign: "center", lineHeight: 19 },
+  coinsInfo:           { borderRadius: 16, padding: 16, borderWidth: 1, gap: 8 },
+  coinsInfoTitle:      { fontSize: 14, fontWeight: "700" },
+  coinsInfoText:       { fontSize: 13, lineHeight: 19 },
 });

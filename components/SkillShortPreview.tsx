@@ -11,11 +11,11 @@
  */
 
 import { useAppTranslation } from "@/context/LanguageContext";
-import { useTheme }          from "@/context/ThemeContext";
-import { auth, db }          from "@/lib/firebase";
-import { Ionicons }          from "@expo/vector-icons";
-import { LinearGradient }    from "expo-linear-gradient";
-import { router }            from "expo-router";
+import { useTheme } from "@/context/ThemeContext";
+import { auth, db } from "@/lib/firebase";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import {
   collection,
   doc,
@@ -344,7 +344,7 @@ function SkillBattleRow() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Text style={{ fontSize: 20 }}>🏆</Text>
           <View>
-            <Text style={[bt.title, { color: colors.text }]}>{t("skillShorts") ?? "Skill Battle Reels"}</Text>
+            <Text style={[bt.title, { color: colors.text }]}>{t("Creator Shorts") ?? "Skill Battle Reels"}</Text>
             <Text style={[bt.sub, { color: colors.textSecondary }]}>Top approved reels</Text>
           </View>
         </View>
@@ -399,5 +399,5 @@ export default function SkillShortPreview({
 }
 
 // Named exports — kept for backward compatibility
-export { ShortReelsRow as CreatorReelsPreview };
-export { SkillBattleRow as SkillBattleReelsPreview };
+export { ShortReelsRow as CreatorReelsPreview, SkillBattleRow as SkillBattleReelsPreview };
+

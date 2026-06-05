@@ -10,14 +10,15 @@
  */
 
 import * as admin from "firebase-admin";
+import * as functionsV1 from "firebase-functions/v1";
 import {
   Change,
   DocumentSnapshot,
   FirestoreEvent,
   onDocumentWritten,
 } from "firebase-functions/v2/firestore";
-import * as functionsV1 from "firebase-functions/v1";
 import { callGeminiText, callGeminiWithImage, parseJsonFromResponse } from "./gemini";
+import { getRedis, RK, TTL } from "./redish";
 import {
   checkFollowUpLimit,
   checkGenerationLimit,
@@ -25,7 +26,6 @@ import {
   incrementGenerationUsage,
 } from "./usageCheck";
 import { validateLessonJson } from "./validateLesson";
-import { getRedis, RK, TTL } from "./redish";
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -38,11 +38,8 @@ export { vidyaguruChat } from "./vidyaguru";
 
 // ── Seekho module ──────────────────────────────────────────────────────────
 export {
-  seekhoOnChapterComplete,
-  seekhoUpdateRevisionQueue,
-  seekhoCreateSubscription,
-  seekhoGetDailyStudyPlan,
-  seekhoDailyRevisionReminder,
+  seekhoCreateSubscription, seekhoDailyRevisionReminder, seekhoGetDailyStudyPlan, seekhoOnChapterComplete,
+  seekhoUpdateRevisionQueue
 } from "./seekho";
 
 // ── Leaderboard ────────────────────────────────────────────────────────────
@@ -60,14 +57,17 @@ export { getPersonalizedDashboard } from "./personalDashboard";
 // ── Ask AI Guru (Sarvam AI) ─────────────────────────────────────────────────
 export { askAiGuruQuestion } from "./askAiGuru";
 
+export { restartEducationAdvisor } from "./restartEducationAdvisor";
+
+
 // ── AI Guru Subscription (Razorpay) ────────────────────────────────────────────
 export { aiGuruCreateSubscription } from "./aiGuruSubscription";
 
 // ── Unified Ads System ─────────────────────────────────────────────────────────
-export { getAds, recordAdEvent, claimAdReward, aggregateAdAnalytics } from "./ads";
+export { aggregateAdAnalytics, claimAdReward, getAds, recordAdEvent } from "./ads";
 
 // ── Admin Management ───────────────────────────────────────────────────────────
-export { createAdmin, removeAdmin, approveContent, createCoupon, createComboPlan, getUserSubscriptionHistory } from "./adminManagement";
+export { approveContent, createAdmin, createComboPlan, createCoupon, getUserSubscriptionHistory, removeAdmin } from "./adminManagement";
 
 // ── Contest Lesson Generation ──────────────────────────────────────────────────
 export { generateContestLesson } from "./contestLesson";

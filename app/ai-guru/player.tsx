@@ -1,3 +1,11 @@
+// PATH: app/ai-guru/player.tsx
+// Changes:
+//  • Removed "quiz" from Section type and SECTIONS array
+//  • Removed QuizSection component
+//  • Removed quiz-related styles (quizGate, startQuizBtn, etc.)
+//  • ProgressXpBar maxXp now uses flashcards length (was lj.quiz.length * 15)
+//  • No other changes
+
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Modal,
@@ -17,7 +25,8 @@ import ProgressXpBar from "@/components/aiGuru/ProgressXpBar";
 import AiGuruAvatar from "@/components/aiGuru/AiGuruAvatar";
 import PracticalActivityCard from "@/components/aiGuru/PracticalActivityCard";
 
-type Section = "intro" | "scenes" | "concepts" | "activity" | "notes" | "flashcards" | "quiz" | "mission";
+// "quiz" removed from Section type
+type Section = "intro" | "scenes" | "concepts" | "activity" | "notes" | "flashcards" | "mission";
 
 const SECTIONS: { id: Section; label: string; emoji: string }[] = [
   { id: "intro",      label: "Intro",      emoji: "🚀" },
@@ -26,22 +35,21 @@ const SECTIONS: { id: Section; label: string; emoji: string }[] = [
   { id: "activity",   label: "Activity",   emoji: "🔧" },
   { id: "notes",      label: "Notes",      emoji: "📝" },
   { id: "flashcards", label: "Flashcards", emoji: "🃏" },
-  { id: "quiz",       label: "Quiz",       emoji: "🎯" },
   { id: "mission",    label: "Mission",    emoji: "🏆" },
 ];
 
 export default function PlayerScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
-  const [lesson, setLesson]           = useState<AiGuruLesson | null>(null);
-  const [lj, setLj]                   = useState<LessonJson | null>(null);
-  const [loading, setLoading]         = useState(true);
-  const [section, setSection]         = useState<Section>("intro");
-  const [sceneIdx, setSceneIdx]       = useState(0);
-  const [xp, setXp]                   = useState(0);
-  const [askVisible, setAskVisible]   = useState(false);
-  const [askText, setAskText]         = useState("");
-  const [askLoading, setAskLoading]   = useState(false);
-  const [askAnswer, setAskAnswer]     = useState<string | null>(null);
+  const [lesson, setLesson]         = useState<AiGuruLesson | null>(null);
+  const [lj, setLj]                 = useState<LessonJson | null>(null);
+  const [loading, setLoading]       = useState(true);
+  const [section, setSection]       = useState<Section>("intro");
+  const [sceneIdx, setSceneIdx]     = useState(0);
+  const [xp, setXp]                 = useState(0);
+  const [askVisible, setAskVisible] = useState(false);
+  const [askText, setAskText]       = useState("");
+  const [askLoading, setAskLoading] = useState(false);
+  const [askAnswer, setAskAnswer]   = useState<string | null>(null);
   const tabsRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -109,7 +117,7 @@ export default function PlayerScreen() {
         </TouchableOpacity>
         <View style={S.headerMid}>
           <Text style={S.headerTitle} numberOfLines={1}>{lj.lessonTitle}</Text>
-          <ProgressXpBar xp={xp} maxXp={lj.quiz.length * 15} label="Session XP" />
+          <ProgressXpBar xp={xp} maxXp={(lj.flashcards?.length ?? 5) * 15} label="Session XP" />
         </View>
         <TouchableOpacity style={S.askFab} onPress={() => setAskVisible(true)}>
           <Ionicons name="chatbubble-ellipses" size={20} color="#a5b4fc" />
@@ -152,7 +160,6 @@ export default function PlayerScreen() {
         {section === "activity"   && <ActivitySection lj={lj} lessonId={lessonId!} lesson={lesson} />}
         {section === "notes"      && <NotesSection lj={lj} />}
         {section === "flashcards" && <FlashcardSection lj={lj} />}
-        {section === "quiz"       && <QuizSection lessonId={lessonId!} />}
         {section === "mission"    && <MissionSection lj={lj} />}
       </View>
 
@@ -376,25 +383,6 @@ function FlashcardSection({ lj }: { lj: LessonJson }) {
   );
 }
 
-function QuizSection({ lessonId }: { lessonId: string }) {
-  return (
-    <View style={S.quizGate}>
-      <Text style={S.quizGateEmoji}>🎯</Text>
-      <Text style={S.quizGateTitle}>Ready to test your knowledge?</Text>
-      <Text style={S.quizGateSubtitle}>Answer quiz questions and earn XP. Timer runs per question!</Text>
-      <TouchableOpacity
-        style={S.startQuizBtn}
-        onPress={() => router.push({ pathname: "/ai-guru/quiz", params: { lessonId } })}
-        activeOpacity={0.85}
-      >
-        <LinearGradient colors={["#4f46e5", "#7c3aed"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={S.startQuizGrad}>
-          <Text style={S.startQuizText}>Start Quiz Battle ⚡</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 function MissionSection({ lj }: { lj: LessonJson }) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={S.sectionScroll}>
@@ -452,7 +440,6 @@ const S = StyleSheet.create({
   progressTrack:    { height: 4, backgroundColor: "#1e293b", borderRadius: 3, overflow: "hidden" },
   progressFill:     { height: "100%", backgroundColor: "#6366f1", borderRadius: 3 },
   progressLabel:    { color: "#475569", fontSize: 10, textAlign: "center" },
-  // Intro
   introHook:        { borderRadius: 20, padding: 20, marginBottom: 4, gap: 12 },
   hookTitle:        { color: "#f1f5f9", fontSize: 20, fontWeight: "900" },
   hookNarration:    { color: "#94a3b8", fontSize: 14, lineHeight: 22 },
@@ -464,31 +451,19 @@ const S = StyleSheet.create({
   bulletRow:        { flexDirection: "row", gap: 10, alignItems: "flex-start" },
   bullet:           { color: "#6366f1", fontSize: 14, marginTop: 1 },
   bulletText:       { flex: 1, color: "#cbd5e1", fontSize: 14, lineHeight: 20 },
-  // Concepts
   conceptCard:      { backgroundColor: "#1e293b", borderRadius: 16, padding: 16, gap: 8 },
   conceptTerm:      { color: "#a5b4fc", fontSize: 16, fontWeight: "900" },
   conceptMeaning:   { color: "#cbd5e1", fontSize: 14, lineHeight: 20 },
   conceptExample:   { flexDirection: "row", flexWrap: "wrap" },
   conceptExampleLabel: { color: "#06b6d4", fontSize: 12, fontWeight: "700" },
   conceptExampleText: { color: "#94a3b8", fontSize: 12, flex: 1 },
-  // Activity eval
   evalCard:         { backgroundColor: "#0f172a", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#6366f1" },
   evalTitle:        { color: "#a5b4fc", fontSize: 13, fontWeight: "800", marginBottom: 8 },
   evalText:         { color: "#cbd5e1", fontSize: 14, lineHeight: 22 },
-  // Notes
   notesTitle:       { color: "#94a3b8", fontSize: 13, fontWeight: "800", letterSpacing: 0.3 },
   noteRow:          { flexDirection: "row", gap: 12, alignItems: "flex-start", backgroundColor: "#1e293b", borderRadius: 12, padding: 12, borderLeftWidth: 3, borderLeftColor: "#6366f1" },
   noteDot:          { width: 6, height: 6, borderRadius: 3, backgroundColor: "#6366f1", marginTop: 7 },
   noteText:         { flex: 1, color: "#cbd5e1", fontSize: 14, lineHeight: 20 },
-  // Quiz gate
-  quizGate:         { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 16 },
-  quizGateEmoji:    { fontSize: 60 },
-  quizGateTitle:    { color: "#f1f5f9", fontSize: 22, fontWeight: "900", textAlign: "center" },
-  quizGateSubtitle: { color: "#64748b", fontSize: 14, textAlign: "center", lineHeight: 22 },
-  startQuizBtn:     { width: "100%", borderRadius: 16, overflow: "hidden", marginTop: 8 },
-  startQuizGrad:    { paddingVertical: 18, alignItems: "center" },
-  startQuizText:    { color: "#fff", fontSize: 18, fontWeight: "900" },
-  // Mission
   missionCard:      { borderRadius: 20, padding: 24, alignItems: "center", gap: 14 },
   missionCardEmoji: { fontSize: 48 },
   missionCardTitle: { color: "#f1f5f9", fontSize: 20, fontWeight: "900", textAlign: "center" },
@@ -498,7 +473,6 @@ const S = StyleSheet.create({
   mistakeRow:       { gap: 4 },
   mistakeLabel:     { color: "#ef4444", fontSize: 13 },
   mistakeFix:       { color: "#10b981", fontSize: 13 },
-  // Ask modal
   modalOverlay:     { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.7)" },
   modalCard:        { backgroundColor: "#0f172a", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 14, maxHeight: "75%" },
   modalHeader:      { flexDirection: "row", alignItems: "center", gap: 12 },

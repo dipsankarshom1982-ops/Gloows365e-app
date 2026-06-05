@@ -1,8 +1,8 @@
 import { useStudentProfile } from "@/context/StudentProfileContext";
 import { useTheme } from "@/context/ThemeContext";
-import { useDiscoverStore } from "@/store/discoverStore";
+import type { TrendingTerm } from "@/lib/discover/types";
 import { getTrending } from "@/services/discoverApi";
-import type { TrendingTerm, DiscoverSectionCard } from "@/lib/discover/types";
+import { useDiscoverStore } from "@/store/discoverStore";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -286,7 +286,7 @@ export default function DiscoverHomeScreen() {
             <View style={D.statChip}>
               <Text style={D.statEmoji}>🪙</Text>
               <Text style={D.statValue}>{studentProfile?.LearnFunCoins ?? 0}</Text>
-              <Text style={D.statLabel}>Coins</Text>
+              <Text style={D.statLabel}>V-Coins</Text>
             </View>
             <View style={D.statChip}>
               <Text style={D.statEmoji}>📚</Text>

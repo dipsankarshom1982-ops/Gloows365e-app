@@ -9,13 +9,13 @@ import RewardBadgeCard from "@/components/learnfun/RewardBadgeCard";
 import SkillWorldCard from "@/components/learnfun/SkillWorldCard";
 import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
-import { COMING_SOON } from "@/lib/learnfun/constants";
 import { useLearnFun } from "@/hooks/useLearnFun";
+import { COMING_SOON } from "@/lib/learnfun/constants";
 import { LearnFunGame, SkillWorld } from "@/lib/learnfun/types";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -249,7 +249,7 @@ export default function LearnFunHomeScreen() {
           </View>
 
           <CoinXPBar
-            coins={profile.coins}
+            vCoins={profile.coins}
             xp={profile.xp}
             level={profile.level}
             streak={profile.streak}

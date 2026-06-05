@@ -1,0 +1,15 @@
+// ADD to firestore.indexes.json — merge into existing "indexes" array
+// Required for: where("status", "==", "approved") + where("expiresAt", ">", now)
+
+{
+  "indexes": [
+    {
+      "collectionGroup": "stories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    }
+  ]
+}
