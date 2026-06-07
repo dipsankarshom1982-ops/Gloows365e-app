@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useReferral } from "@/hooks/useReferral";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { ReferralDoc } from "@/services/referralService";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -22,6 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ReferralScreen() {
+  const { t } = useAppTranslation();
   const {
     referralCode,
     referralCount,
@@ -71,7 +73,7 @@ export default function ReferralScreen() {
       </View>
       <View style={[S.statusBadge, item.status === "completed" ? S.badgeGreen : S.badgeAmber]}>
         <Text style={[S.statusText, item.status === "completed" ? S.textGreen : S.textAmber]}>
-          {item.status === "completed" ? "✓ Joined" : "Pending"}
+          {item.status === "completed" ? "✓ " + (t("joinedLabel") ?? "Joined") : t("pendingLabel") ?? "Pending"}
         </Text>
       </View>
       {item.status === "completed" && (
@@ -113,15 +115,15 @@ export default function ReferralScreen() {
           <View style={S.statsRow}>
             <View style={S.statCard}>
               <Text style={S.statNum}>{referralCount}</Text>
-              <Text style={S.statLabel}>Total referred</Text>
+              <Text style={S.statLabel}>{t("totalReferred") ?? "Total referred"}</Text>
             </View>
             <View style={S.statCard}>
               <Text style={[S.statNum, { color: "#A78BFA" }]}>{referralCoinsEarned}</Text>
-              <Text style={S.statLabel}>VCoins earned</Text>
+              <Text style={S.statLabel}>" + (t("vCoinsEarned") ?? "VCoins earned")</Text>
             </View>
             <View style={S.statCard}>
               <Text style={[S.statNum, { color: "#34D399" }]}>{completedReferrals.length}</Text>
-              <Text style={S.statLabel}>Completed</Text>
+              <Text style={S.statLabel}>{t("completed") ?? "Completed"}</Text>
             </View>
           </View>
 
@@ -136,7 +138,7 @@ export default function ReferralScreen() {
                 <View style={[S.progressFill, { width: `${progressPercent}%` }]} />
               </View>
               <Text style={S.milestoneHint}>
-                {nextMilestone.every - nextMilestone.progressCount} more referrals to unlock
+                {nextMilestone.every - nextMilestone.progressCount} " + (t("moreReferralsToUnlock") ?? "more referrals to unlock") + "
               </Text>
             </View>
           )}
@@ -149,7 +151,7 @@ export default function ReferralScreen() {
               <TouchableOpacity style={S.copyBtn} onPress={handleCopy}>
                 <Ionicons name={copied ? "checkmark" : "copy-outline"} size={18} color={copied ? "#34D399" : "#A78BFA"} />
                 <Text style={[S.copyText, copied && { color: "#34D399" }]}>
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? t("copiedLabel") ?? "Copied!" : t("copyLabel") ?? "Copy"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -169,7 +171,7 @@ export default function ReferralScreen() {
                   <Ionicons name={item.icon as any} size={18} color="#7C3AED" />
                 </View>
                 <View style={S.howTextWrap}>
-                  <Text style={S.howStepNum}>Step {item.step}</Text>
+                  <Text style={S.howStepNum}>{t("stepLabel") ?? "Step"} {item.step}</Text>
                   <Text style={S.howStepText}>{item.text}</Text>
                 </View>
               </View>
@@ -196,7 +198,7 @@ export default function ReferralScreen() {
         <View style={S.stickyFooter}>
           <TouchableOpacity style={S.shareBtn} onPress={handleShare} activeOpacity={0.85}>
             <Ionicons name="share-social" size={20} color="#fff" />
-            <Text style={S.shareBtnText}>Share & Earn {config.referrerCoins} VCoins</Text>
+            <Text style={S.shareBtnText}>{t("shareEarn") ?? "Share & Earn"} {config.referrerCoins} VCoins</Text>
           </TouchableOpacity>
         </View>
 

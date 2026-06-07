@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Image,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,6 +16,26 @@ import Animated, {
   withSequence,
   withTiming,
 } from "react-native-reanimated";
+
+// ── Brand logo — matches header.tsx ──────────────────────────────────────────
+function BrandLogo() {
+  return (
+    <View style={styles.logoWrap}>
+      <Text style={styles.gloows}>
+        <Text style={{ color: "#A5B4FC" }}>Gl</Text>
+        <Text style={{ color: "#F1F5F9" }}>oows</Text>
+      </Text>
+      <LinearGradient
+        colors={["#6366F1", "#8B5CF6", "#EC4899"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={styles.pill}
+      >
+        <Text style={styles.pillText}>365</Text>
+      </LinearGradient>
+      <Text style={styles.eTag}>E</Text>
+    </View>
+  );
+}
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -59,11 +78,7 @@ export default function WelcomeScreen() {
 
       {/* Floating Logo */}
       <Animated.View style={floatStyle}>
-        <Image
-          source={require("../../assets/images/logo.png")}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
+        <BrandLogo />
       </Animated.View>
 
       {/* 🔥 Student Hook */}
@@ -143,11 +158,11 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
 
-  logoImage: {
-    width: 220,
-    height: 220,
-    marginBottom: 10,
-  },
+  logoWrap:  { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 10 },
+  gloows:    { fontSize: 44, fontWeight: "900", letterSpacing: -0.5 },
+  pill:      { borderRadius: 11, paddingHorizontal: 10, paddingVertical: 3, justifyContent: "center", alignItems: "center" },
+  pillText:  { color: "#fff", fontSize: 22, fontWeight: "900", letterSpacing: 0.5 },
+  eTag:      { fontSize: 16, fontWeight: "900", color: "#FBBF24", marginBottom: 18 },
 
   subtitle: {
     textAlign: "center",

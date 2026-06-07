@@ -12,10 +12,12 @@ export interface AskGuruPayload {
   question:   string;
   classLevel: string | number;
   board:      string;
+  mode?:      string;   // "doubt" | "explain" | "notes" | "exam" | "summarize" | "tip" | "language"
 }
 
 export interface AskGuruResponse {
   answer: string;
+  mode?:  string;
 }
 
 export interface AskGuruLimitError extends Error {

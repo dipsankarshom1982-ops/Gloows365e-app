@@ -1,10 +1,11 @@
+import { getAuth } from "firebase/auth";
+import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addDoc, collection, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { db } from "../lib/firebase";
-import { motion } from "framer-motion";
+import MediaUpload from "../components/MediaUpload";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { db } from "../lib/firebase";
 
 const ALL_CLASSES = ["6","7","8","9","10","11","12","all"];
 const TYPES = ["quiz","essay","project","skill_battle"];
@@ -27,6 +28,7 @@ const EMPTY = {
   startDate: "", endDate: "", prizePool: 0, totalSpots: 100,
   targetClass: ["all"] as string[], isActive: false,
   entryFee: 0, periodType: "monthly", periodKey: buildPeriodKey("monthly"),
+  bannerImage: "",
 };
 
 const CLOUD_FUNCTION_URL =
@@ -171,6 +173,14 @@ export default function CreateContest() {
         <div><label className={labelCls}>Title *</label><input value={form.title} onChange={(e) => set("title", e.target.value)} className={inputCls} required /></div>
         <div><label className={labelCls}>Description <span className="text-indigo-400">(AI uses this to generate the lesson)</span></label><textarea value={form.description} onChange={(e) => set("description", e.target.value)} className={`${inputCls} resize-none h-28`} placeholder="Describe the topic students will learn — e.g. 'Photosynthesis in plants, Class 8 Science'" /></div>
         <div><label className={labelCls}>Rules</label><textarea value={form.rules} onChange={(e) => set("rules", e.target.value)} className={`${inputCls} resize-none h-20`} /></div>
+
+        <MediaUpload
+          label="Contest Banner Image"
+          storagePath="contests/banners"
+          value={form.bannerImage}
+          onChange={(url) => set("bannerImage", url)}
+          placeholder="https://… or upload below"
+        />
         <div className="grid grid-cols-2 gap-4">
           <div><label className={labelCls}>Contest Type</label><select value={form.contestType} onChange={(e) => set("contestType", e.target.value)} className={inputCls}>{TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
           <div><label className={labelCls}>Total Spots</label><input type="number" min={1} value={form.totalSpots} onChange={(e) => set("totalSpots", e.target.value)} className={inputCls} /></div>

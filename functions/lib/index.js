@@ -10,7 +10,7 @@
  * Also added vite.config optimization (see vite.config.ts output).
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.getReferralLeaderboard = exports.applyReferral = exports.onContestParticipantWrite = exports.generateContestLesson = exports.removeAdmin = exports.getUserSubscriptionHistory = exports.createCoupon = exports.createComboPlan = exports.createAdmin = exports.approveContent = exports.recordAdEvent = exports.getAds = exports.claimAdReward = exports.aggregateAdAnalytics = exports.aiGuruCreateSubscription = exports.restartEducationAdvisor = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.seekhoGetDailyStudyPlan = exports.seekhoDailyRevisionReminder = exports.seekhoCreateSubscription = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
+exports.followUp = exports.generateLesson = exports.onPostCreated = exports.updateSkillboard = exports.getReferralLeaderboard = exports.applyReferral = exports.onContestParticipantWrite = exports.generateContestLesson = exports.removeAdmin = exports.getUserSubscriptionHistory = exports.createCoupon = exports.createComboPlan = exports.createAdmin = exports.approveContent = exports.recordAdEvent = exports.getAds = exports.claimAdReward = exports.aggregateAdAnalytics = exports.aiGuruPaymentSuccess = exports.aiGuruCreateSubscription = exports.aiGuruCheckoutPage = exports.voiceTutorAnswer = exports.generateExam = exports.evaluateExam = exports.photoSolve = exports.restartEducationAdvisor = exports.askAiGuruQuestion = exports.getPersonalizedDashboard = exports.getVCoinBalance = exports.claimVCoinReward = exports.getReelsFeed = exports.getHomeFeed = exports.getLeaderboard = exports.seekhoUpdateRevisionQueue = exports.seekhoOnChapterComplete = exports.seekhoGetDailyStudyPlan = exports.seekhoDailyRevisionReminder = exports.seekhoCreateSubscription = exports.vidyaguruChat = exports.discoverTrending = exports.discoverSearch = void 0;
 const admin = require("firebase-admin");
 const functionsV1 = require("firebase-functions/v1");
 const firestore_1 = require("firebase-functions/v2/firestore");
@@ -53,9 +53,21 @@ var askAiGuru_1 = require("./askAiGuru");
 Object.defineProperty(exports, "askAiGuruQuestion", { enumerable: true, get: function () { return askAiGuru_1.askAiGuruQuestion; } });
 var restartEducationAdvisor_1 = require("./restartEducationAdvisor");
 Object.defineProperty(exports, "restartEducationAdvisor", { enumerable: true, get: function () { return restartEducationAdvisor_1.restartEducationAdvisor; } });
+// ── PhotoSolve AI ────────────────────────────────────────────────────────────
+var photoSolve_1 = require("./photoSolve");
+Object.defineProperty(exports, "photoSolve", { enumerable: true, get: function () { return photoSolve_1.photoSolve; } });
+// ── Exam Simulator ───────────────────────────────────────────────────────────
+var examSimulator_1 = require("./examSimulator");
+Object.defineProperty(exports, "evaluateExam", { enumerable: true, get: function () { return examSimulator_1.evaluateExam; } });
+Object.defineProperty(exports, "generateExam", { enumerable: true, get: function () { return examSimulator_1.generateExam; } });
+// ── Voice Tutor ──────────────────────────────────────────────────────────────
+var voiceTutor_1 = require("./voiceTutor");
+Object.defineProperty(exports, "voiceTutorAnswer", { enumerable: true, get: function () { return voiceTutor_1.voiceTutorAnswer; } });
 // ── AI Guru Subscription (Razorpay) ────────────────────────────────────────────
 var aiGuruSubscription_1 = require("./aiGuruSubscription");
+Object.defineProperty(exports, "aiGuruCheckoutPage", { enumerable: true, get: function () { return aiGuruSubscription_1.aiGuruCheckoutPage; } });
 Object.defineProperty(exports, "aiGuruCreateSubscription", { enumerable: true, get: function () { return aiGuruSubscription_1.aiGuruCreateSubscription; } });
+Object.defineProperty(exports, "aiGuruPaymentSuccess", { enumerable: true, get: function () { return aiGuruSubscription_1.aiGuruPaymentSuccess; } });
 // ── Unified Ads System ─────────────────────────────────────────────────────────
 var ads_1 = require("./ads");
 Object.defineProperty(exports, "aggregateAdAnalytics", { enumerable: true, get: function () { return ads_1.aggregateAdAnalytics; } });

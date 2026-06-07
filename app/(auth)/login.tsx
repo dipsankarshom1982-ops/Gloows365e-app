@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   StatusBar,
@@ -17,11 +16,31 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { auth, db } from "@/lib/firebase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect } from "react";
+
+// ── Brand logo — matches header.tsx ──────────────────────────────────────────
+function BrandLogo() {
+  return (
+    <View style={S.logoWrap}>
+      <Text style={S.gloows}>
+        <Text style={{ color: "#A5B4FC" }}>Gl</Text>
+        <Text style={{ color: "#F1F5F9" }}>oows</Text>
+      </Text>
+      <LinearGradient
+        colors={["#6366F1", "#8B5CF6", "#EC4899"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={S.pill}
+      >
+        <Text style={S.pillText}>365</Text>
+      </LinearGradient>
+      <Text style={S.eTag}>E</Text>
+    </View>
+  );
+}
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -83,11 +102,7 @@ export default function LoginScreen() {
         <LinearGradient colors={["#020617", "#1E1B4B", "#312E81"]} style={S.container}>
           <StatusBar barStyle="light-content" />
 
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={S.logo}
-            resizeMode="contain"
-          />
+          <BrandLogo />
           <Text style={S.title}>Welcome Back 👋</Text>
           <Text style={S.subtitle}>Continue your learning journey</Text>
 
@@ -190,7 +205,11 @@ export default function LoginScreen() {
 
 const S = StyleSheet.create({
   container:    { flex: 1, padding: 20, justifyContent: "center" },
-  logo:         { width: 120, height: 120, alignSelf: "center", marginBottom: 4, marginTop: 20 },
+  logoWrap:     { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginBottom: 4, marginTop: 20 },
+  gloows:       { fontSize: 36, fontWeight: "900", letterSpacing: -0.5 },
+  pill:         { borderRadius: 9, paddingHorizontal: 9, paddingVertical: 3, justifyContent: "center", alignItems: "center" },
+  pillText:     { color: "#fff", fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
+  eTag:         { fontSize: 14, fontWeight: "900", color: "#FBBF24", marginBottom: 14 },
   title:        { fontSize: 24, color: "#fff", textAlign: "center", marginTop: 10, fontWeight: "800" },
   subtitle:     { textAlign: "center", color: "#c7d2fe", marginBottom: 24, fontSize: 14, marginTop: 8 },
 

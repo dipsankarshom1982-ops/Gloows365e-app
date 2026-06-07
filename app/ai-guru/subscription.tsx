@@ -1,3 +1,8 @@
+import { functions } from "@/lib/firebase";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useFocusEffect } from "expo-router";
+import { httpsCallable } from "firebase/functions";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -8,34 +13,22 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect } from "expo-router";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import { getFunctions, httpsCallable } from "firebase/functions";
+import { SafeAreaView } from "react-native-safe-area-context";
+// Graceful: expo-web-browser — requires prebuild, falls back gracefully
+let WebBrowser: {
+  openBrowserAsync: (url: string) => Promise<any>;
+  openAuthSessionAsync?: (url: string, redirect: string) => Promise<{ type: string; url?: string }>;
+} | null = null;
+try { WebBrowser = require("expo-web-browser"); } catch {}
 
-import { useTheme } from "@/context/ThemeContext";
-import { useAppTranslation } from "@/context/LanguageContext";
 import { useAppConfig } from "@/context/AppConfigContext";
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useStudentProfile } from "@/context/StudentProfileContext";
-import { isSubscribed } from "@/services/aiGuruFirestore";
+import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/lib/firebase";
 import { RAZORPAY_KEY_ID } from "@/lib/seekho/constants";
-
-// Graceful fallback — Razorpay requires Expo Dev Client build
-let RazorpayCheckout: {
-  open: (opts: Record<string, unknown>) => Promise<{
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
-  }>;
-} | null = null;
-
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  RazorpayCheckout = require("react-native-razorpay").default;
-} catch { /* not installed in Expo Go */ }
+import { isSubscribed } from "@/services/aiGuruFirestore";
 
 type Cycle = "monthly" | "annual";
 
@@ -98,32 +91,33 @@ export default function AiGuruSubscriptionScreen() {
     : 0;
 
   const handleSubscribe = async () => {
-    if (!user) {
-      Alert.alert(t("loginRequired"), "Please log in to subscribe.");
-      return;
-    }
-    if (!RazorpayCheckout) {
-      Alert.alert(
-        "Payments Unavailable",
-        "Please build a dev client to enable Razorpay.\n\nRun: npx expo install react-native-razorpay"
-      );
+    // Check auth.currentUser directly — more reliable than profile object
+    if (!auth.currentUser) {
+      Alert.alert("Login Required", "Please log out and log in again.");
       return;
     }
     if (!RAZORPAY_KEY_ID) {
-      Alert.alert("Configuration Error", "Razorpay key not configured.");
+      Alert.alert("Configuration Error", "Razorpay key not configured. Add EXPO_PUBLIC_RAZORPAY_KEY_ID to .env");
       return;
     }
     if (!selectedPlan) return;
 
     setLoading(true);
     try {
-      const fns = getFunctions();
+      // Force fresh token so Cloud Function context.auth is populated
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        Alert.alert("Session expired", "Please log out and log in again.");
+        setLoading(false);
+        return;
+      }
+      await currentUser.getIdToken(true); // force refresh
 
-      // Phase 1: create Razorpay order
+      // Phase 1 — Create Razorpay order via Cloud Function
       const createOrder = httpsCallable<
         { planId: string; cycle: Cycle; amountPaise: number },
         { razorpayOrderId: string }
-      >(fns, "aiGuruCreateSubscription");
+      >(functions, "aiGuruCreateSubscription");
 
       const orderRes = await createOrder({
         planId:      selectedPlanId,
@@ -131,50 +125,71 @@ export default function AiGuruSubscriptionScreen() {
         amountPaise: displayTotal * 100,
       });
 
-      // Phase 2: open Razorpay checkout
-      const result = await RazorpayCheckout.open({
-        key:         RAZORPAY_KEY_ID,
-        order_id:    orderRes.data.razorpayOrderId,
-        amount:      displayTotal * 100,
-        currency:    "INR",
-        name:        "GLOOWS365E",
-        description: `${selectedPlan.name} · ${cycle === "monthly" ? "Monthly" : "Annual"}`,
-        prefill:     { email: user.email ?? "" },
-        theme:       { color: "#6366f1" },
-      });
+      const orderId = orderRes.data.razorpayOrderId;
+      const uid     = auth.currentUser?.uid ?? "";
+      const email   = auth.currentUser?.email ?? "";
 
-      // Phase 3: verify payment (CF writes subscription to Firestore)
-      const verify = httpsCallable<
-        {
-          planId: string; cycle: Cycle;
-          razorpayPaymentId: string;
-          razorpayOrderId:   string;
-          razorpaySignature: string;
-        },
-        { success: boolean }
-      >(fns, "aiGuruCreateSubscription");
+      // Phase 2 — Build Razorpay hosted checkout URL
+      // Phase 2 — Open Razorpay checkout via Cloud Function hosted page
+      // Chrome blocks data: URIs — so we call a CF endpoint that serves the HTML
+      const cfBase = process.env.EXPO_PUBLIC_CLOUD_FUNCTION_URL
+        ?? "https://us-central1-gloows-03b6sz.cloudfunctions.net";
 
-      await verify({
-        planId:             selectedPlanId,
-        cycle,
-        razorpayPaymentId:  result.razorpay_payment_id,
-        razorpayOrderId:    result.razorpay_order_id,
-        razorpaySignature:  result.razorpay_signature,
-      });
+      const checkoutUrl = `${cfBase}/aiGuruCheckoutPage`
+        + `?key=${encodeURIComponent(RAZORPAY_KEY_ID)}`
+        + `&order_id=${encodeURIComponent(orderId)}`
+        + `&amount=${displayTotal * 100}`
+        + `&plan=${encodeURIComponent(selectedPlan.name)}`
+        + `&email=${encodeURIComponent(email)}`
+        + `&uid=${encodeURIComponent(uid)}`
+        + `&planId=${encodeURIComponent(selectedPlanId)}`
+        + `&cycle=${encodeURIComponent(cycle)}`;
 
-      // Re-confirm subscription status from Firestore
-      const uid = auth.currentUser?.uid;
-      if (uid) setSubscribed(await isSubscribed(uid));
+      if (!WebBrowser) {
+        Alert.alert("Not available", "Payment requires a development build.\n\nRun: npx expo run:android");
+        return;
+      }
 
-      Alert.alert(
-        "Subscribed! 🎉",
-        `Welcome to ${selectedPlan.name}! Unlimited AI learning starts now.`,
-        [{ text: "Start Learning", onPress: () => router.back() }]
-      );
+      // Open browser — user pays, success handler calls aiGuruPaymentSuccess CF
+      await WebBrowser.openBrowserAsync(checkoutUrl);
+
+      // Phase 3 — Poll Firestore for up to 30 seconds
+      setLoading(true);
+      let activated = false;
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const subscribed = await isSubscribed(uid);
+        if (subscribed) { activated = true; break; }
+      }
+
+      if (activated) {
+        setSubscribed(true);
+        Alert.alert(
+          "Subscribed! 🎉",
+          `Welcome to ${selectedPlan.name}! Unlimited AI learning starts now.`,
+          [{ text: "Start Learning", onPress: () => router.back() }]
+        );
+      } else {
+        Alert.alert(
+          "Payment Status",
+          "If you completed payment, your subscription will activate within a minute.",
+          [
+            { text: "Check Now", onPress: async () => {
+              const s = await isSubscribed(uid);
+              if (s) { setSubscribed(true); Alert.alert("Activated! 🎉", "Your Premium subscription is now active."); }
+              else   { Alert.alert("Not yet active", "Still processing. Please wait a moment and re-open this screen."); }
+            }},
+            { text: "OK" }
+          ]
+        );
+      }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Payment failed. Please try again.";
-      if (!msg.toLowerCase().includes("cancel")) {
-        Alert.alert("Payment Failed", msg);
+      const err = e as any;
+      const code = err?.code ?? "";
+      const msg  = err?.message ?? "Payment failed. Please try again.";
+      // Don't show error if user simply cancelled
+      if (!msg.toLowerCase().includes("cancel") && code !== "functions/cancelled") {
+        Alert.alert("Payment Failed", `${code ? "[" + code + "] " : ""}${msg}`);
       }
     } finally {
       setLoading(false);

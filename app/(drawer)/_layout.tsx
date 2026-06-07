@@ -108,7 +108,7 @@ export default function DrawerLayout() {
   const xpPct     = Math.min((xpInLevel / XP_PER_LEVEL) * 100, 100);
 
   const name         = studentProfile?.name         || auth.currentUser?.email?.split("@")[0] || "Student";
-  const school       = studentProfile?.school       || "Your School";
+  const school       = studentProfile?.school       || t("yourSchool") || "Your School";
   const studentClass = studentProfile?.class        || "";
   const language     = studentProfile?.preferredLanguage || "English";
   const district     = studentProfile?.location?.district || "";
@@ -174,25 +174,25 @@ export default function DrawerLayout() {
                     <View style={styles.statBox}>
                       <Text style={styles.statEmoji}>🪙</Text>
                       <Text style={styles.statValue}>{vCoins}</Text>
-                      <Text style={styles.statLabel}>V-Coins</Text>
+                      <Text style={styles.statLabel}>{t("vCoinsLabel") ?? "V-Coins"}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statBox}>
                       <Text style={styles.statEmoji}>⚡</Text>
                       <Text style={styles.statValue}>{learnXP}</Text>
-                      <Text style={styles.statLabel}>XP</Text>
+                      <Text style={styles.statLabel}>{t("xpLabel") ?? "XP"}</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statBox}>
                       <Text style={styles.statEmoji}>🎮</Text>
                       <Text style={styles.statValue}>Lv {level}</Text>
-                      <Text style={styles.statLabel}>Level</Text>
+                      <Text style={styles.statLabel}>{t("levelLabel") ?? "Level"}</Text>
                     </View>
                   </View>
 
                   {/* XP progress bar */}
                   <View style={styles.xpBarRow}>
-                    <Text style={styles.xpBarLabel}>XP to next level</Text>
+                    <Text style={styles.xpBarLabel}>{t("xpToNextLevel") ?? "XP to next level"}</Text>
                     <Text style={styles.xpBarLabel}>{xpInLevel}/{XP_PER_LEVEL}</Text>
                   </View>
                   <View style={styles.progressBar}>
@@ -203,7 +203,7 @@ export default function DrawerLayout() {
                   <View style={styles.rankBanner}>
                     <Text style={styles.rankTrophy}>🏆</Text>
                     <View>
-                      <Text style={styles.rankLabel}>V-Coins Rank {currentYear}</Text>
+                      <Text style={styles.rankLabel}>{t("vCoinsRankLabel") ?? "V-Coins Rank"} {currentYear}</Text>
                       <Text style={styles.rankValue}>
                         {vCoinRank !== null ? `#${vCoinRank}` : "—"}
                       </Text>
@@ -212,7 +212,7 @@ export default function DrawerLayout() {
                       style={styles.rankViewBtn}
                       onPress={() => router.push("/vcoins/wallet")}
                     >
-                      <Text style={styles.rankViewText}>View</Text>
+                      <Text style={styles.rankViewText}>{t("viewLabel") ?? "View"}</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -229,12 +229,12 @@ export default function DrawerLayout() {
                       <Text style={styles.giftEmoji}>🎁</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.giftTitle}>
-                          {giftClaimed ? "Gift Claimed!" : "Surprise Gift Waiting!"}
+                          {giftClaimed ? (t("giftClaimed") ?? "Gift Claimed!") : (t("surpriseGiftWaiting") ?? "Surprise Gift Waiting!")}
                         </Text>
                         <Text style={styles.giftSub}>
                           {giftClaimed
-                            ? "Your gift is on its way"
-                            : "Tap to claim your reward"}
+                            ? (t("giftOnItsWay") ?? "Your gift is on its way")
+                            : (t("tapToClaimReward") ?? "Tap to claim your reward")}
                         </Text>
                       </View>
                       {!giftClaimed && (
@@ -273,7 +273,7 @@ export default function DrawerLayout() {
                   onPress={() => router.push("/ai-guru")} colors={colors} />
               )}
               {drawerItem("learnfun") && (
-                <DrawerItem icon="book-outline" label="LearnFun"
+                <DrawerItem icon="book-outline" label={t("learnFunLabel") ?? "LearnFun"}
                   onPress={() => router.push("/(drawer)/(tabs)/learnFun")} colors={colors} />
               )}
 

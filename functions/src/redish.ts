@@ -101,4 +101,15 @@ export const RK = {
   adEvent:   (uid: string, adId: string, event: string) => `adev:${uid}:${adId}:${event}`,
   adFreq:    (uid: string, date: string)     => `adfreq:${uid}:${date}`,
   adReward:  (uid: string, adId: string)     => `adreward:${uid}:${adId}`,
+
+  // PhotoSolve
+  photoSolve:      (uid: string, date: string) => `photosolve:${uid}:${date}`,
+  photoSolveCache: (hash: string)              => `photosolve:cache:${hash}`,
+
+  // Exam Simulator
+  examGen:    (uid: string, date: string) => `exam:gen:${uid}:${date}`,
+  examCache:  (hash: string)              => `exam:cache:${hash}`,
+
+  // Voice Tutor
+  voiceTutor: (uid: string, date: string) => `voicetutor:${uid}:${date}`,
 };

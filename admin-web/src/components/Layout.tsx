@@ -10,11 +10,13 @@ const NAV_GROUPS = [
   { section: "OVERVIEW", items: [
     { path: "/",                   label: "📊 Dashboard",          permKey: "dashboard" },
     { path: "/platform-analytics", label: "📈 Platform Analytics", permKey: "platform-analytics" },
+    { path: "/crash-reports",      label: "🐛 Crash Reports",      permKey: "dashboard" },
   ]},
   { section: "ADS", items: [
-    { path: "/ads",       label: "📢 All Ads",      permKey: "ads" },
-    { path: "/ads/new",   label: "➕ Create Ad",    permKey: "ads" },
-    { path: "/analytics", label: "📊 Ad Analytics", permKey: "analytics" },
+    { path: "/ads",                   label: "📢 All Ads",              permKey: "ads" },
+    { path: "/ads/new",               label: "➕ Create Ad",            permKey: "ads" },
+    { path: "/analytics",             label: "📊 Ad Analytics",         permKey: "analytics" },
+    { path: "/affiliate-products",    label: "🛒 Affiliate Products",   permKey: "ads" },
   ]},
   { section: "CONTENT", items: [
     { path: "/banners",          label: "🎯 Banners",          permKey: "banners" },

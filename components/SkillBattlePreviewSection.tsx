@@ -154,7 +154,7 @@ export default function SkillBattlePreviewSection() {
           </View>
         </View>
         <TouchableOpacity onPress={() => router.push("/(drawer)/(tabs)/skillbattle")} style={S.viewAllBtn}>
-          <Text style={S.viewAllText}>See All</Text>
+          <Text style={S.viewAllText}>{t("seeAll") ?? "See All"}</Text>
           <Text style={{ color: "#8b5cf6", fontSize: 12 }}>›</Text>
         </TouchableOpacity>
       </View>

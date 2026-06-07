@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import DrawerForm from "../components/DrawerForm";
+import MediaUpload from "../components/MediaUpload";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { db } from "../lib/firebase";
 
 interface Partner {
   id: string;
@@ -135,7 +136,13 @@ export default function Partners() {
         }
       >
         <div><label className={labelCls}>Name *</label><input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={inputCls} placeholder="Partner name" /></div>
-        <div><label className={labelCls}>Logo URL</label><input value={form.logoUrl} onChange={(e) => setForm((f) => ({ ...f, logoUrl: e.target.value }))} className={inputCls} placeholder="https://…" /></div>
+        <MediaUpload
+          label="Partner Logo"
+          storagePath="partners/logos"
+          value={form.logoUrl}
+          onChange={(url) => setForm((f) => ({ ...f, logoUrl: url }))}
+          placeholder="https://… or upload below"
+        />
         <div><label className={labelCls}>Website</label><input value={form.website} onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))} className={inputCls} placeholder="https://…" /></div>
         <div>
           <label className={labelCls}>Partner Type</label>

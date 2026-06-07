@@ -83,6 +83,14 @@ service cloud.firestore {
       }
     }
 
+    // 📓 AI NOTEBOOK — saved Q&A entries
+    match /aiNotebook/{userId} {
+      allow read, write: if request.auth.uid == userId;
+      match /entries/{entryId} {
+        allow read, write: if request.auth.uid == userId;
+      }
+    }
+
     // 🎓 RESTART EDUCATION CHATS (separate from AI Guru)
     match /restartEducationChats/{userId} {
       allow read, write: if request.auth.uid == userId;
@@ -175,11 +183,16 @@ service cloud.firestore {
     // 📖 STORIES
     match /stories/{storyId} {
       allow read: if request.auth != null
-        && (resource.data.status == "approved" || request.auth.uid == resource.data.userId);
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        && (resource.data.status == "approved" || request.auth.uid == resource.data.userId || request.auth.token.admin == true);
+      allow create: if request.auth != null
+        && (
+          request.resource.data.userId == request.auth.uid
+          || request.auth.token.admin == true
+        );
       allow update: if request.auth != null
         && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null
+        && (request.auth.uid == resource.data.userId || request.auth.token.admin == true);
     }
 
     // ⚔️ SKILL BATTLES
@@ -393,9 +406,45 @@ service cloud.firestore {
       allow write: if request.auth.token.superAdmin == true;
     }
 
-    // 🔒 DEFAULT DENY
-    match /{document=**} {
-      allow read, write: if false;
+    // 🐛 CRASH REPORTS — written by app, read by admin only
+    match /crashReports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update: if request.auth.token.admin == true;
+      allow delete: if false;
+    }
+    match /affiliateProducts/{productId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.token.admin == true;
+    }
+
+    // 📸 PHOTOSOLVE USAGE
+    match /photoSolveUsage/{uid} {
+      allow read: if request.auth.uid == uid;
+      allow write: if false;
+      match /daily/{date} {
+        allow read: if request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // 🎯 EXAM SIMULATOR
+    match /examSimulator/{uid} {
+      allow read: if request.auth.uid == uid || request.auth.token.admin == true;
+      allow write: if false;
+      match /exams/{examId} {
+        allow read: if request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    // 🎙️ VOICE TUTOR USAGE
+    match /voiceTutorUsage/{uid} {
+      allow read: if request.auth.uid == uid;
+      allow write: if false;
+      match /daily/{date} {
+        allow read: if request.auth.uid == uid;
+        allow write: if false;
+      }
     }
   }
 }

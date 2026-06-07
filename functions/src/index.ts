@@ -59,9 +59,18 @@ export { askAiGuruQuestion } from "./askAiGuru";
 
 export { restartEducationAdvisor } from "./restartEducationAdvisor";
 
+// ── PhotoSolve AI ────────────────────────────────────────────────────────────
+export { photoSolve } from "./photoSolve";
+
+// ── Exam Simulator ───────────────────────────────────────────────────────────
+export { evaluateExam, generateExam } from "./examSimulator";
+
+// ── Voice Tutor ──────────────────────────────────────────────────────────────
+export { voiceTutorAnswer } from "./voiceTutor";
+
 
 // ── AI Guru Subscription (Razorpay) ────────────────────────────────────────────
-export { aiGuruCreateSubscription } from "./aiGuruSubscription";
+export { aiGuruCheckoutPage, aiGuruCreateSubscription, aiGuruPaymentSuccess } from "./aiGuruSubscription";
 
 // ── Unified Ads System ─────────────────────────────────────────────────────────
 export { aggregateAdAnalytics, claimAdReward, getAds, recordAdEvent } from "./ads";

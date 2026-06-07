@@ -43,11 +43,12 @@ export default function PremiumLock({
 
         <View style={S.features}>
           {[
-            "Unlimited AI lessons per day",
-            "Unlimited follow-up doubts",
-            "Revision Reels & Practice Tests",
-            "Voice explanations",
-            "Exam Mode with deep analysis",
+            "📸 PhotoSolve — 50 photo solves/day",
+            "🎯 Exam Simulator — unlimited mock tests",
+            "🎙️ Voice Tutor — 100 voice questions/day",
+            "✨ Unlimited AI lessons per day",
+            "💬 Unlimited follow-up doubts",
+            "🤖 Unlimited VidyaGuru chats",
           ].map((f) => (
             <View key={f} style={S.featureRow}>
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />

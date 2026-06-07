@@ -1,14 +1,15 @@
 // PATH: admin-web/src/pages/SkillBattles.tsx
 // 4 tabs: Battles list | Create/Edit | Reel Approval | Leaderboard
 
-import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
 import {
   collection, deleteDoc, doc, getDocs,
-  orderBy, query, serverTimestamp,
-  setDoc, updateDoc, where,
+  query, serverTimestamp,
+  setDoc, updateDoc, where
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import MediaUpload from "../components/MediaUpload";
 import { db, functions } from "../lib/firebase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -345,11 +346,23 @@ function CreateBattle({ editBattle, onSaved, onCancel }: {
         <div className="grid grid-cols-2 gap-4">
           <div><label className={LB}>Sponsor Name</label>
             <input value={form.sponsor} onChange={(e) => set("sponsor", e.target.value)} placeholder="e.g. BYJU'S" className={I} /></div>
-          <div><label className={LB}>Sponsor Logo URL / Emoji</label>
-            <input value={form.sponsorLogo} onChange={(e) => set("sponsorLogo", e.target.value)} placeholder="https://… or 🏪" className={I} /></div>
+          <div>
+            <MediaUpload
+              label="Sponsor Logo"
+              storagePath="skillbattles/sponsors"
+              value={form.sponsorLogo}
+              onChange={(url) => set("sponsorLogo", url)}
+              placeholder="https://… or upload below"
+            />
+          </div>
         </div>
-        <div><label className={LB}>Banner Image URL (optional)</label>
-          <input value={form.bannerImage} onChange={(e) => set("bannerImage", e.target.value)} placeholder="https://…" className={I} /></div>
+        <MediaUpload
+          label="Banner Image (optional)"
+          storagePath="skillbattles/banners"
+          value={form.bannerImage}
+          onChange={(url) => set("bannerImage", url)}
+          placeholder="https://… or upload below"
+        />
         <div><label className={LB}>Eligible Classes</label>
           <input value={form.eligibleClasses} onChange={(e) => set("eligibleClasses", e.target.value)} placeholder="6,7,8,9,10,11,12" className={I} />
           <p className="text-slate-500 text-xs mt-1">Comma-separated class numbers</p></div>

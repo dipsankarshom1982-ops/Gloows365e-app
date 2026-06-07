@@ -12,6 +12,8 @@ const PlatformAnalytics    = lazy(() => import("./pages/PlatformAnalytics"));
 
 const AdsList              = lazy(() => import("./pages/AdsList"));
 const CreateAd             = lazy(() => import("./pages/CreateAd"));
+const AffiliateProducts    = lazy(() => import("./pages/AffiliateProducts"));
+const CrashReports         = lazy(() => import("./pages/CrashReports"));
 const Analytics            = lazy(() => import("./pages/Analytics"));
 
 const Banners              = lazy(() => import("./pages/Banners"));
@@ -89,6 +91,8 @@ function ProtectedRoutes() {
           <Route path="/ads"       element={<AdsList />} />
           <Route path="/ads/new"   element={<CreateAd />} />
           <Route path="/ads/:id"   element={<CreateAd />} />
+          <Route path="/affiliate-products"     element={<AffiliateProducts />} />
+          <Route path="/crash-reports"          element={<CrashReports />} />
           <Route path="/analytics" element={<Analytics />} />
 
           <Route path="/banners"                    element={<Banners />} />

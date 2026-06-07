@@ -64,7 +64,7 @@ export default function SeekhoHomeScreen() {
         {/* ── Title + student info ── */}
         <View style={S.titleRow}>
           <View style={S.titleLeft}>
-            <Text style={[S.title, { color: colors.text }]}>📖 Seekho</Text>
+            <Text style={[S.title, { color: colors.text }]}>📖 {t("seekhoPreviewTitle") ?? "Seekho"}</Text>
             <Text style={[S.subtitle, { color: colors.textSecondary }]}>
               {t("curriculumAligned")}
             </Text>
@@ -73,7 +73,7 @@ export default function SeekhoHomeScreen() {
             <ActivityIndicator size="small" color="#6366f1" />
           ) : (
             <View style={[S.classBadge, { backgroundColor: "#4f46e5" }]}>
-              <Text style={S.classBadgeText}>Class {selectedClass}</Text>
+              <Text style={S.classBadgeText}>{t("classLabel") ?? "Class"} {selectedClass}</Text>
               <Text style={S.boardBadgeText}>{selectedBoard}</Text>
             </View>
           )}

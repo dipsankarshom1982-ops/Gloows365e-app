@@ -1,9 +1,10 @@
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { motion } from "framer-motion";
+import MediaUpload from "../components/MediaUpload";
 import SafetyBadge from "../components/SafetyBadge";
+import { db } from "../lib/firebase";
 
 const AD_TYPES    = ["feed", "rewarded", "sponsored_reel", "scholarship"];
 const AD_CATS     = ["education", "scholarship", "exam", "course", "skill", "olympiad"];
@@ -132,16 +133,23 @@ export default function CreateAd() {
           <textarea value={form.description} onChange={(e) => set("description", e.target.value)} className={`${inputCls} resize-none h-20`} placeholder="Brief description shown in expanded view" />
         </div>
 
-        {/* Image + Video URLs */}
-        <div>
-          <label className={labelCls}>Image URL *</label>
-          <input value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} className={inputCls} required placeholder="https://..." />
-        </div>
+        {/* Image */}
+        <MediaUpload
+          label="Ad Image *"
+          storagePath="ads/images"
+          value={form.imageUrl}
+          onChange={(url) => set("imageUrl", url)}
+          placeholder="https://… or upload below"
+        />
         {(form.adType === "rewarded" || form.adType === "sponsored_reel") && (
-          <div>
-            <label className={labelCls}>Cloudflare Stream Video URL</label>
-            <input value={form.videoUrl} onChange={(e) => set("videoUrl", e.target.value)} className={inputCls} placeholder="https://stream.cloudflare.com/..." />
-          </div>
+          <MediaUpload
+            mode="video"
+            label="Cloudflare Stream Video"
+            storagePath="ads/videos"
+            value={form.videoUrl}
+            onChange={(url) => set("videoUrl", url)}
+            placeholder="https://… or upload via Cloudflare below"
+          />
         )}
 
         {/* CTA */}

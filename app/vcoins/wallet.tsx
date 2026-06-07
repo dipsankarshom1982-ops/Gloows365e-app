@@ -4,21 +4,30 @@
 //  • Shows user's own rank highlighted
 //  • Rankings based on vCoinsYear_{currentYear} field
 
+import { useAppTranslation } from "@/context/LanguageContext";
+import { useVCoins } from "@/hooks/useVCoins";
+import { auth, db } from "@/lib/firebase";
+import { VCoinTransaction } from "@/services/vCoinsService";
 import {
-  formatVCoins,
   formatTransactionDate,
+  formatVCoins,
+  getStatusColor,
   getTransactionColor,
   getVCoinsSourceIcon,
   getVCoinsSourceIconBg,
-  getVCoinsSourceIconColor,
-  getVCoinsSourceLabel,
-  getStatusColor,
+  getVCoinsSourceIconColor
 } from "@/utils/formatVCoins";
-import { VCoinTransaction } from "@/services/vCoinsService";
-import { useVCoins } from "@/hooks/useVCoins";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import {
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -30,16 +39,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { auth, db } from "@/lib/firebase";
-import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-} from "firebase/firestore";
-import { useEffect, useState } from "react";
 
 type FilterTab = "ALL" | "EARNED" | "SPENT" | "PENDING";
 type TabView   = "wallet" | "leaderboard";
@@ -75,6 +74,7 @@ const YEAR_FIELD  = `vCoinsYear_${currentYear}`;
 export default function VCoinsWalletScreen() {
   const router   = useRouter();
   const insets   = useSafeAreaInsets();
+  const { t }    = useAppTranslation();
   const { balance, lifetimeEarned, lifetimeSpent, thisMonthEarned, transactions, loading } = useVCoins();
   const [activeTab, setActiveTab] = useState<FilterTab>("ALL");
   const [mainTab, setMainTab]     = useState<TabView>("wallet");
@@ -217,7 +217,7 @@ export default function VCoinsWalletScreen() {
         >
           <Ionicons name="wallet-outline" size={16} color={mainTab === "wallet" ? "#fff" : "#6B7280"} />
           <Text style={[styles.mainTabText, mainTab === "wallet" && styles.mainTabTextActive]}>
-            Wallet
+            {t("walletLabel") ?? "Wallet"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -226,7 +226,7 @@ export default function VCoinsWalletScreen() {
         >
           <Ionicons name="trophy-outline" size={16} color={mainTab === "leaderboard" ? "#fff" : "#6B7280"} />
           <Text style={[styles.mainTabText, mainTab === "leaderboard" && styles.mainTabTextActive]}>
-            Leaderboard
+            {t("leaderboardLabel") ?? "Leaderboard"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -326,7 +326,7 @@ export default function VCoinsWalletScreen() {
             style={styles.lbHeader}
           >
             <Text style={styles.lbHeaderTitle}>🏆 V-Coins Leaderboard</Text>
-            <Text style={styles.lbHeaderSub}>{currentYear} Rankings · Updated Daily</Text>
+            <Text style={styles.lbHeaderSub}>{currentYear} {t("leaderboardLabel") ?? "Rankings"} · {t("updatedDaily") ?? "Updated Daily"}</Text>
           </LinearGradient>
 
           {/* My rank card (if not in visible list) */}

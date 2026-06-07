@@ -1,14 +1,14 @@
-import { useTheme } from "@/context/ThemeContext";
-import { useStudentProfile } from "@/context/StudentProfileContext";
-import { PRACTICE_UNLOCK_THRESHOLD } from "@/lib/seekho/constants";
-import type { SeekhoCourse, SeekhoLesson, SeekhoSubject } from "@/lib/seekho/types";
-import { useSeekhoAccess } from "@/hooks/useSeekhoAccess";
-import { useSeekhoStore } from "@/store/seekhoStore";
 import ConceptNode from "@/components/seekho/ConceptNode";
 import LessonRow from "@/components/seekho/LessonRow";
 import SubscriptionBottomSheet from "@/components/seekho/SubscriptionBottomSheet";
+import { useStudentProfile } from "@/context/StudentProfileContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useSeekhoAccess } from "@/hooks/useSeekhoAccess";
+import { PRACTICE_UNLOCK_THRESHOLD } from "@/lib/seekho/constants";
+import type { SeekhoCourse, SeekhoLesson, SeekhoSubject } from "@/lib/seekho/types";
+import { getCourseById, getLessonsByCourse } from "@/services/seekhoFirestore";
+import { useSeekhoStore } from "@/store/seekhoStore";
 import { Ionicons } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -20,7 +20,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getCourseById, getLessonsByCourse } from "@/services/seekhoFirestore";
+// Graceful: expo-web-browser — requires prebuild
+let WebBrowser: { openBrowserAsync: (url: string) => Promise<any> } | null = null;
+try { WebBrowser = require("expo-web-browser"); } catch {}
 
 type ConceptState = "completed" | "active" | "locked";
 
@@ -103,7 +105,7 @@ export default function ChapterDetailScreen() {
 
   const handleNotesOpen = async () => {
     if (course?.thumbnailUrl) {
-      await WebBrowser.openBrowserAsync(course.thumbnailUrl).catch(() => null);
+      await WebBrowser?.openBrowserAsync(course.thumbnailUrl).catch(() => null);
     }
   };
 

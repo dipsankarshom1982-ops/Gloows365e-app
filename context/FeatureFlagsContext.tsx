@@ -22,6 +22,8 @@ const ALL_AI_FLAGS = {
   dashboard: true, vidyaguru: true, generate: true, my_lessons: true,
   revision_reels: true, practice_tests: true, ask_aiguru: true,
   discover: true, subscription: true,
+  photo_solve: true, exam_simulator: true, voice_tutor: true,
+  notebook: true,
 };
 
 // ─── Drawer item flags ─────────────────────────────────────────────────────
@@ -116,9 +118,9 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
 
   return (
     <FeatureFlagsContext.Provider value={{
-      homeSection:  (key) => isTester ? true : (homeFlags[key]   ?? false),
-      aiGuru:       (key) => isTester ? true : (aiFlags[key]     ?? false),
-      drawerItem:   (key) => key === "home" ? true : isTester ? true : (drawerFlags[key] ?? false),
+      homeSection:  (key) => isTester ? true : (homeFlags[key]   ?? true),
+      aiGuru:       (key) => isTester ? true : (aiFlags[key]     ?? true),
+      drawerItem:   (key) => key === "home" ? true : isTester ? true : (drawerFlags[key] ?? true),
       homeFlags,
       drawerFlags,
       isTester,

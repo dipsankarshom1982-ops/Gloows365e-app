@@ -1,3 +1,14 @@
+import { Ionicons } from "@expo/vector-icons";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from "expo-audio";
+import { BlurView } from "expo-blur";
+import * as FileSystem from "expo-file-system/legacy";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -10,28 +21,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
-import {
-  useAudioRecorder,
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-} from "expo-audio";
-import * as FileSystem from "expo-file-system/legacy";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useTheme } from "@/context/ThemeContext";
-import { useAppTranslation, useLanguage } from "@/context/LanguageContext";
-import { useStudentProfile } from "@/context/StudentProfileContext";
+import ChatBubble from "@/components/vidyaguru/ChatBubble";
 import GuruAvatar from "@/components/vidyaguru/GuruAvatar";
 import VoiceWaveform from "@/components/vidyaguru/VoiceWaveform";
-import ChatBubble from "@/components/vidyaguru/ChatBubble";
-import { askVidyaGuru, playGuruAudio } from "@/services/vidyaguruApi";
+import { useAppTranslation, useLanguage } from "@/context/LanguageContext";
+import { useStudentProfile } from "@/context/StudentProfileContext";
+import { useTheme } from "@/context/ThemeContext";
 import type { GuruMessage, GuruState } from "@/lib/vidyaguru/types";
+import { askVidyaGuru, playGuruAudio } from "@/services/vidyaguruApi";
 
 const GREETING =
   "Namaste! I am VidyaGuru AI — your personal AI teacher. Ask me anything about your studies — maths, science, history, anything! I'm here to help you learn and grow.";
@@ -376,7 +376,7 @@ export default function VidyaGuruScreen() {
               style={S.paywallPrimary}
               onPress={() => {
                 setShowPaywall(false);
-                router.push("/seekho/subscription" as any);
+                router.push("/ai-guru/subscription" as any);
               }}
             >
               <LinearGradient colors={["#6366f1", "#4f46e5"]} style={S.paywallGradient}>

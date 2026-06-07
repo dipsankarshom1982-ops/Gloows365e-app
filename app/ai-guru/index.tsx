@@ -40,14 +40,18 @@ type MenuCardDef = {
 // flagKey values must match the keys in FeatureFlagsContext ALL_AI_FLAGS
 // and the keys used in FeatureControl.tsx AIGURU_FEATURES
 const MENU_CARD_DEFS: MenuCardDef[] = [
-  { flagKey: "dashboard",      titleKey: "menuAiDashboard",    subtitleKey: "menuAiDashboardSub",    emoji: "🧠",  gradient: ["#1e1b4b", "#312e81", "#4f46e5"], route: "/ai-guru/dashboard",  premium: false, accentColor: "#818cf8" },
-  { flagKey: "vidyaguru",      titleKey: "menuVidyaGuruCard",  subtitleKey: "menuVidyaGuruCardSub",  emoji: "🧑‍🏫", gradient: ["#1a0533", "#4c1d95", "#7c3aed"], route: "/ai-guru/vidyaguru",  premium: false, accentColor: "#c4b5fd" },
-  { flagKey: "generate",       titleKey: "menuGenerateLesson", subtitleKey: "menuGenerateLessonSub", emoji: "✨",  gradient: ["#0f172a", "#1e3a5f", "#0284c7"], route: "/ai-guru/setup",      premium: false, accentColor: "#38bdf8" },
-  { flagKey: "my_lessons",     titleKey: "menuMyLessons",      subtitleKey: "menuMyLessonsSub",      emoji: "📚",  gradient: ["#052e16", "#064e3b", "#059669"], route: "/ai-guru/my-lessons", premium: false, accentColor: "#34d399" },
-  { flagKey: "revision_reels", titleKey: "menuRevisionReels",  subtitleKey: "menuRevisionReelsSub",  emoji: "🎬",  gradient: ["#1c1917", "#44403c", "#78716c"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#d6d3d1" },
-  { flagKey: "practice_tests", titleKey: "menuPracticeTests",  subtitleKey: "menuPracticeTestsSub",  emoji: "📝",  gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/my-lessons", premium: true,  accentColor: "#f87171" },
-  { flagKey: "ask_aiguru",     titleKey: "menuAskAiGuruCard",  subtitleKey: "menuAskAiGuruCardSub",  emoji: "🤖",  gradient: ["#0f0f1e", "#1a1a3e", "#6366f1"], route: "/ai-guru/ask",        premium: false, accentColor: "#a5b4fc" },
-  { flagKey: "discover",       titleKey: "menuDiscoverAI",     subtitleKey: "menuDiscoverAISub",     emoji: "🧭",  gradient: ["#0c1a2e", "#0f2d4a", "#0369a1"], route: "/discover",            premium: false, accentColor: "#7dd3fc" },
+  { flagKey: "dashboard",      titleKey: "menuAiDashboard",    subtitleKey: "menuAiDashboardSub",    emoji: "🧠",  gradient: ["#1e1b4b", "#312e81", "#4f46e5"], route: "/ai-guru/dashboard",        premium: false, accentColor: "#818cf8" },
+  { flagKey: "vidyaguru",      titleKey: "menuVidyaGuruCard",  subtitleKey: "menuVidyaGuruCardSub",  emoji: "🧑‍🏫", gradient: ["#1a0533", "#4c1d95", "#7c3aed"], route: "/ai-guru/vidyaguru",        premium: false, accentColor: "#c4b5fd" },
+  { flagKey: "photo_solve",    titleKey: "menuPhotoSolve",     subtitleKey: "menuPhotoSolveSub",     emoji: "📸",  gradient: ["#451a03", "#92400e", "#d97706"], route: "/ai-guru/photo-solve",      premium: false, accentColor: "#fbbf24" },
+  { flagKey: "exam_simulator", titleKey: "menuExamSimulator",  subtitleKey: "menuExamSimulatorSub",  emoji: "🎯",  gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/exam-simulator",   premium: false, accentColor: "#fca5a5" },
+  { flagKey: "voice_tutor",    titleKey: "menuVoiceTutor",     subtitleKey: "menuVoiceTutorSub",     emoji: "🎙️",  gradient: ["#2e1065", "#6d28d9", "#a855f7"], route: "/ai-guru/voice-tutor",      premium: false, accentColor: "#d8b4fe" },
+  { flagKey: "generate",       titleKey: "menuGenerateLesson", subtitleKey: "menuGenerateLessonSub", emoji: "✨",  gradient: ["#0f172a", "#1e3a5f", "#0284c7"], route: "/ai-guru/setup",            premium: false, accentColor: "#38bdf8" },
+  { flagKey: "my_lessons",     titleKey: "menuMyLessons",      subtitleKey: "menuMyLessonsSub",      emoji: "📚",  gradient: ["#052e16", "#064e3b", "#059669"], route: "/ai-guru/my-lessons",       premium: false, accentColor: "#34d399" },
+  { flagKey: "ask_aiguru",     titleKey: "menuAskAiGuruCard",  subtitleKey: "menuAskAiGuruCardSub",  emoji: "🤖",  gradient: ["#0f0f1e", "#1a1a3e", "#6366f1"], route: "/ai-guru/ask",              premium: false, accentColor: "#a5b4fc" },
+  { flagKey: "notebook",       titleKey: "menuAiNotebook",     subtitleKey: "menuAiNotebookSub",     emoji: "📓",  gradient: ["#0c1a0c", "#14532d", "#16a34a"], route: "/ai-guru/notebook",         premium: false, accentColor: "#86efac" },
+  { flagKey: "revision_reels", titleKey: "menuRevisionReels",  subtitleKey: "menuRevisionReelsSub",  emoji: "🎬",  gradient: ["#1c1917", "#44403c", "#78716c"], route: "/ai-guru/my-lessons",       premium: true,  accentColor: "#d6d3d1" },
+  { flagKey: "practice_tests", titleKey: "menuPracticeTests",  subtitleKey: "menuPracticeTestsSub",  emoji: "📝",  gradient: ["#450a0a", "#7f1d1d", "#dc2626"], route: "/ai-guru/my-lessons",       premium: true,  accentColor: "#f87171" },
+  { flagKey: "discover",       titleKey: "menuDiscoverAI",     subtitleKey: "menuDiscoverAISub",     emoji: "🧭",  gradient: ["#0c1a2e", "#0f2d4a", "#0369a1"], route: "/discover",                 premium: false, accentColor: "#7dd3fc" },
 ];
 
 // Animated pulse ring around avatar

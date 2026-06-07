@@ -139,7 +139,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
         {hasLesson && !isCompleted && (
           <View style={styles.lessonBadge}>
             <Ionicons name="sparkles" size={12} color="#6366f1" />
-            <Text style={styles.lessonBadgeText}>AI Lesson Ready</Text>
+            <Text style={styles.lessonBadgeText}>{t("aiLessonReady") ?? "AI Lesson Ready"}</Text>
           </View>
         )}
 
@@ -156,7 +156,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
               />
               <TouchableOpacity style={styles.leaderLink} onPress={goToLeaderboard} activeOpacity={0.8}>
                 <Ionicons name="podium-outline" size={14} color="#a5b4fc" />
-                <Text style={styles.leaderLinkText}>View Final Leaderboard</Text>
+                <Text style={styles.leaderLinkText}>{t("viewFinalLeaderboard") ?? "View Final Leaderboard"}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -165,7 +165,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
           {isJoined && !isCompleted && isEnded && (
             <TouchableOpacity style={styles.leaderLink} onPress={goToLeaderboard} activeOpacity={0.8}>
               <Ionicons name="podium-outline" size={14} color="#a5b4fc" />
-              <Text style={styles.leaderLinkText}>View Final Leaderboard</Text>
+              <Text style={styles.leaderLinkText}>{t("viewFinalLeaderboard") ?? "View Final Leaderboard"}</Text>
             </TouchableOpacity>
           )}
 
@@ -180,7 +180,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
               />
               <TouchableOpacity style={styles.leaderLink} onPress={goToLeaderboard} activeOpacity={0.8}>
                 <Ionicons name="podium-outline" size={14} color="#a5b4fc" />
-                <Text style={styles.leaderLinkText}>View Live Standings</Text>
+                <Text style={styles.leaderLinkText}>{t("viewLiveStandings") ?? "View Live Standings"}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -199,7 +199,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
           {!isCompleted && isLive && isJoined && !hasLesson && (
             <View style={styles.timerBadge}>
               <Ionicons name="time-outline" size={18} color="#f59e0b" />
-              <Text style={styles.timerText}>Lesson being prepared…</Text>
+              <Text style={styles.timerText}>{t("lessonBeingPrepared") ?? "Lesson being prepared…"}</Text>
             </View>
           )}
 
@@ -219,7 +219,7 @@ const ContestCard = ({ item, joined, completed }: any) => {
               ) : (
                 <View style={styles.timerBadge}>
                   <Ionicons name="time-outline" size={18} color="#f59e0b" />
-                  <Text style={styles.timerText}>Lesson being prepared…</Text>
+                  <Text style={styles.timerText}>{t("lessonBeingPrepared") ?? "Lesson being prepared…"}</Text>
                 </View>
               )}
             </>

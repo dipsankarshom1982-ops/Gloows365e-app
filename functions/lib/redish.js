@@ -83,5 +83,13 @@ exports.RK = {
     adEvent: (uid, adId, event) => `adev:${uid}:${adId}:${event}`,
     adFreq: (uid, date) => `adfreq:${uid}:${date}`,
     adReward: (uid, adId) => `adreward:${uid}:${adId}`,
+    // PhotoSolve
+    photoSolve: (uid, date) => `photosolve:${uid}:${date}`,
+    photoSolveCache: (hash) => `photosolve:cache:${hash}`,
+    // Exam Simulator
+    examGen: (uid, date) => `exam:gen:${uid}:${date}`,
+    examCache: (hash) => `exam:cache:${hash}`,
+    // Voice Tutor
+    voiceTutor: (uid, date) => `voicetutor:${uid}:${date}`,
 };
 //# sourceMappingURL=redish.js.map

@@ -24,19 +24,12 @@ service firebase.storage {
     match /stories/{userId}/{fileName} {
       allow read: if request.auth != null;
 
-      // Regular users: can only write to their own uid subfolder
+      // Users write to their own uid subfolder; admins write to stories/admin/
       allow write: if request.auth != null
-        && request.auth.uid == userId
-        && request.resource.size < 50 * 1024 * 1024
         && (
-          request.resource.contentType.matches('image/.*')
-          || request.resource.contentType.matches('video/.*')
-        );
-
-      // Admins: can write to stories/admin/ subfolder
-      allow write: if request.auth != null
-        && request.auth.token.admin == true
-        && userId == 'admin'
+          (request.auth.uid == userId)
+          || (request.auth.token.admin == true && userId == 'admin')
+        )
         && request.resource.size < 50 * 1024 * 1024
         && (
           request.resource.contentType.matches('image/.*')
@@ -67,6 +60,57 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
       allow delete: if request.auth != null
         && request.auth.uid == userId;
+    }
+
+    // 🛡️ Admin uploads (banners, partners, badges, ads, contests, skillbattles)
+    match /banners/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /partners/logos/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /badges/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /ads/images/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /contests/banners/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /skillbattles/banners/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+    match /skillbattles/sponsors/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.token.admin == true
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
 
     // 🗂️ Default deny

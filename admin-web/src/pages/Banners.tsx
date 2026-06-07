@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import DrawerForm from "../components/DrawerForm";
+import MediaUpload from "../components/MediaUpload";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { db } from "../lib/firebase";
 
 interface Banner {
   id: string;
@@ -153,10 +154,13 @@ export default function Banners() {
           <label className={labelCls}>Title *</label>
           <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} placeholder="Banner headline" />
         </div>
-        <div>
-          <label className={labelCls}>Image URL *</label>
-          <input value={form.imageUrl} onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))} className={inputCls} placeholder="https://…" />
-        </div>
+        <MediaUpload
+          label="Banner Image *"
+          storagePath="banners"
+          value={form.imageUrl}
+          onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+          placeholder="https://… or upload below"
+        />
         <div>
           <label className={labelCls}>Target Screen</label>
           <input value={form.targetScreen} onChange={(e) => setForm((f) => ({ ...f, targetScreen: e.target.value }))} className={inputCls} placeholder="/ai-guru, /seekho, etc." />

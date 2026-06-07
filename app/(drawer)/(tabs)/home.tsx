@@ -121,11 +121,11 @@ export default function Home() {
               <View style={styles.aiOrb} />
               <View style={styles.aiTopRow}>
                 <View style={styles.aiBadge}>
-                  <Text style={styles.aiBadgeText}>✨ Powered by AI</Text>
+                  <Text style={styles.aiBadgeText}>✨ {t("poweredByAI") ?? "Powered by AI"}</Text>
                 </View>
                 <View style={styles.aiLiveTag}>
                   <View style={styles.aiPulseDot} />
-                  <Text style={styles.aiLiveText}>Online</Text>
+                  <Text style={styles.aiLiveText}>{t("onlineLabel") ?? "Online"}</Text>
                 </View>
               </View>
               <View style={styles.aiMain}>

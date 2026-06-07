@@ -146,15 +146,15 @@ function ShortReelsRow() {
         <View style={sr.headerLeft}>
           <Text style={{ fontSize: 20 }}>🎬</Text>
           <View>
-            <Text style={[sr.title, { color: colors.text }]}>Short Reels</Text>
-            <Text style={[sr.sub, { color: colors.textSecondary }]}>Curated by Vidya AI</Text>
+            <Text style={[sr.title, { color: colors.text }]}>{t("shortReelsTitle") ?? "Short Reels"}</Text>
+            <Text style={[sr.sub, { color: colors.textSecondary }]}>{t("curatedByVidya") ?? "Curated by Vidya AI"}</Text>
           </View>
         </View>
         <TouchableOpacity
           style={[sr.seeAllBtn, { borderColor: "#6C63FF" }]}
           onPress={() => router.push({ pathname: "/reels", params: { tab: "short" } })}
         >
-          <Text style={[sr.seeAllText, { color: "#6C63FF" }]}>See All</Text>
+          <Text style={[sr.seeAllText, { color: "#6C63FF" }]}>{t("seeAll") ?? "See All"}</Text>
           <Ionicons name="chevron-forward" size={14} color="#6C63FF" />
         </TouchableOpacity>
       </View>
@@ -176,7 +176,7 @@ function ShortReelsRow() {
         >
           <LinearGradient colors={["#6C63FF", "#8B5CF6"]} style={sr.watchAllGrad}>
             <Text style={{ fontSize: 28 }}>▶</Text>
-            <Text style={sr.watchAllText}>Watch{"\n"}All</Text>
+            <Text style={sr.watchAllText}>{t("watchAll") ?? "Watch All"}</Text>
             <Text style={sr.watchAllCount}>{reels.length} reels</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -345,7 +345,7 @@ function SkillBattleRow() {
           <Text style={{ fontSize: 20 }}>🏆</Text>
           <View>
             <Text style={[bt.title, { color: colors.text }]}>{t("Creator Shorts") ?? "Skill Battle Reels"}</Text>
-            <Text style={[bt.sub, { color: colors.textSecondary }]}>Top approved reels</Text>
+            <Text style={[bt.sub, { color: colors.textSecondary }]}>{t("topApprovedReels") ?? "Top approved reels"}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => router.push({ pathname: "/reels", params: { filter: "skillbattle" } })}>

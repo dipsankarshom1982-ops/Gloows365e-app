@@ -361,7 +361,7 @@ export default function SkillBattleScreen() {
           <View style={styles.overlay} />
 
           <View style={[styles.typeBadge, { backgroundColor: accent }]}>
-            <Text style={styles.typeBadgeText}>🏅 Sponsored Battle</Text>
+            <Text style={styles.typeBadgeText}>{`🏅 ${t("sponsoredBattle") ?? "Sponsored Battle"}`}</Text>
           </View>
 
           {/* Status badge */}
@@ -386,7 +386,7 @@ export default function SkillBattleScreen() {
           )}
 
           <Text style={styles.cardTitle} numberOfLines={2}>{item.title || "Skill Battle"}</Text>
-          {item.sponsor ? <Text style={styles.sponsorText}>Powered by {item.sponsor}</Text> : null}
+          {item.sponsor ? <Text style={styles.sponsorText}>{t("poweredBySponsor") ?? "Powered by"} {item.sponsor}</Text> : null}
         </LinearGradient>
 
         {/* Body */}
@@ -409,7 +409,7 @@ export default function SkillBattleScreen() {
             </View>
             <View style={[styles.statChip, { backgroundColor: colors.background, borderColor: colors.border }]}>
               <Ionicons name="school-outline" size={13} color={colors.textSecondary} />
-              <Text style={[styles.statChipText, { color: colors.textSecondary }]}>Class 6–12</Text>
+              <Text style={[styles.statChipText, { color: colors.textSecondary }]}>{t("classSixToTwelve") ?? "Class 6–12"}</Text>
             </View>
           </View>
 
@@ -418,7 +418,7 @@ export default function SkillBattleScreen() {
             <View style={[styles.prizePool, { backgroundColor: "rgba(255,159,67,0.08)", borderColor: "rgba(255,159,67,0.25)" }]}>
               <Text style={styles.prizePoolIcon}>🏆</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.prizePoolLabel}>India Prize Pool</Text>
+                <Text style={styles.prizePoolLabel}>{t("indiaPrizePool") ?? "India Prize Pool"}</Text>
                 <Text style={styles.prizePoolAmt}>{item.totalPool}</Text>
               </View>
               <View style={styles.vcoinSummary}>

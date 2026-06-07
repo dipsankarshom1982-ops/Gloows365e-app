@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import DrawerForm from "../components/DrawerForm";
+import MediaUpload from "../components/MediaUpload";
 import ToggleSwitch from "../components/ToggleSwitch";
+import { db } from "../lib/firebase";
 
 type Tab = "badges" | "stars";
 interface Item { id: string; title: string; description?: string; iconUrl?: string; criteria?: string; isActive: boolean; }
@@ -100,7 +101,13 @@ export default function BadgesAndStars() {
       >
         <div><label className={labelCls}>Title *</label><input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className={inputCls} /></div>
         <div><label className={labelCls}>Description</label><input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={inputCls} /></div>
-        <div><label className={labelCls}>Icon URL</label><input value={form.iconUrl} onChange={(e) => setForm((f) => ({ ...f, iconUrl: e.target.value }))} className={inputCls} placeholder="https://…" /></div>
+        <MediaUpload
+          label="Icon Image"
+          storagePath="badges"
+          value={form.iconUrl}
+          onChange={(url) => setForm((f) => ({ ...f, iconUrl: url }))}
+          placeholder="https://… or upload below"
+        />
         <div><label className={labelCls}>Criteria / Condition</label><input value={form.criteria} onChange={(e) => setForm((f) => ({ ...f, criteria: e.target.value }))} className={inputCls} placeholder="e.g. Complete 5 quizzes" /></div>
         <ToggleSwitch value={form.isActive} onChange={(v) => setForm((f) => ({ ...f, isActive: v }))} label="Active" />
       </DrawerForm>

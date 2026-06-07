@@ -3,6 +3,8 @@ import { FeatureFlagsProvider } from "@/context/FeatureFlagsContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { StudentProfileProvider } from "@/context/StudentProfileContext";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { setupGlobalErrorHandlers } from "@/services/crashReporter";
 import {
   AntDesign, Feather,
   FontAwesome,
@@ -17,6 +19,9 @@ import { useEffect } from "react";
 import { StatusBar } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
+
+// Set up global JS error handler once
+setupGlobalErrorHandlers();
 
 function ThemeStatusBar() {
   const { isDarkMode } = useTheme();
@@ -46,23 +51,19 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider>
-      <ThemeStatusBar />
-      <LanguageProvider>
-        {/*
-          ORDER MATTERS:
-          StudentProfileProvider must be ABOVE AppConfigProvider and
-          FeatureFlagsProvider so they can read studentProfile.role
-          to determine tester/admin status.
-        */}
-        <StudentProfileProvider>
-          <AppConfigProvider>
-            <FeatureFlagsProvider>
-              <Stack screenOptions={{ headerShown: false }} />
-            </FeatureFlagsProvider>
-          </AppConfigProvider>
-        </StudentProfileProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ThemeStatusBar />
+        <LanguageProvider>
+          <StudentProfileProvider>
+            <AppConfigProvider>
+              <FeatureFlagsProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+              </FeatureFlagsProvider>
+            </AppConfigProvider>
+          </StudentProfileProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

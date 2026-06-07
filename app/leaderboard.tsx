@@ -1,3 +1,4 @@
+import { useAppTranslation } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { auth } from "@/lib/firebase";
 import { listenLeaderboard } from "@/lib/listenLeaderboard";
@@ -50,6 +51,7 @@ const TABS = ["daily", "weekly", "monthly", "yearly"] as const;
 
 export default function LeaderboardScreen() {
   const { colors } = useTheme();
+  const { t } = useAppTranslation();
   const router = useRouter();
   const uid    = auth.currentUser?.uid ?? "";
 
@@ -77,7 +79,7 @@ export default function LeaderboardScreen() {
         <TouchableOpacity onPress={() => router.back()} style={S.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={S.headerTitle}>🏆 India Leaderboard</Text>
+        <Text style={S.headerTitle}>🏆 {t("leaderboardLabel") ?? "India Leaderboard"}</Text>
         <View style={{ width: 38 }} />
       </LinearGradient>
 
@@ -117,7 +119,7 @@ export default function LeaderboardScreen() {
               style={S.statsCard}
             >
               <View style={S.statsLeft}>
-                <Text style={S.statsLabel}>Your Score</Text>
+                <Text style={S.statsLabel}>{t("yourRank") ?? "Your Score"}</Text>
                 <Text style={S.statsScore}>{myData?.points ?? "—"}</Text>
                 <Text style={S.statsClass}>
                   {myData?.name ?? auth.currentUser?.email?.split("@")[0] ?? "Student"}

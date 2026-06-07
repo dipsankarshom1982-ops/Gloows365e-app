@@ -59,11 +59,11 @@ export default function DiscoverPreviewSection() {
           {/* Top row */}
           <View style={S.topRow}>
             <View style={S.badge}>
-              <Text style={S.badgeText}>✨ Powered by Gemini AI</Text>
+              <Text style={S.badgeText}>✨ {t("poweredByGemini") ?? "Powered by Gemini AI"}</Text>
             </View>
             <View style={S.liveBadge}>
               <View style={S.liveDot} />
-              <Text style={S.liveText}>Active</Text>
+              <Text style={S.liveText}>{t("activeLabel") ?? "Active"}</Text>
             </View>
           </View>
 
