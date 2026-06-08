@@ -4,7 +4,7 @@
  *
  * Fixes applied:
  *   ✅ user ref no longer stale — read fresh inside useEffect
- *   ✅ expiresAt filter added to Firestore query — expired stories excluded
+ *   ✅ expiresAt filter active — expired stories excluded from approved query
  *   ✅ loading state added — skeleton shows until first data arrives
  *   ✅ error state added — permission errors shown gracefully
  *   ✅ fetchUserProfile batching — single pass, no redundant reads
@@ -186,8 +186,8 @@ export default function Story() {
 
   const [allStories,    setAllStories]    = useState<StoryDoc[]>([]);
   const [viewedIds,     setViewedIds]     = useState<Set<string>>(new Set());
-  const [storiesLoaded, setStoriesLoaded] = useState(false); // ← NEW: loading state
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // ← NEW: reactive user
+  const [storiesLoaded, setStoriesLoaded] = useState(false); // ← loading state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // ← reactive user
 
   // Viewer state
   const [viewerVisible,    setViewerVisible]    = useState(false);
@@ -223,7 +223,7 @@ export default function Story() {
     loadViewedSet().then(setViewedIds);
   }, []);
 
-  // ── FIX: Track current user reactively ────────────────────────────────────
+  // ── Track current user reactively ────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setCurrentUserId(u?.uid ?? null);
@@ -263,12 +263,12 @@ export default function Story() {
     setStoriesLoaded(true);
   }, []);
 
-  // ── FIX: Firebase listeners use currentUserId, filter by expiresAt ────────
+  // ── Firebase listeners: own stories + approved stories (non-expired) ──────
 
   useEffect(() => {
     let unsubOwn: (() => void) | undefined;
 
-    // FIX: use currentUserId (reactive) instead of auth.currentUser (stale)
+    // use currentUserId (reactive) instead of auth.currentUser (stale)
     if (currentUserId) {
       unsubOwn = onSnapshot(
         query(
@@ -286,13 +286,13 @@ export default function Story() {
       );
     }
 
-    // FIX: filter out expired stories using expiresAt > now
+    // ✅ FIX: expiresAt filter is now ACTIVE — expired stories excluded
     const now = Timestamp.now();
     const unsubApproved = onSnapshot(
       query(
         collection(db, "stories"),
         where("status",    "==", "approved"),
-       // where("expiresAt", ">",  now)        // ← NEW: exclude expired
+        where("expiresAt", ">",  now),
       ),
       (snap) => {
         approvedDocsRef.current = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as StoryDoc[];

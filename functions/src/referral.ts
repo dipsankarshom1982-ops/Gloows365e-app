@@ -1,6 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// FILE: functions/src/referral.ts  (NEW FILE)
+// FILE: functions/src/referral.ts
 // PATH: functions/src/referral.ts
+// FIXES APPLIED:
+//   1. vCoinsBalance → vCoins  (lines 146, 153, 178, 182, 231, 233)
+//   2. "VidyaAI" → "Gloows365E"  (line 194)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import * as admin from "firebase-admin";
@@ -118,8 +121,8 @@ export const applyReferral = functionsV1
       }
     }
 
-    const now      = admin.firestore.FieldValue.serverTimestamp();
-    const batch    = db.batch();
+    const now   = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
 
     // ── 1. Create referrals document ──────────────────────────────────────────
     const referralRef = db.collection("referrals").doc();
@@ -135,7 +138,7 @@ export const applyReferral = functionsV1
 
     // ── 2. Mark referee as referred ───────────────────────────────────────────
     batch.set(refereeUserRef, {
-      referredBy:    referrerId,
+      referredBy:          referrerId,
       referralCodeEntered: code,
     }, { merge: true });
 
@@ -143,16 +146,16 @@ export const applyReferral = functionsV1
     if (config.referrerCoins > 0) {
       const referrerUserRef = db.doc(`users/${referrerId}`);
       const referrerSnap    = await referrerUserRef.get();
-      const currentBal      = referrerSnap.exists ? (referrerSnap.data()?.vCoinsBalance ?? 0) : 0;
+      const currentBal      = referrerSnap.exists ? (referrerSnap.data()?.vCoins ?? 0) : 0;           // ✅ FIX: was vCoinsBalance
       const currentEarned   = referrerSnap.exists ? (referrerSnap.data()?.vCoinsLifetimeEarned ?? 0) : 0;
       const currentCount    = referrerSnap.exists ? (referrerSnap.data()?.referralCount ?? 0) : 0;
       const currentRefCoins = referrerSnap.exists ? (referrerSnap.data()?.referralCoinsEarned ?? 0) : 0;
 
       // Update referrer balance + referral stats
       batch.update(referrerUserRef, {
-        vCoinsBalance:        currentBal     + config.referrerCoins,
-        vCoinsLifetimeEarned: currentEarned  + config.referrerCoins,
-        referralCount:        currentCount   + 1,
+        vCoins:               currentBal      + config.referrerCoins,  // ✅ FIX: was vCoinsBalance
+        vCoinsLifetimeEarned: currentEarned   + config.referrerCoins,
+        referralCount:        currentCount    + 1,
         referralCoinsEarned:  currentRefCoins + config.referrerCoins,
         vCoinsUpdatedAt:      now,
       });
@@ -175,11 +178,11 @@ export const applyReferral = functionsV1
 
     // ── 4. Credit referee's welcome bonus ─────────────────────────────────────
     if (config.refereeCoins > 0) {
-      const refereeBal     = refereeUserSnap.exists ? (refereeUserSnap.data()?.vCoinsBalance ?? 0) : 0;
-      const refereeEarned  = refereeUserSnap.exists ? (refereeUserSnap.data()?.vCoinsLifetimeEarned ?? 0) : 0;
+      const refereeBal    = refereeUserSnap.exists ? (refereeUserSnap.data()?.vCoins ?? 0) : 0;           // ✅ FIX: was vCoinsBalance
+      const refereeEarned = refereeUserSnap.exists ? (refereeUserSnap.data()?.vCoinsLifetimeEarned ?? 0) : 0;
 
       batch.update(refereeUserRef, {
-        vCoinsBalance:        refereeBal    + config.refereeCoins,
+        vCoins:               refereeBal    + config.refereeCoins,  // ✅ FIX: was vCoinsBalance
         vCoinsLifetimeEarned: refereeEarned + config.refereeCoins,
         vCoinsUpdatedAt:      now,
       });
@@ -191,7 +194,7 @@ export const applyReferral = functionsV1
         amount:      config.refereeCoins,
         source:      "REFEREE_JOIN_BONUS",
         title:       "Welcome Bonus 🎁",
-        description: `Welcome to VidyaAI! Bonus for joining with a referral code.`,
+        description: `Welcome to Gloows365E! Bonus for joining with a referral code.`,  // ✅ FIX: was VidyaAI
         status:      "SUCCESS",
         referenceId: referralRef.id,
         metadata:    { code, referrerId },
@@ -204,8 +207,8 @@ export const applyReferral = functionsV1
     let milestoneGiftLabel: string | null = null;
 
     if (config.milestones?.length > 0) {
-      const referrerData    = referrerDoc.data();
-      const newCount        = (referrerData?.referralCount ?? 0) + 1;
+      const referrerData = referrerDoc.data();
+      const newCount     = (referrerData?.referralCount ?? 0) + 1;
 
       for (const milestone of config.milestones) {
         if (newCount % milestone.every === 0) {
@@ -228,9 +231,9 @@ export const applyReferral = functionsV1
 
             const referrerUserRef2 = db.doc(`users/${referrerId}`);
             const snap2 = await referrerUserRef2.get();
-            const bal2  = snap2.exists ? (snap2.data()?.vCoinsBalance ?? 0) : 0;
+            const bal2  = snap2.exists ? (snap2.data()?.vCoins ?? 0) : 0;  // ✅ FIX: was vCoinsBalance
             batch.update(referrerUserRef2, {
-              vCoinsBalance: bal2 + milestone.giftValue,
+              vCoins:               bal2 + milestone.giftValue,  // ✅ FIX: was vCoinsBalance
               vCoinsLifetimeEarned: admin.firestore.FieldValue.increment(milestone.giftValue),
             });
           }

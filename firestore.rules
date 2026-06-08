@@ -55,14 +55,11 @@ service cloud.firestore {
       allow update: if request.auth.token.admin == true;
       allow delete: if false;
 
+      // ✅ FIX: Clients can no longer write transaction docs directly.
+      // All vCoinTransactions are written only by Cloud Functions (Admin SDK).
       match /vCoinTransactions/{txId} {
-        allow read: if request.auth.uid == userId;
-        allow create: if request.auth.uid == userId
-          && request.resource.data.amount > 0
-          && request.resource.data.amount <= 1500
-          && request.resource.data.type in ["CREDIT", "DEBIT"]
-          && request.resource.data.status in ["SUCCESS", "PENDING"];
-        allow update, delete: if false;
+        allow read:                   if request.auth.uid == userId;
+        allow create, update, delete: if false;
       }
       match /vCoinActivityLocks/{lockId} {
         allow read, write: if request.auth.uid == userId;

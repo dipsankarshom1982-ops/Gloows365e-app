@@ -1,7 +1,8 @@
 // PATH: components/ReferralCard.tsx
+// FIXES: "VidyaAI" → "Gloows365E", vidyaai.app → gloows365e.app
 
-import { useReferral } from "@/hooks/useReferral";
 import { useAppTranslation } from "@/context/LanguageContext";
+import { useReferral } from "@/hooks/useReferral";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
@@ -24,8 +25,8 @@ export default function ReferralCard() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${t("referEarn") ?? "Refer & Earn"} — India's smartest learning app! 🚀\n\nUse my referral code: ${referralCode}\n\nYou'll get ${config.refereeCoins} VCoins as a welcome bonus!\n\nDownload now: https://vidyaai.app`,
-        title: `Join VidyaAI with my code`,
+        message: `${t("referEarn") ?? "Refer & Earn"} — India's smartest learning app! 🚀\n\nUse my referral code: ${referralCode}\n\nYou'll get ${config.refereeCoins} VCoins as a welcome bonus!\n\nDownload now: https://gloows365.in`,
+        title: `Join Gloows365E with my code`,
       });
     } catch { /* ignore */ }
   };

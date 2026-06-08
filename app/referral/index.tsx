@@ -1,10 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// FILE: app/referral/index.tsx  (NEW FILE)
+// FILE: app/referral/index.tsx
 // PATH: app/referral/index.tsx
+// FIXES: "VidyaAI" → "Gloows365E", vidyaai.app → gloows365e.app
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useReferral } from "@/hooks/useReferral";
 import { useAppTranslation } from "@/context/LanguageContext";
+import { useReferral } from "@/hooks/useReferral";
 import { ReferralDoc } from "@/services/referralService";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -12,13 +13,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  FlatList,
   ScrollView,
   Share,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -44,8 +44,8 @@ export default function ReferralScreen() {
 
   const handleShare = async () => {
     await Share.share({
-      message: `Join me on VidyaAI — India's smartest learning app! 🚀\n\nUse my referral code: ${referralCode}\n\nYou'll get ${config.refereeCoins} VCoins as a welcome bonus!\n\nDownload now: https://vidyaai.app`,
-      title: "Join VidyaAI with my code",
+      message: `Join me on Gloows365E — India's smartest learning app! 🚀\n\nUse my referral code: ${referralCode}\n\nYou'll get ${config.refereeCoins} VCoins as a welcome bonus!\n\nDownload now: https://gloows365.in`,
+      title: "Join Gloows365E with my code",
     });
   };
 
@@ -119,7 +119,7 @@ export default function ReferralScreen() {
             </View>
             <View style={S.statCard}>
               <Text style={[S.statNum, { color: "#A78BFA" }]}>{referralCoinsEarned}</Text>
-              <Text style={S.statLabel}>" + (t("vCoinsEarned") ?? "VCoins earned")</Text>
+              <Text style={S.statLabel}>{t("vCoinsEarned") ?? "VCoins earned"}</Text>
             </View>
             <View style={S.statCard}>
               <Text style={[S.statNum, { color: "#34D399" }]}>{completedReferrals.length}</Text>
@@ -138,7 +138,7 @@ export default function ReferralScreen() {
                 <View style={[S.progressFill, { width: `${progressPercent}%` }]} />
               </View>
               <Text style={S.milestoneHint}>
-                {nextMilestone.every - nextMilestone.progressCount} " + (t("moreReferralsToUnlock") ?? "more referrals to unlock") + "
+                {nextMilestone.every - nextMilestone.progressCount} {t("moreReferralsToUnlock") ?? "more referrals to unlock"}
               </Text>
             </View>
           )}

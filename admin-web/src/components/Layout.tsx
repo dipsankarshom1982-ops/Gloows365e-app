@@ -62,8 +62,16 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const { user, logout, isSuperAdmin, permissions } = useAuth();
 
-  const isActive = (path: string) =>
-    path === "/" ? pathname === "/" : pathname === path || pathname.startsWith(path + "/");
+  // Paths that are list pages with child routes (e.g. /ads/new, /ads/:id).
+  // These must match EXACTLY — startsWith would highlight the list page
+  // when you're on a create/edit child route.
+  const EXACT_MATCH_PATHS = ["/ads", "/contests", "/stories", "/skill-battles", "/banners", "/partners", "/badges", "/admins", "/students", "/subscriptions", "/courses", "/practice", "/quizzes"];
+
+  const isActive = (path: string) => {
+    if (path === "/") return pathname === "/";
+    if (EXACT_MATCH_PATHS.includes(path)) return pathname === path;
+    return pathname === path || pathname.startsWith(path + "/");
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-950">

@@ -1,4 +1,5 @@
 // PATH: app/index.tsx
+// FIX: Loading screen "VIDYA" text replaced with proper Gloows365E branding
 
 import { auth, db } from "@/lib/firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,9 +85,16 @@ export default function Index() {
   if (loading || route === null) {
     return (
       <View style={S.container}>
-        <Text style={S.logo}>VIDYA</Text>
+        {/* ✅ FIX: was "VIDYA" — now shows proper Gloows365E brand */}
+        <Text style={S.logoGl}>Gl</Text>
+        <Text style={S.logoMain}>
+          <Text style={S.logoGl}>Gl</Text>
+          <Text style={S.logoOows}>oows</Text>
+          <Text style={S.logo365}>365</Text>
+          <Text style={S.logoE}>E</Text>
+        </Text>
         <Text style={S.tagline}>Learn • Compete • Earn 🚀</Text>
-        <ActivityIndicator size="large" color="#38bdf8" style={{ marginTop: 30 }} />
+        <ActivityIndicator size="large" color="#6366F1" style={{ marginTop: 30 }} />
       </View>
     );
   }
@@ -170,6 +178,10 @@ const S = StyleSheet.create({
     flex: 1, backgroundColor: "#0f172a",
     justifyContent: "center", alignItems: "center",
   },
-  logo:    { fontSize: 42, fontWeight: "bold", color: "#38bdf8", letterSpacing: 4 },
-  tagline: { color: "#94a3b8", marginTop: 10, fontSize: 14 },
+  logoMain: { fontSize: 48, fontWeight: "900", letterSpacing: -1 },
+  logoGl:   { fontSize: 48, fontWeight: "900", color: "#A5B4FC", letterSpacing: -1 },
+  logoOows: { fontSize: 48, fontWeight: "900", color: "#F1F5F9", letterSpacing: -1 },
+  logo365:  { fontSize: 36, fontWeight: "900", color: "#818CF8", letterSpacing: 0 },
+  logoE:    { fontSize: 38, fontWeight: "900", color: "#FBBF24", letterSpacing: 0 },
+  tagline:  { color: "#94a3b8", marginTop: 12, fontSize: 14 },
 });
